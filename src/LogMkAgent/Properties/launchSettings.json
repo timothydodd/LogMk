@@ -1,0 +1,10 @@
+{
+  "profiles": {
+    "LogMkAgent": {
+      "commandName": "Project"
+    },
+    "Container (Dockerfile)": {
+      "commandName": "Docker"
+    }
+  }
+}
