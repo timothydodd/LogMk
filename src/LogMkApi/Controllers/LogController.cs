@@ -1,8 +1,10 @@
 ﻿using LogMkApi.Data;
 using LogMkCommon;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace LogMkApi.Controllers;
+
 [ApiController]
 [Route("api/log")]
 public class LogController : ControllerBase
@@ -17,9 +19,9 @@ public class LogController : ControllerBase
         _logger = logger;
         _logRepo = logRepo;
     }
-
+    [AllowAnonymous]
     [HttpPost]
-    public async Task<ActionResult> Create(List<LogLine> logLine)
+    public async Task<ActionResult> Create([FromBody] List<LogLine> logLine)
     {
         await _logRepo.BulkInsert(logLine.Select(x => new Log
         {
@@ -31,4 +33,6 @@ public class LogController : ControllerBase
         }).ToList());
         return Ok();
     }
+    public async Task<>
 }
+

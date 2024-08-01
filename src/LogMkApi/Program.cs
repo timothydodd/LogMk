@@ -1,6 +1,7 @@
 ﻿using System.Data;
 using LogMkApi.Data;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
+using Microsoft.AspNetCore.ResponseCompression;
 using ServiceStack;
 using ServiceStack.Data;
 using ServiceStack.OrmLite;
@@ -12,6 +13,16 @@ public class Program
     public static void Main(string[] args)
     {
         var builder = WebApplication.CreateBuilder(args);
+        builder.Services.AddRequestDecompression();
+        builder.Services.AddResponseCompression(options =>
+        {
+            options.Providers.Add<BrotliCompressionProvider>();
+            options.Providers.Add<GzipCompressionProvider>();
+            options.MimeTypes = ResponseCompressionDefaults.MimeTypes.Concat(new[]
+            {
+            "application/json"
+        });
+        });
         builder.Services.AddControllers();
         builder.Services.AddMemoryCache();
         var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
@@ -46,8 +57,9 @@ public class Program
             var dbInitializer = scope.ServiceProvider.GetRequiredService<DatabaseInitializer>();
             dbInitializer.CreateTable();
         }
-
-        app.UseAuthorization();
+        // Enable middleware to handle decompression
+        app.UseResponseCompression();
+        app.UseRequestDecompression();
 
 
         app.MapControllers();

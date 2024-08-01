@@ -1,6 +1,7 @@
 ﻿using ServiceStack.Data;
 using ServiceStack.DataAnnotations;
 using ServiceStack.OrmLite;
+using ServiceStack.OrmLite.Dapper;
 
 namespace LogMkApi.Data;
 
@@ -20,6 +21,18 @@ public class LogRepo
             await db.InsertAllAsync(logs);
         }
 
+    }
+    public async Task<IEnumerable<LatestDeploymentEntry>> GetLastEvents()
+    {
+        using (var db = _dbFactory.OpenDbConnection())
+        {
+            var query = @"
+    SELECT Deployment, Pod, MAX(TimeStamp) AS MaxTimeStamp
+    FROM Log
+    GROUP BY Deployment, Pod
+";
+            return await db.QueryAsync<LatestDeploymentEntry>(query);
+        }
     }
 }
 public class Log
