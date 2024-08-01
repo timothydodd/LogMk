@@ -1,8 +1,9 @@
 ﻿using System.Globalization;
 using System.Text.Json;
-using System.Text.RegularExpressions;
+using LogMkCommon;
 using Microsoft.Extensions.Options;
 
+using LogLevel = LogMkCommon.LogLevel;
 namespace LogMkAgent.Services;
 public class LogWatcher : BackgroundService
 {
@@ -132,10 +133,10 @@ public class LogWatcher : BackgroundService
                 {
                     line = line.Substring(thirdSpace + 1);
                 }
-                return new LogLine(deploymentName, podName, line, logLevel, timestamp);
+                return new LogLine() { DeploymentName = deploymentName, PodName = podName, Line = line, LogLevel = logLevel, TimeStamp = timestamp };
             }
         }
-        return new LogLine(deploymentName, podName, line, logLevel, DateTime.Now);
+        return new LogLine() { DeploymentName = deploymentName, PodName = podName, Line = line, LogLevel = logLevel, TimeStamp = DateTime.Now };
 
     }
     static string TruncateFractionalSeconds(string timestamp, int maxFractionalDigits)
@@ -179,22 +180,7 @@ public class LogWatcher : BackgroundService
         base.Dispose();
     }
 }
-public class LogLine
-{
-    public string DeploymentName { get; set; }
-    public string PodName { get; set; }
-    public string Line { get; set; }
-    public LogLevel LogLevel { get; set; }
-    public DateTime TimeStamp { get; set; }
-    public LogLine(string deploymentName, string podName, string line, LogLevel logLevel, DateTime timeStamp)
-    {
-        DeploymentName = deploymentName;
-        PodName = podName;
-        Line = line;
-        LogLevel = logLevel;
-        TimeStamp = timeStamp;
-    }
-}
+
 public class PodInfo
 {
     public string DeploymentName { get; set; }
@@ -218,12 +204,3 @@ public class LogWatcherOptions
 
 }
 
-public enum LogLevel
-{
-    ANY = 0,
-    DEBUG = 1,
-    INFO = 2,
-    WARN = 3,
-    ERROR = 4
-
-}

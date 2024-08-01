@@ -1,31 +1,34 @@
+﻿using LogMkApi.Data;
+using LogMkCommon;
 using Microsoft.AspNetCore.Mvc;
 
 namespace LogMkApi.Controllers;
 [ApiController]
-[Route("[controller]")]
+[Route("api/log")]
 public class LogController : ControllerBase
 {
-    private static readonly string[] Summaries = new[]
-    {
-        "Freezing", "Bracing", "Chilly", "Cool", "Mild", "Warm", "Balmy", "Hot", "Sweltering", "Scorching"
-    };
+
 
     private readonly ILogger<LogController> _logger;
+    private readonly LogRepo _logRepo;
 
-    public LogController(ILogger<LogController> logger)
+    public LogController(ILogger<LogController> logger, LogRepo logRepo)
     {
         _logger = logger;
+        _logRepo = logRepo;
     }
 
-    [HttpGet]
-    public IEnumerable<WeatherForecast> Get()
+    [HttpPost]
+    public async Task<ActionResult> Create(List<LogLine> logLine)
     {
-        return Enumerable.Range(1, 5).Select(index => new WeatherForecast
+        await _logRepo.BulkInsert(logLine.Select(x => new Log
         {
-            Date = DateOnly.FromDateTime(DateTime.Now.AddDays(index)),
-            TemperatureC = Random.Shared.Next(-20, 55),
-            Summary = Summaries[Random.Shared.Next(Summaries.Length)]
-        })
-        .ToArray();
+            Deployment = x.DeploymentName,
+            Pod = x.PodName,
+            Line = x.Line,
+            LogLevel = x.LogLevel.ToString(),
+            TimeStamp = x.TimeStamp
+        }).ToList());
+        return Ok();
     }
 }
