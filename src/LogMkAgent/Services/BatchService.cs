@@ -29,7 +29,7 @@ public class BatchingService
         }
     }
 
-    private void SendBatch(object sender, ElapsedEventArgs? e)
+    private void SendBatch(object? sender, ElapsedEventArgs? e)
     {
         List<string>? currentBatch = null;
         lock (_batchData)
@@ -53,4 +53,8 @@ public class BatchingService
             Console.WriteLine($"Processing: {item}");
         }
     }
+}
+public class LoggingApiSettings
+{
+    public string BaseUrl { get; set; }
 }

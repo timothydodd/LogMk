@@ -21,7 +21,15 @@ public class Program
                 // Configure strongly typed settings objects
                 //var serviceConfig = configuration.GetSection("ServiceConfig").Get<ServiceConfig>();
                 //services.AddSingleton(serviceConfig);
-
+                services.AddLogging(logging =>
+                {
+                    logging.AddSimpleConsole(c =>
+                   {
+                       c.SingleLine = true;
+                       c.IncludeScopes = true;
+                       c.TimestampFormat = "HH:mm:ss ";
+                   });
+                });
                 // Add hosted service
                 services.AddHostedService<LogWatcher>();
             })
