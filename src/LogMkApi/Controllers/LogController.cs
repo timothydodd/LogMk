@@ -23,16 +23,25 @@ public class LogController : ControllerBase
     [HttpPost]
     public async Task<ActionResult> Create([FromBody] List<LogLine> logLine)
     {
-        await _logRepo.BulkInsert(logLine.Select(x => new Log
+        await _logRepo.BulkInsert(logLine.Select(x =>
         {
-            Deployment = x.DeploymentName,
-            Pod = x.PodName,
-            Line = x.Line,
-            LogLevel = x.LogLevel.ToString(),
-            TimeStamp = x.TimeStamp
-        }).ToList());
+            var l = new Log
+            {
+                Deployment = x.DeploymentName,
+                Pod = x.PodName,
+                Line = x.Line,
+                LogLevel = x.LogLevel.ToString(),
+                TimeStamp = x.TimeStamp.UtcDateTime
+            };
+            return l;
+        }));
         return Ok();
     }
-    public async Task<>
+    [HttpGet("times")]
+    public async Task<IEnumerable<LatestDeploymentEntry>> GetLatestEntryTimes()
+    {
+        var entries = await _logRepo.GetLatestEntryTimes();
+        return entries;
+    }
 }
 

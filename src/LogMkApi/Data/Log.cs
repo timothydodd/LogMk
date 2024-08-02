@@ -1,4 +1,5 @@
-﻿using ServiceStack.Data;
+﻿using LogMkCommon;
+using ServiceStack.Data;
 using ServiceStack.DataAnnotations;
 using ServiceStack.OrmLite;
 using ServiceStack.OrmLite.Dapper;
@@ -14,7 +15,7 @@ public class LogRepo
         _dbFactory = dbFactory;
     }
 
-    public async Task BulkInsert(List<Log> logs)
+    public async Task BulkInsert(IEnumerable<Log> logs)
     {
         using (var db = _dbFactory.OpenDbConnection())
         {
@@ -22,12 +23,12 @@ public class LogRepo
         }
 
     }
-    public async Task<IEnumerable<LatestDeploymentEntry>> GetLastEvents()
+    public async Task<IEnumerable<LatestDeploymentEntry>> GetLatestEntryTimes()
     {
         using (var db = _dbFactory.OpenDbConnection())
         {
             var query = @"
-    SELECT Deployment, Pod, MAX(TimeStamp) AS MaxTimeStamp
+    SELECT Deployment, Pod, MAX(TimeStamp) AS TimeStamp
     FROM Log
     GROUP BY Deployment, Pod
 ";
@@ -46,5 +47,5 @@ public class Log
     [StringLength(3000)]
     public required string Line { get; set; }
     public required string LogLevel { get; set; }
-    public required DateTimeOffset TimeStamp { get; set; }
+    public required DateTime TimeStamp { get; set; }
 }

@@ -1,10 +1,12 @@
 ﻿using System.Data;
+using LogMkApi.Common;
 using LogMkApi.Data;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Microsoft.AspNetCore.ResponseCompression;
 using ServiceStack;
 using ServiceStack.Data;
 using ServiceStack.OrmLite;
+using ServiceStack.OrmLite.Dapper;
 
 namespace LogMkApi;
 
@@ -49,6 +51,8 @@ public class Program
             logging.AddDebug();
         });
         HealthCheck.AddHealthChecks(builder.Services, connectionString);
+        SqlMapper.AddTypeHandler(new DateTimeHandler());
+
         var app = builder.Build();
 
 
