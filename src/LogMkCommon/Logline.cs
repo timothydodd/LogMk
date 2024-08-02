@@ -6,7 +6,7 @@ public class LogLine
     public required string PodName { get; set; }
     public required string Line { get; set; }
     public required LogLevel LogLevel { get; set; }
-    public required DateTime TimeStamp { get; set; }
+    public required DateTimeOffset TimeStamp { get; set; }
 }
 public enum LogLevel
 {
