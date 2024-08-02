@@ -10,35 +10,82 @@ public class LogWatcher : BackgroundService
 
     private readonly List<string> _logPaths;
     private readonly List<FileSystemWatcher> _watchers = new List<FileSystemWatcher>();
-    private readonly Dictionary<string, long> _lastReadPositions = new Dictionary<string, long>();
     private readonly BatchingService _batchingService;
-    private readonly HashSet<string> _ignorePods = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+    private readonly ILogger<LogWatcher> _logger;
+    private readonly Dictionary<string, PodSettings> _podSettings = new Dictionary<string, PodSettings>(StringComparer.OrdinalIgnoreCase);
+    private readonly Dictionary<string, DeploymentSettings> _deploymentSettings = new Dictionary<string, DeploymentSettings>(StringComparer.OrdinalIgnoreCase);
+    private readonly LogLevel DefaultLogLevel = LogLevel.Information;
 
-    private readonly LogLevel DefaultLogLevel = LogLevel.INFO;
-    public LogWatcher(BatchingService batchingService, IOptions<LogWatcherOptions> options)
+    public LogWatcher(BatchingService batchingService, IOptions<LogWatcherOptions> options, LogApiClient client, ILogger<LogWatcher> logger)
     {
+        _batchingService = batchingService;
+        _logger = logger;
         _logPaths = options.Value.Paths;
         if (_logPaths == null || _logPaths.Count == 0)
         {
+            _logger.LogError("At least one log path must be specified");
             throw new ArgumentException("At least one log path must be specified");
+        }
+        if (options.Value.LogLevel.TryGetValue("Default", out var defaultLevel))
+        {
+            _logger.LogInformation($"Setting default log level to {defaultLevel}");
+            DefaultLogLevel = defaultLevel;
+        }
+        foreach (var p in options.Value.LogLevel)
+        {
+            var podSettings = GetPodSettings(p.Key);
+            podSettings.LogLevel = p.Value;
         }
         foreach (var pod in options.Value?.IgnorePods)
         {
-            _ignorePods.Add(pod);
+            var getPod = GetPodSettings(pod);
+            getPod.Ignore = true;
         }
-        _batchingService = batchingService;
+        var times = client.GetDataAsync<List<LatestDeploymentEntry>>("api/log/times").GetAwaiter().GetResult();
+        if (times != null)
+        {
+            _logger.LogInformation("Got latest deployment times");
+            foreach (var pod in times)
+            {
+                var s = GetDeploymentSettings(pod.Deployment);
+                s.LastDeploymentTime = pod.TimeStamp;
+                _logger.LogInformation($"Deployment {pod.Deployment} last wrote at {pod.TimeStamp}");
+            }
+        }
+
+
     }
 
+    private PodSettings GetPodSettings(string podName)
+    {
+        if (_podSettings.TryGetValue(podName, out var settings))
+        {
+            return settings;
+        }
+        var p = new PodSettings() { LogLevel = DefaultLogLevel, Ignore = false };
+        _podSettings.Add(podName, p);
+        return p;
+    }
+    private DeploymentSettings GetDeploymentSettings(string deploymentName)
+    {
+        if (_deploymentSettings.TryGetValue(deploymentName, out var settings))
+        {
+            return settings;
+        }
+        var d = new DeploymentSettings() { LastDeploymentTime = null };
+        _deploymentSettings.Add(deploymentName, d);
+        return d;
+    }
     protected override Task ExecuteAsync(CancellationToken stoppingToken)
     {
         foreach (var path in _logPaths)
         {
-            Console.WriteLine("Watching " + path);
+            _logger.LogInformation($"Watching {path}");
             var watcher = new FileSystemWatcher
             {
                 Path = path,
                 Filter = "*.log",
-                NotifyFilter = NotifyFilters.LastWrite | NotifyFilters.Size | NotifyFilters.LastAccess,
+                NotifyFilter = NotifyFilters.LastWrite | NotifyFilters.Size,
             };
 
             watcher.Changed += OnLogChanged;
@@ -47,7 +94,7 @@ public class LogWatcher : BackgroundService
             watcher.IncludeSubdirectories = true;
             watcher.Error += (sender, e) =>
             {
-                Console.WriteLine($"Error in file watcher: {e.GetException().Message}");
+                _logger.LogError($"Error in file watcher: {e.GetException().Message}");
             };
             _watchers.Add(watcher);
         }
@@ -60,7 +107,6 @@ public class LogWatcher : BackgroundService
 
     private void OnLogCreated(object sender, FileSystemEventArgs e)
     {
-        _lastReadPositions[e.FullPath] = 0; // Reset or initialize position for new files
         ReadNewLines(new PodInfo(e.FullPath));
     }
 
@@ -70,21 +116,29 @@ public class LogWatcher : BackgroundService
     }
     private void ReadNewLines(PodInfo info)
     {
-        if (_ignorePods.Contains(info.PodName))
+        var podSettings = GetPodSettings(info.PodName);
+
+        if (podSettings.Ignore)
             return;
 
         var filePath = info.LogPath;
+        var podLogLevel = podSettings.LogLevel;
+        var deploymentSettings = GetDeploymentSettings(info.DeploymentName);
 
-        if (!_lastReadPositions.ContainsKey(filePath))
+        if (deploymentSettings.FilePath != filePath)
         {
-            _lastReadPositions[filePath] = 0;
+            deploymentSettings.FilePath = filePath;
+            deploymentSettings.LastReadPosition = 0;
+            _logger.LogInformation($"New log file detected: {filePath}");
         }
+        DateTime? timeStamp = deploymentSettings.LastDeploymentTime;
 
+        var foundRecent = false;
         try
         {
-            using (var fs = new FileStream(filePath, FileMode.Open, FileAccess.Read, FileShare.ReadWrite))
+            using (var fs = new FileStream(filePath, FileMode.Open, FileAccess.Read))
             {
-                fs.Seek(_lastReadPositions[filePath], SeekOrigin.Begin);
+                fs.Seek(deploymentSettings.LastReadPosition, SeekOrigin.Begin);
                 using (var sr = new StreamReader(fs))
                 {
 
@@ -94,36 +148,48 @@ public class LogWatcher : BackgroundService
                         if (string.IsNullOrWhiteSpace(line))
                             continue;
                         var logLevel = GetLogLevel(line);
-                        if (logLevel < DefaultLogLevel)
+                        if (logLevel < podLogLevel)
                         {
                             continue;
                         }
                         var logLine = ParseLogLine(line, info.PodName, info.DeploymentName, logLevel);
-                        Console.WriteLine(JsonSerializer.Serialize(logLine)); // Or process as needed
+
+                        if (timeStamp.HasValue)
+                        {
+                            var logDateTimeUtc = logLine.TimeStamp.ToUniversalTime();
+                            var timestampUtc = timeStamp.Value.ToUniversalTime();
+
+                            if (logDateTimeUtc < timestampUtc)
+                                continue;
+
+                            foundRecent = true;
+                        }
+                        _batchingService.AddData(logLine);
                     }
-                    _lastReadPositions[filePath] = fs.Position; // Update the last read position
+                    deploymentSettings.LastReadPosition = fs.Position; // Update the last read position
                 }
+            }
+            if (foundRecent)
+            {
+                timeStamp = null;
+                deploymentSettings.LastDeploymentTime = null;
             }
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"Error reading log file {filePath}: {ex.Message}");
+            _logger.LogError($"Error reading log file {filePath}: {ex.Message}");
         }
     }
 
     private LogLine ParseLogLine(string line, string podName, string deploymentName, LogLevel logLevel)
     {
 
-
-
-        //  var match = timeStampeRegex.Match(line);
-        //  var timestamp = DateTime.ParseExact(match.Groups["timestamp"].Value, "yyyy-MM-dd HH:mm:ss,fff", CultureInfo.InvariantCulture);
         var firstSpace = line.IndexOf(' ');
         if (firstSpace >= 0)
         {
             var dt = line.Substring(0, firstSpace);
             dt = TruncateFractionalSeconds(dt, 7);
-            if (DateTime.TryParseExact(dt, "yyyy-MM-ddTHH:mm:ss.fffffffZ", CultureInfo.InvariantCulture, DateTimeStyles.None, out var timestamp))
+            if (DateTimeOffset.TryParseExact(dt, "yyyy-MM-ddTHH:mm:ss.fffffffZ", CultureInfo.InvariantCulture, DateTimeStyles.None, out var timestamp))
             {
                 var secondSpace = line.IndexOf(' ', firstSpace + 1);
                 var thirdSpace = line.IndexOf(' ', secondSpace + 1);
@@ -136,7 +202,7 @@ public class LogWatcher : BackgroundService
                 return new LogLine() { DeploymentName = deploymentName, PodName = podName, Line = line, LogLevel = logLevel, TimeStamp = timestamp };
             }
         }
-        return new LogLine() { DeploymentName = deploymentName, PodName = podName, Line = line, LogLevel = logLevel, TimeStamp = DateTime.Now };
+        return new LogLine() { DeploymentName = deploymentName, PodName = podName, Line = line, LogLevel = logLevel, TimeStamp = DateTimeOffset.UtcNow };
 
     }
     static string TruncateFractionalSeconds(string timestamp, int maxFractionalDigits)
@@ -153,23 +219,23 @@ public class LogWatcher : BackgroundService
     }
     private LogLevel GetLogLevel(string logLine)
     {
-        if (logLine.Contains("ERROR", StringComparison.OrdinalIgnoreCase) || logLine.Contains("stderr", StringComparison.OrdinalIgnoreCase))
+        if (logLine.Contains("ERROR", StringComparison.OrdinalIgnoreCase))
         {
-            return LogLevel.ERROR;
+            return LogLevel.Error;
         }
         else if (logLine.Contains("WARN", StringComparison.OrdinalIgnoreCase))
         {
-            return LogLevel.WARN;
+            return LogLevel.Warning;
         }
         else if (logLine.Contains("INFO", StringComparison.OrdinalIgnoreCase))
         {
-            return LogLevel.INFO;
+            return LogLevel.Information;
         }
         else if (logLine.Contains("DEBUG", StringComparison.OrdinalIgnoreCase))
         {
-            return LogLevel.DEBUG;
+            return LogLevel.Debug;
         }
-        return LogLevel.ANY;
+        return LogLevel.Any;
     }
     public override void Dispose()
     {
@@ -200,7 +266,18 @@ public class LogWatcherOptions
     public List<string> IgnorePods { get; set; } = new List<string>();
     public List<string> Paths { get; set; } = new List<string>();
 
-    public Dictionary<string, string> LogLevel { get; set; } = new Dictionary<string, string>();
+    public Dictionary<string, LogLevel> LogLevel { get; set; } = new Dictionary<string, LogLevel>();
 
 }
 
+public class PodSettings
+{
+    public LogLevel LogLevel { get; set; }
+    public bool Ignore { get; set; }
+}
+public class DeploymentSettings
+{
+    public string? FilePath { get; set; }
+    public long LastReadPosition { get; set; }
+    public DateTime? LastDeploymentTime { get; set; }
+}

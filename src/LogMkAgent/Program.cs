@@ -1,4 +1,5 @@
 ﻿using LogMkAgent.Services;
+using Microsoft.Extensions.Options;
 
 // Add any other namespaces required for your services
 
@@ -14,9 +15,19 @@ public class Program
 
                 // Services
                 services.AddSingleton<BatchingService>();
-
+                services.AddSingleton<HttpLogger>();
                 var settings = configuration.GetSection("LogWatcherOptions");
+                var apiSettings = configuration.GetSection("LoggingApi");
+
                 services.Configure<LogWatcherOptions>(settings);
+                services.Configure<ApiSettings>(apiSettings);
+                services.AddHttpClient();
+                services.AddHttpClient<LogApiClient>((serviceProvider, client) =>
+                {
+                    var settings = serviceProvider.GetRequiredService<IOptions<ApiSettings>>().Value;
+                    client.BaseAddress = new Uri(settings.BaseUrl);
+                    // Additional configuration like timeouts, headers, etc.
+                }).AddLogger<HttpLogger>(wrapHandlersPipeline: true);
 
                 // Configure strongly typed settings objects
                 //var serviceConfig = configuration.GetSection("ServiceConfig").Get<ServiceConfig>();

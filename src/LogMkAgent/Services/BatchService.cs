@@ -1,60 +1,76 @@
-﻿using System.Timers;
+﻿using System.IO.Compression;
+using System.Reflection.Metadata;
+using System.Text;
+using System.Text.Json;
+using LogMkCommon;
+using Microsoft.Extensions.Options;
 
 namespace LogMkAgent.Services;
 public class BatchingService
 {
-    private readonly List<string> _batchData = new List<string>();
-    private readonly int _batchSize = 10;
-    private readonly System.Timers.Timer _timer;
-    private readonly TimeSpan _batchInterval = TimeSpan.FromSeconds(10);
+    private readonly object _lock = new object();
+    private readonly List<LogLine> _batchData = new List<LogLine>();
+    private readonly LogApiClient _httpClient;
+    private readonly ILogger<BatchingService> _logger;
 
-    public BatchingService()
+    private readonly Timer _timer;
+
+    TimeSpan _interval = TimeSpan.FromSeconds(10);
+    public BatchingService(IOptions<ApiSettings> apiSettings, LogApiClient client, ILogger<BatchingService> logger)
     {
-        // Set up a timer to trigger sending the batch
-        _timer = new System.Timers.Timer(_batchInterval.TotalMilliseconds);
-        _timer.Elapsed += SendBatch;
-        _timer.AutoReset = true;
-        _timer.Enabled = true;
+
+        _httpClient = client;
+        _logger = logger;
+
+        _timer = new Timer(async _ => await SendBatchAsync(), null, _interval, _interval);
+
     }
-
-    public void AddData(string data)
+    public void AddData(LogLine data)
     {
-        lock (_batchData)
+        lock (_lock)
         {
             _batchData.Add(data);
-            if (_batchData.Count >= _batchSize)
-            {
-                SendBatch(this, null);
-            }
         }
     }
 
-    private void SendBatch(object? sender, ElapsedEventArgs? e)
+    private async Task SendBatchAsync()
     {
-        List<string>? currentBatch = null;
-        lock (_batchData)
+
+        List<LogLine> currentBatch;
+        lock (_lock)
         {
             if (_batchData.Count == 0)
                 return;
-
-            currentBatch = new List<string>(_batchData);
-            _batchData.Clear();
+            currentBatch = new List<LogLine>(_batchData);
         }
 
-        Task.Run(() => ProcessBatch(currentBatch));
-    }
+        _timer.Change(Timeout.Infinite, Timeout.Infinite); // Pause the timer
 
-    private void ProcessBatch(List<string> batch)
-    {
-        // Simulate processing of batch data
-        Console.WriteLine($"Processing batch of {batch.Count} items at {DateTime.Now}");
-        foreach (var item in batch)
+        try
         {
-            Console.WriteLine($"Processing: {item}");
+            var cts = new CancellationTokenSource(TimeSpan.FromSeconds(15)); // Set a short timeout
+            var response = await _httpClient.SendDataAsync("api/log", currentBatch, cts.Token);
+            response.EnsureSuccessStatusCode();
+
+            lock (_lock)
+            {
+                _batchData.RemoveAll(currentBatch.Contains); // Clear only the successfully sent data
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, ex.Message);
+            // Handle exceptions (e.g., log the error)
+        }
+        finally
+        {
+            _timer.Change(_interval, _interval); // Resume the timer
         }
     }
+
+
 }
-public class LoggingApiSettings
+public class ApiSettings
 {
     public string BaseUrl { get; set; }
 }
