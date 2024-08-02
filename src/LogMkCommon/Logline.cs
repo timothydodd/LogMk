@@ -10,10 +10,11 @@ public class LogLine
 }
 public enum LogLevel
 {
-    ANY = 0,
-    DEBUG = 1,
-    INFO = 2,
-    WARN = 3,
-    ERROR = 4
+    Any = 0,
+    Trace = 1,
+    Debug = 2,
+    Information = 3,
+    Warning = 4,
+    Error = 5
 
 }

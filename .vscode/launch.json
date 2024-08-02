@@ -12,7 +12,6 @@
             "program": "${workspaceFolder}/src/LogMkAgent/bin/Debug/net8.0/LogMkAgent.dll",
             "args": [],
             "cwd": "${workspaceFolder}/src/LogMkAgent",
-            "asRoot": true,
             "console": "integratedTerminal",
             "stopAtEntry": false,
         },
