@@ -9,6 +9,7 @@ FROM mcr.microsoft.com/dotnet/sdk:8.0 AS build
 ARG BUILD_CONFIGURATION=Release
 WORKDIR /src
 COPY ["LogMkApi/LogMkApi.csproj", "LogMkApi/"]
+COPY ["LogMkCommon/LogMkCommon.csproj", "LogMkCommon/"]
 RUN dotnet restore "./LogMkApi/LogMkApi.csproj"
 COPY . .
 WORKDIR "/src/LogMkApi"

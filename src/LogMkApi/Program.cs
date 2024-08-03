@@ -14,7 +14,7 @@ public class Program
 {
     public static void Main(string[] args)
     {
-        var builder = WebApplication.CreateBuilder(args);
+        var builder = WebApplication.CreateSlimBuilder(args);
         builder.Services.AddRequestDecompression();
         builder.Services.AddResponseCompression(options =>
         {
@@ -24,6 +24,11 @@ public class Program
             {
             "application/json"
         });
+        });
+        builder.Services.ConfigureHttpJsonOptions(options =>
+        {
+            options.SerializerOptions.TypeInfoResolver = new ApiJsonSerializerContext();
+
         });
         builder.Services.AddControllers();
         builder.Services.AddMemoryCache();

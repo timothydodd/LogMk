@@ -23,7 +23,7 @@ public class LogController : ControllerBase
     [HttpPost]
     public async Task<ActionResult> Create([FromBody] List<LogLine> logLine)
     {
-        await _logRepo.BulkInsert(logLine.Select(x =>
+        await _logRepo.InsertAllAsync(logLine.Select(x =>
         {
             var l = new Log
             {

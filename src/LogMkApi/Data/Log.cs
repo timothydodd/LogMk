@@ -15,7 +15,7 @@ public class LogRepo
         _dbFactory = dbFactory;
     }
 
-    public async Task BulkInsert(IEnumerable<Log> logs)
+    public async Task InsertAllAsync(IEnumerable<Log> logs)
     {
         using (var db = _dbFactory.OpenDbConnection())
         {

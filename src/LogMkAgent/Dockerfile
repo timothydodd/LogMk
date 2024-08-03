@@ -7,8 +7,9 @@ WORKDIR /app
 FROM mcr.microsoft.com/dotnet/sdk:8.0 AS build
 ARG BUILD_CONFIGURATION=Release
 WORKDIR /src
-COPY ["LogMkAgent.csproj", "LogMkAgent/"]
-RUN dotnet restore "./LogMkAgent.csproj"
+COPY ["LogMkAgent/LogMkAgent.csproj", "LogMkAgent/"]
+COPY ["LogMkCommon/LogMkCommon.csproj", "LogMkCommon/"]
+RUN dotnet restore "./LogMkAgent/LogMkAgent.csproj"
 COPY . .
 WORKDIR "/src/LogMkAgent"
 RUN dotnet build "./LogMkAgent.csproj" -c $BUILD_CONFIGURATION -o /app/build
