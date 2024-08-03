@@ -47,7 +47,7 @@ public class Program
             .ConfigureAppConfiguration((hostingContext, config) =>
             {
                 // Additional configuration settings can be set here if needed
-                config.AddJsonFile("appsettings.json", optional: true, reloadOnChange: true);
+                config.AddJsonFile("appsettings.json", optional: true, reloadOnChange: true).AddEnvironmentVariables();
             })
             .Build();
 
