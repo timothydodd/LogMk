@@ -48,6 +48,7 @@ public class BatchingService
 
         try
         {
+            _logger.LogDebug("Sending batch of {Count} log lines", currentBatch.Count);
             var cts = new CancellationTokenSource(TimeSpan.FromSeconds(15)); // Set a short timeout
             var response = await _httpClient.SendDataAsync("api/log", currentBatch, cts.Token);
             response.EnsureSuccessStatusCode();
