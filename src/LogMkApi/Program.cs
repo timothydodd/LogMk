@@ -1,6 +1,8 @@
 ﻿using System.Data;
 using LogMkApi.Common;
 using LogMkApi.Data;
+using LogMkApi.Hubs;
+using LogMkApi.Services;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Microsoft.AspNetCore.ResponseCompression;
 using ServiceStack;
@@ -30,7 +32,10 @@ public class Program
             options.SerializerOptions.TypeInfoResolver = new ApiJsonSerializerContext();
 
         });
+        builder.Services.AddSingleton<IBackgroundTaskQueue, BackgroundTaskQueue>();
+        builder.Services.AddHostedService<BackgroundWorkerService>();
         builder.Services.AddControllers();
+        builder.Services.AddSignalR();
         builder.Services.AddMemoryCache();
         var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
 
@@ -43,6 +48,7 @@ public class Program
         builder.Services.AddSingleton<IDbConnectionFactory>(dbFactory);
         builder.Services.AddTransient<IDbConnection>(sp => sp.GetRequiredService<IDbConnectionFactory>().OpenDbConnection());
         builder.Services.AddScoped<LogRepo>();
+        builder.Services.AddScoped<LogHubService>();
         builder.Services.AddScoped<DatabaseInitializer>();
         builder.Services.AddLogging(logging =>
         {
@@ -54,6 +60,10 @@ public class Program
             });
 
             logging.AddDebug();
+        });
+        builder.Services.Configure<BackgroundTaskQueueOptions>(options =>
+        {
+            options.Capacity = 100; // Set a default or load from configuration
         });
         HealthCheck.AddHealthChecks(builder.Services, connectionString);
         SqlMapper.AddTypeHandler(new DateTimeHandler());
@@ -72,6 +82,7 @@ public class Program
 
 
         app.MapControllers();
+        app.MapHub<LogHub>("/loghub");
         app.UseHealthChecks("/api/health", new HealthCheckOptions { ResponseWriter = HealthCheck.WriteResponse });
         app.Run();
     }
