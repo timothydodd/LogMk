@@ -65,6 +65,23 @@ public class Program
         {
             options.Capacity = 100; // Set a default or load from configuration
         });
+
+        var origins = builder.Configuration.GetValue<string>("CorsOrigins")?.Split(',');
+        if (origins is not null)
+        {
+            builder.Services.AddCors(options =>
+            {
+                options.AddPolicy("AllowSpecificDomains",
+                    policy =>
+                    {
+                        policy.WithOrigins(origins) // Specify the allowed domains
+                                            .AllowAnyHeader()
+                                            .AllowAnyMethod()
+                                            .SetIsOriginAllowed(x => true)
+                                            .AllowCredentials();
+                    });
+            });
+        }
         HealthCheck.AddHealthChecks(builder.Services, connectionString);
         SqlMapper.AddTypeHandler(new DateTimeHandler());
 
@@ -76,6 +93,7 @@ public class Program
             var dbInitializer = scope.ServiceProvider.GetRequiredService<DatabaseInitializer>();
             dbInitializer.CreateTable();
         }
+        app.UseCors("AllowSpecificDomains");
         // Enable middleware to handle decompression
         app.UseResponseCompression();
         app.UseRequestDecompression();

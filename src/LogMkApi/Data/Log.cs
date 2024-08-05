@@ -23,6 +23,16 @@ public class LogRepo
         }
 
     }
+    public async Task<IEnumerable<Log>> GetAll()
+    {
+        using (var db = _dbFactory.OpenDbConnection())
+        {
+            var query = @"
+            select * from Log order by Id desc limit 100
+";
+            return (await db.QueryAsync<Log>(query)).Reverse();
+        }
+    }
     public async Task<IEnumerable<LatestDeploymentEntry>> GetLatestEntryTimes()
     {
         using (var db = _dbFactory.OpenDbConnection())

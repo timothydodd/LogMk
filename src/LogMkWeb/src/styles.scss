@@ -1,0 +1,13 @@
+/* You can add global styles to this file, and also import other style files */
+html {
+    background-color: #1F1F1F;
+    color: #8CDCFE;
+    height: 100%;
+
+    body {
+        height: 100%;
+        display: flex;
+        flex-direction: column;
+        margin: 0;
+    }
+}

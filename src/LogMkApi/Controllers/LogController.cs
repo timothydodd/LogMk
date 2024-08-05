@@ -44,15 +44,20 @@ public class LogController : ControllerBase
             });
             await _logRepo.InsertAllAsync(items);
 
-            foreach (var item in items)
-            {
-                await _logHubService.SendLogLine(item);
-            }
+
+            await _logHubService.SendLogs(items);
+
 
 
 
         });
         return Ok();
+    }
+    [HttpGet()]
+    public async Task<IEnumerable<Log>> GetLogs()
+    {
+        var entries = await _logRepo.GetAll();
+        return entries;
     }
     [AllowAnonymous]
     [HttpGet("times")]
