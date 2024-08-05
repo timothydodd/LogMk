@@ -12,15 +12,17 @@ LogMk is a lightweight log monitoring solution for Kubernetes environments. It m
 ## Components
 LogMk consists of three main components:
 
-1. .NET 8 Worker Agent
+1.  .NET 8 Worker Agent
 
 Deployed on all Kubernetes nodes.
 Collects pod logs and sends them to the central API.
-2. Angular 18 Web Portal
+
+2.  Angular 18 Web Portal
 
 Provides a user-friendly interface for viewing and filtering logs.
 Utilizes SignalR for real-time log updates.
-3. .NET 8 API
+
+3.  .NET 8 API
 
 - Receives log data from the worker agents.
 - Exposes endpoints for the web portal to access log data.
