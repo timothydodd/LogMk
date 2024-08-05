@@ -1,0 +1,54 @@
+:host {
+  display: flex;
+  flex-direction: column;
+  flex-grow: 1;
+  padding: 10px;
+}
+
+.log-viewport {
+  display: flex;
+  flex-direction: column;
+  flex-grow: 1;
+  overflow: auto;
+
+}
+
+.log-item {
+  padding: 2px 10px;
+  opacity: 1;
+  font-family: "Lucida Console", "Courier New", monospace;
+  animation: fadeIn 1s;
+  display: flex;
+  flex-direction: row;
+  gap: 10px;
+
+  &.line {
+    color: #CCC;
+    word-break: normal;
+
+  }
+
+  .time {}
+
+  .pod {
+    color: #CE834A
+  }
+
+  .Warning {
+    color: #D0DCAA;
+  }
+
+  .Error {
+    color: #f44336;
+  }
+}
+
+@keyframes fadeIn {
+  0% {
+    opacity: 0;
+  }
+
+  100% {
+    opacity: 1;
+  }
+}

@@ -28,9 +28,9 @@ public class LogHubService
     {
         _hubContext = hubContext;
     }
-    public async Task SendLogLine(Log line)
+    public async Task SendLogs(IEnumerable<Log> lines)
     {
-        await _hubContext.Clients.All.SendAsync("ReceiveLogLine", line);
+        await _hubContext.Clients.All.SendAsync("ReceiveLog", lines.ToList());
 
     }
     public Task SetUserPreferences(HubCallerContext context, List<string> preferences)
