@@ -2,10 +2,12 @@
 LogMk is a lightweight log monitoring solution for Kubernetes environments. It monitors pod logs, saves them in a central MySQL database, and provides a web portal for viewing and filtering log activity. Designed for simplicity, LogMk may not be robust enough for large enterprise-scale environments but is perfect for smaller setups or development environments.
 
 ## Features
-Real-Time Log Monitoring: View logs in real-time using the web portal.
-Centralized Storage: All logs are stored in a MySQL database.
-Filter and Search: Easily filter and search logs to find specific entries.
-Simple Deployment: Deploy a .NET 8 worker agent on all Kubernetes nodes to start collecting logs.
+- Real-Time Log Monitoring: View logs in real-time using the web portal.
+- Centralized Storage: All logs are stored in a MySQL database.
+- Filter and Search: Easily filter and search logs to find specific entries.
+- Simple Deployment: Deploy a .NET 8 worker agent on all Kubernetes nodes to start collecting logs.
+
+![image](https://github.com/user-attachments/assets/eb3980d7-e018-4b77-8980-fa3df1f37cf3)
 
 ## Components
 LogMk consists of three main components:
