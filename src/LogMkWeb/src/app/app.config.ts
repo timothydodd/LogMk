@@ -5,10 +5,10 @@ import { HTTP_INTERCEPTORS, provideHttpClient, withInterceptorsFromDi } from '@a
 import { BrowserAnimationsModule, provideAnimations } from '@angular/platform-browser/animations';
 import { JwtModule } from '@auth0/angular-jwt';
 import { LucideAngularModule, User, X } from 'lucide-angular';
+import { provideToastr } from 'ngx-toastr';
 import { environment } from '../environments/environment';
 import { JwtInterceptor } from './_services/jwt-interceptor';
 import { routes } from './app.routes';
-
 export function tokenGetter() {
   return localStorage.getItem('authToken');
 }
@@ -35,5 +35,6 @@ export const appConfig: ApplicationConfig = {
       })
     ),
     importProvidersFrom(LucideAngularModule.pick({ X, User })),
+    provideToastr(),
   ],
 };

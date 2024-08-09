@@ -27,6 +27,9 @@ export class AuthService {
       })
     );
   }
+  changePassword(request: ChangePasswordRequest) {
+    return this.http.post(`${environment.apiUrl}/api/auth/change-password`, request);
+  }
   getUser() {
     return this.http.get<User>(`${environment.apiUrl}/api/auth/user`).pipe(shareReplay(1));
   }
@@ -43,4 +46,9 @@ export class AuthService {
 export interface User {
   id: number;
   userName: string;
+}
+
+export interface ChangePasswordRequest {
+  oldPassword: string;
+  newPassword: string;
 }

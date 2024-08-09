@@ -11,5 +11,6 @@ public class User
     public required string UserName { get; set; }
     [StringLength(255)]
     public required string PasswordHash { get; set; }
+
     public required DateTime TimeStamp { get; set; }
 }

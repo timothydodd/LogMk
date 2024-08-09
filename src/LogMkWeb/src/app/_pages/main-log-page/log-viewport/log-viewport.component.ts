@@ -3,7 +3,7 @@ import { CommonModule } from '@angular/common';
 import { ChangeDetectionStrategy, Component, DestroyRef, inject, signal, viewChild } from '@angular/core';
 import { takeUntilDestroyed, toObservable } from '@angular/core/rxjs-interop';
 
-import { map, of, switchMap, take, tap } from 'rxjs';
+import { filter, map, of, switchMap, take, tap } from 'rxjs';
 import { LogApiService } from '../../../_services/log.api';
 import { Log, SignalRService } from '../../../_services/signalr.service';
 import { LogFilterState } from '../_services/log-filter-state';
@@ -31,17 +31,21 @@ export class LogViewportComponent {
   viewport = viewChild<CdkVirtualScrollViewport>('scrollViewport');
   logFilterState = inject(LogFilterState);
   page = 1;
+  ignoreScroll = true;
+
   constructor() {
     const viewPort = toObservable(this.viewport);
 
     viewPort
       .pipe(
+        filter((vp) => !!vp),
+        take(1),
         switchMap((vp) => {
           if (!vp) return of(null);
           return vp?.elementScrolled().pipe(map(() => vp));
         }),
         switchMap((e) => {
-          if (!e) return of(null);
+          if (!e || this.ignoreScroll) return of(null);
           const m = e.measureScrollOffset('top');
 
           if (m === 0) {
@@ -97,6 +101,7 @@ export class LogViewportComponent {
     }, 100);
   }
   private scrollToBottom() {
+    this.ignoreScroll = true;
     const vp = this.viewport();
     if (!vp) throw new Error('Viewport not initialized');
 
@@ -111,6 +116,7 @@ export class LogViewportComponent {
         bottom: 0,
         behavior: 'auto',
       });
+      this.ignoreScroll = false;
     }, 100);
   }
 }

@@ -104,7 +104,7 @@ $ng-select-dropdown-option-text: $ng-select-primary-text;
 @import "../node_modules/bootstrap/scss/bootstrap.scss";
 
 @import "../src/styles/ng-select.scss";
-
+@import '../node_modules/ngx-toastr/toastr-bs5-alert';
 
 html {
     background-color: var(--background);
@@ -125,4 +125,17 @@ html {
 
 .gap20 {
     gap: 20px;
+}
+
+.gap10 {
+    gap: 10px;
+}
+
+.flex-column {
+    flex-direction: column;
+    display: flex;
+}
+
+val-errors {
+    color: var(--red);
 }

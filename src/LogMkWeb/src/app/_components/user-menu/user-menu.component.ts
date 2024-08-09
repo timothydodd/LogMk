@@ -1,15 +1,16 @@
 import { CommonModule } from '@angular/common';
 import { ChangeDetectionStrategy, Component, inject, signal } from '@angular/core';
 
-import { NgbModule } from '@ng-bootstrap/ng-bootstrap';
+import { NgbModal, NgbModule } from '@ng-bootstrap/ng-bootstrap';
 import { LucideAngularModule } from 'lucide-angular';
 import { take } from 'rxjs';
 import { AuthService, User } from '../../_services/auth-service';
+import { UserSettingsComponent } from '../user-settings/user-settings.component';
 
 @Component({
   selector: 'app-user-menu',
   standalone: true,
-  imports: [CommonModule, NgbModule, LucideAngularModule],
+  imports: [CommonModule, NgbModule, LucideAngularModule, UserSettingsComponent],
   template: `
     @if (user()) {
       <div class="dropdown" ngbDropdown display="dynamic" #userMenu="ngbDropdown">
@@ -36,6 +37,8 @@ import { AuthService, User } from '../../_services/auth-service';
             </div>
           </div>
           <div class="dropdown-divider"></div>
+          <button class="dropdown-item" (click)="Settings()">Settings</button>
+          <div class="dropdown-divider"></div>
           <button class="dropdown-item" (click)="logOut()">LogOut</button>
         </div>
       </div>
@@ -46,7 +49,7 @@ import { AuthService, User } from '../../_services/auth-service';
 })
 export class UserMenuComponent {
   authService = inject(AuthService);
-
+  modalService = inject(NgbModal);
   user = signal<User | null>(null);
 
   constructor() {
@@ -56,6 +59,9 @@ export class UserMenuComponent {
       .subscribe((user) => {
         this.user.update(() => user);
       });
+  }
+  Settings() {
+    UserSettingsComponent.showModal(this.modalService);
   }
   logOut() {
     this.authService.logout();

@@ -46,7 +46,8 @@
 
   .pod {
     grid-column: 2;
-    color: var(--orange)
+    color: var(--orange);
+    text-wrap: nowrap;
   }
 
   .Warning {
