@@ -9,15 +9,15 @@ updates:
     directory: "/src/LogMkWeb" # Location of package manifests
     schedule:
       interval: "weekly"
-  - package-ecosystem: "NuGet" # See documentation for possible values
+  - package-ecosystem: "nuget" # See documentation for possible values
     directory: "/src/LogMkAgent" # Location of package manifests
     schedule:
       interval: "weekly"
-  - package-ecosystem: "NuGet" # See documentation for possible values
+  - package-ecosystem: "nuget" # See documentation for possible values
     directory: "/src/LogMkCommon" # Location of package manifests
     schedule:
       interval: "weekly"
-  - package-ecosystem: "NuGet" # See documentation for possible values
+  - package-ecosystem: "nuget" # See documentation for possible values
     directory: "/src/LogMkApi" # Location of package manifests
     schedule:
       interval: "weekly"
