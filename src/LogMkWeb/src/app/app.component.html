@@ -1,1 +1,9 @@
-<router-outlet />
+@if (loggedIn()) {
+  <nav class="navbar navbar-expand-lg">
+    <div class="container-fluid">
+      <a class="navbar-brand" href="#">LogMk</a>
+      <app-user-menu></app-user-menu>
+    </div>
+  </nav>
+  <router-outlet />
+}

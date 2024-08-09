@@ -1,0 +1,50 @@
+// REQUIRED - Include config variables
+@import "bootstrap-pretty/scss/common/config";
+
+// Optional - Your custom config variables - these will override or add to Bootstrap and Bootstrap Pretty config variables
+//@import "custom/config";
+
+// REQUIRED - Include Bootstrap functions
+@import "bootstrap/scss/functions";
+
+// REQUIRED - Include Bootstrap Pretty functions
+@import "bootstrap-pretty/scss/common/functions";
+
+// OPTIONAL - Your custom functions - these will override or add to Bootstrap and Bootstrap Pretty functions
+//@import "custom/functions";
+
+// REQUIRED - Include Bootstrap Pretty palette colors
+@import "bootstrap-pretty/scss/palettes/dracula/colors";
+
+// OPTIONAL - Your custom colors - these will override or add to Bootstrap and Bootstrap Pretty colors
+//@import "custom/colors";
+
+// REQUIRED - Include Bootstrap Pretty variables
+@import "bootstrap-pretty/scss/common/variables";
+
+// OPTIONAL - Your custom variables - these will override or add to Bootstrap and Bootstrap Pretty variables
+// @import "custom/variables";
+
+// REQUIRED - Include Bootstrap variables
+@import "bootstrap/scss/variables";
+@import "bootstrap/scss/variables-dark";
+
+// REQUIRED - Include Bootstrap Pretty maps
+@import "bootstrap-pretty/scss/common/maps";
+
+// OPTIONAL - Your custom map overrides - these will override or add to Bootstrap and Bootstrap Pretty maps
+//@import "custom/maps";
+
+// REQUIRED - Include Bootstrap Pretty root
+@import "bootstrap-pretty/scss/common/root";
+
+// Your custom root overrides - these will override or add to Bootstrap and Bootstrap Pretty root variables
+//@import "custom/root";
+
+// REQUIRED - Include Bootstrap common styles
+@import "bootstrap-pretty/scss/common/bootstrap";
+
+// REQUIRED - Include Bootstrap Pretty common styles
+@import "bootstrap-pretty/scss/common/bootstrap-pretty";
+
+// OPTIONAL - Your custom styles - these will ov

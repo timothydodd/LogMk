@@ -2,4 +2,7 @@
   display: flex;
   flex-direction: column;
   flex-grow: 1;
+  app-log-filter-controls{
+    flex-shrink:  1;
+  }
 }

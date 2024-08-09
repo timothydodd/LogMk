@@ -1,10 +1,13 @@
 ﻿using System.Data;
+using System.Text;
 using LogMkApi.Common;
 using LogMkApi.Data;
 using LogMkApi.Hubs;
 using LogMkApi.Services;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Microsoft.AspNetCore.ResponseCompression;
+using Microsoft.IdentityModel.Tokens;
 using ServiceStack;
 using ServiceStack.Data;
 using ServiceStack.OrmLite;
@@ -16,6 +19,9 @@ public class Program
 {
     public static void Main(string[] args)
     {
+
+
+
         var builder = WebApplication.CreateSlimBuilder(args);
         builder.Services.AddRequestDecompression();
         builder.Services.AddResponseCompression(options =>
@@ -50,6 +56,8 @@ public class Program
         builder.Services.AddScoped<LogRepo>();
         builder.Services.AddScoped<LogHubService>();
         builder.Services.AddScoped<DatabaseInitializer>();
+        builder.Services.AddSingleton<PasswordService>();
+        builder.Services.AddSingleton<AuthService>();
         builder.Services.AddLogging(logging =>
         {
             logging.AddSimpleConsole(c =>
@@ -61,6 +69,25 @@ public class Program
 
             logging.AddDebug();
         });
+        builder.Services.AddAuthentication(options =>
+        {
+            options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
+            options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
+        }).AddJwtBearer(options =>
+        {
+            var jwtSettings = builder.Configuration.GetSection("JwtSettings");
+            options.TokenValidationParameters = new TokenValidationParameters
+            {
+                ValidateIssuer = true,
+                ValidateAudience = true,
+                ValidateLifetime = true,
+                ValidateIssuerSigningKey = true,
+                ValidIssuer = jwtSettings["Issuer"],
+                ValidAudience = jwtSettings["Audience"],
+                IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtSettings["Secret"]))
+            };
+        });
+
         builder.Services.Configure<BackgroundTaskQueueOptions>(options =>
         {
             options.Capacity = 100; // Set a default or load from configuration
@@ -71,7 +98,7 @@ public class Program
         {
             builder.Services.AddCors(options =>
             {
-                options.AddPolicy("AllowSpecificDomains",
+                options.AddPolicy("LogMkOrigins",
                     policy =>
                     {
                         policy.WithOrigins(origins) // Specify the allowed domains
@@ -80,6 +107,17 @@ public class Program
                                             .SetIsOriginAllowed(x => true)
                                             .AllowCredentials();
                     });
+            });
+        }
+        else
+        {
+            builder.Services.AddCors(options =>
+            {
+                options.AddPolicy("LogMkOrigins",
+                builder => builder
+                    .AllowAnyOrigin()
+                    .AllowAnyMethod()
+                    .AllowAnyHeader());
             });
         }
         HealthCheck.AddHealthChecks(builder.Services, connectionString);
@@ -93,12 +131,13 @@ public class Program
             var dbInitializer = scope.ServiceProvider.GetRequiredService<DatabaseInitializer>();
             dbInitializer.CreateTable();
         }
-        app.UseCors("AllowSpecificDomains");
+        app.UseCors("LogMkOrigins");
         // Enable middleware to handle decompression
         app.UseResponseCompression();
         app.UseRequestDecompression();
 
-
+        app.UseAuthentication();
+        app.UseAuthorization();
         app.MapControllers();
         app.MapHub<LogHub>("/loghub");
         app.UseHealthChecks("/api/health", new HealthCheckOptions { ResponseWriter = HealthCheck.WriteResponse });

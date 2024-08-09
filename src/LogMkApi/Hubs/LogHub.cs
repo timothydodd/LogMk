@@ -1,4 +1,4 @@
-﻿using LogMkApi.Data;
+﻿using LogMkApi.Data.Models;
 using Microsoft.AspNetCore.SignalR;
 
 namespace LogMkApi.Hubs;
