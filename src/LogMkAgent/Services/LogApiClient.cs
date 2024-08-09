@@ -11,7 +11,8 @@ public class LogApiClient
 
     static readonly JsonSerializerOptions jsonOptions = new JsonSerializerOptions()
     {
-        TypeInfoResolver = new ApiJsonSerializerContext()
+        TypeInfoResolver = new ApiJsonSerializerContext(),
+        PropertyNameCaseInsensitive = true
     };
     public LogApiClient(HttpClient httpClient, ILogger<LogApiClient> logger)
     {
