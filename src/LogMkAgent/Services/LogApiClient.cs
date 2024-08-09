@@ -1,19 +1,25 @@
-using System.IO.Compression;
+﻿using System.IO.Compression;
 using System.Net.Http.Json;
 using System.Text;
+using System.Text.Json;
+using LogMkAgent;
 
 public class LogApiClient
 {
     private readonly HttpClient _httpClient;
     private readonly ILogger<LogApiClient> _logger;
 
-
+    static readonly JsonSerializerOptions jsonOptions = new JsonSerializerOptions()
+    {
+        TypeInfoResolver = new ApiJsonSerializerContext()
+    };
     public LogApiClient(HttpClient httpClient, ILogger<LogApiClient> logger)
     {
         _httpClient = httpClient;
         _logger = logger;
 
     }
+
     public async Task<T> GetDataAsync<T>(string url)
     {
         var response = await _httpClient.GetAsync(url);
@@ -21,16 +27,18 @@ public class LogApiClient
 
         if (response.Content.Headers.ContentEncoding.Contains("br"))
         {
+
             // Handle Brotli-compressed response
             var decompressedData = await DecompressDataAsync(response.Content.ReadAsStream());
-            return System.Text.Json.JsonSerializer.Deserialize<T>(decompressedData);
+            return JsonSerializer.Deserialize<T>(decompressedData, jsonOptions);
         }
         else
         {
             // Handle uncompressed response
-            return await response.Content.ReadFromJsonAsync<T>();
+            return await response.Content.ReadFromJsonAsync<T>(jsonOptions);
         }
     }
+
     public async Task<HttpResponseMessage> SendDataAsync<T>(string url, T data, CancellationToken cancellationToken)
     {
         var compressedData = CompressData(data);
@@ -41,9 +49,10 @@ public class LogApiClient
         return await _httpClient.PostAsync(url, requestContent, cancellationToken);
     }
 
+
     private byte[] CompressData<T>(T data)
     {
-        var jsonData = System.Text.Json.JsonSerializer.Serialize(data);
+        var jsonData = System.Text.Json.JsonSerializer.Serialize(data, jsonOptions);
         var dataBytes = Encoding.UTF8.GetBytes(jsonData);
 
 

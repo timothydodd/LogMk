@@ -1,4 +1,6 @@
-﻿using LogMkApi.Data;
+﻿using LogMkApi.Common;
+using LogMkApi.Data;
+using LogMkApi.Data.Models;
 using LogMkApi.Hubs;
 using LogMkApi.Services;
 using LogMkCommon;
@@ -7,6 +9,7 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace LogMkApi.Controllers;
 
+[Authorize]
 [ApiController]
 [Route("api/log")]
 public class LogController : ControllerBase
@@ -54,9 +57,20 @@ public class LogController : ControllerBase
         return Ok();
     }
     [HttpGet()]
-    public async Task<IEnumerable<Log>> GetLogs()
+    public async Task<PagedResults<Log>> GetLogs([FromQuery] int page = 1,
+                                            [FromQuery] int pageSize = 100,
+                                            [FromQuery] DateTime? dateStart = null,
+                                            [FromQuery] DateTime? dateEnd = null,
+                                            [FromQuery] string? search = null, [FromQuery] string? pod = null,
+                                            [FromQuery] string? deployment = null, [FromQuery] string? logLevel = null
+
+        )
     {
-        var entries = await _logRepo.GetAll();
+        var entries = await _logRepo.GetAll((page - 1) * pageSize,
+                                                   pageSize,
+                                                   dateStart,
+                                                   dateEnd,
+                                                   search, pod, deployment, logLevel);
         return entries;
     }
     [AllowAnonymous]

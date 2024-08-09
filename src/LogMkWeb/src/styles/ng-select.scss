@@ -1,0 +1,16 @@
+.ng-dropdown-panel .ng-dropdown-panel-items .ng-option.ng-option-selected,
+.ng-dropdown-panel .ng-dropdown-panel-items .ng-option.ng-option-selected.ng-option-marked {
+    color: $ng-select-input-text;
+    font-weight: 600;
+
+}
+
+.ng-dropdown-panel .ng-dropdown-panel-items .ng-option.ng-option-marked {
+    background-color: $ng-select-highlight;
+    color: #44475a;
+}
+
+.ng-select .ng-clear-wrapper,
+.ng-select .ng-arrow-wrapper .ng-arrow {
+    border-top-color: #21222C;
+}

@@ -9,37 +9,53 @@
   display: flex;
   flex-direction: column;
   flex-grow: 1;
-  overflow: auto;
 
+
+}
+
+::ng-deep {
+  .cdk-virtual-scroll-content-wrapper {
+    display: grid;
+    grid-template-columns: minmax(auto, auto) minmax(auto, auto) 1fr;
+    gap: 5px;
+  }
 }
 
 .log-item {
   padding: 2px 10px;
   opacity: 1;
   font-family: "Lucida Console", "Courier New", monospace;
-  animation: fadeIn 1s;
-  display: flex;
+  //animation: fadeIn 1s;
+  display: contents;
   flex-direction: row;
   gap: 10px;
+
+
 
   &.line {
     color: #CCC;
     word-break: normal;
-
+    grid-column: 3;
   }
 
-  .time {}
+  .time {
+    grid-column: 1;
+    color: var(--cyan);
+    text-wrap: nowrap;
+  }
 
   .pod {
-    color: #CE834A
+    grid-column: 2;
+    color: var(--orange);
+    text-wrap: nowrap;
   }
 
   .Warning {
-    color: #D0DCAA;
+    color: var(--yellow);
   }
 
   .Error {
-    color: #f44336;
+    color: var(--red);
   }
 }
 
