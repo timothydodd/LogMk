@@ -40,3 +40,12 @@ jobs:
         tags: |
           ${{ secrets.DOCKERHUB_USERNAME }}/logmk-agent:latest
           ${{ secrets.DOCKERHUB_USERNAME }}/logmk-agent:${{ github.sha }}
+    - name: Build and push LogMkWeb
+      uses: docker/build-push-action@v6.5.0
+      with:
+        context: ./src/LogMkWeb/
+        file: ./src/LogMkWeb/Dockerfile
+        push: true
+        tags: |
+          ${{ secrets.DOCKERHUB_USERNAME }}/logmk-web:latest
+          ${{ secrets.DOCKERHUB_USERNAME }}/logmk-web:${{ github.sha }}
