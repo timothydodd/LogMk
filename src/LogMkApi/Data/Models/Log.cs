@@ -11,7 +11,7 @@ public class Log
     public required string Deployment { get; set; }
     [Index]
     public required string Pod { get; set; }
-    [StringLength(3000)]
+    [CustomField("TEXT")]
     public required string Line { get; set; }
     public required string LogLevel { get; set; }
     public required DateTime TimeStamp { get; set; }
