@@ -20,8 +20,6 @@ public class Program
     public static void Main(string[] args)
     {
 
-
-
         var builder = WebApplication.CreateSlimBuilder(args);
         builder.Services.AddRequestDecompression();
         builder.Services.AddResponseCompression(options =>

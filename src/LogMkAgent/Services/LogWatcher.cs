@@ -1,5 +1,5 @@
 ﻿using System.Globalization;
-using System.Text.Json;
+using System.Text.RegularExpressions;
 using LogMkCommon;
 using Microsoft.Extensions.Options;
 
@@ -180,15 +180,21 @@ public class LogWatcher : BackgroundService
             _logger.LogError($"Error reading log file {filePath}: {ex.Message}");
         }
     }
-
+    const string RemoveANSIEscapePattern = @"\x1B\[[0-9;]*[A-Za-z]";
     private LogLine ParseLogLine(string line, string podName, string deploymentName, LogLevel logLevel)
     {
+        // Regex pattern to match ANSI escape codes
+
+
+        // Remove ANSI escape codes
+        line = Regex.Replace(line, RemoveANSIEscapePattern, string.Empty);
 
         var firstSpace = line.IndexOf(' ');
         if (firstSpace >= 0)
         {
             var dt = line.Substring(0, firstSpace);
             dt = TruncateFractionalSeconds(dt, 7);
+
             if (DateTimeOffset.TryParseExact(dt, "yyyy-MM-ddTHH:mm:ss.fffffffZ", CultureInfo.InvariantCulture, DateTimeStyles.None, out var timestamp))
             {
                 var secondSpace = line.IndexOf(' ', firstSpace + 1);
