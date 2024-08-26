@@ -7,7 +7,7 @@ public static class SqlExtensions
 {
     public static void AddIfNotNull(this DynamicParameters dynamicParameters,
                                     string name,
-                                    object value)
+                                    object? value)
     {
         if (value != null)
         {

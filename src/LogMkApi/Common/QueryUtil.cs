@@ -6,7 +6,7 @@ public class WhereBuilder
 {
     private readonly StringBuilder _builder = new();
 
-    public void AppendAnd(object checkItem, string query)
+    public void AppendAnd(object? checkItem, string query)
     {
         if (checkItem == null)
         {

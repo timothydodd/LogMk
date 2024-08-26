@@ -5,6 +5,7 @@ using LogMkCommon;
 using ServiceStack.Data;
 using ServiceStack.OrmLite;
 using ServiceStack.OrmLite.Dapper;
+using static ServiceStack.OrmLite.Dapper.SqlMapper;
 
 namespace LogMkApi.Data;
 
@@ -35,38 +36,50 @@ public class LogRepo
             return await db.QueryAsync<Pod>(query);
         }
     }
+
+    private void AddMany<T>(IEnumerable<T>? items, DynamicParameters dynamicParameters, WhereBuilder builder, string paramName, string fieldClause)
+    {
+        if (items != null && items.Any())
+        {
+            List<string> keys = dynamicParameters.AddList(items, paramName);
+            var ids = string.Join(',', keys);
+            builder.AppendAnd($"{fieldClause} IN ({ids})");
+        }
+    }
     public async Task<PagedResults<Log>> GetAll(int offset = 0,
                                                             int pageSize = 100,
                                                             DateTime? dateStart = null,
                                                             DateTime? dateEnd = null,
                                                             string? search = null,
-                                                            string? pod = null,
-                                                            string? deployment = null,
-                                                            string? logLevel = null)
+                                                            string[]? pod = null,
+                                                            string[]? deployment = null,
+                                                            string[]? logLevel = null)
     {
         var result = new PagedResults<Log>();
         var sortOrderBuilder = new List<string>();
         var whereBuilder = new WhereBuilder();
-        whereBuilder.AppendAnd(pod, "l.Pod = @pod");
         whereBuilder.AppendAnd(dateStart, "l.TimeStamp >= @dateStart");
         whereBuilder.AppendAnd(dateEnd, "l.TimeStamp <= @dateEnd");
-        whereBuilder.AppendAnd(deployment, "l.Deployment = @deployment");
-        whereBuilder.AppendAnd(logLevel, "l.LogLevel = @logLevel");
-        whereBuilder.AppendAnd(pod, "l.Pod = @pod");
+
+        var dynamicParameters = new DynamicParameters();
+
+        AddMany(pod, dynamicParameters, whereBuilder, "plp", "l.Pod");
+        AddMany(deployment, dynamicParameters, whereBuilder, "dlp", "l.Deployment");
+        AddMany(logLevel, dynamicParameters, whereBuilder, "llp", "l.LogLevel");
+
 
         if (!string.IsNullOrWhiteSpace(search))
             search = $"%{search}%";
 
-        var dynamicParameters = new DynamicParameters();
+
 
         dynamicParameters.AddIfNotNull("offset", offset);
         dynamicParameters.AddIfNotNull("pageSize", pageSize);
         dynamicParameters.AddIfNotNull("dateStart", dateStart);
         dynamicParameters.AddIfNotNull("dateEnd", dateEnd);
         dynamicParameters.AddIfNotNull("search", search);
-        dynamicParameters.AddIfNotNull("deployment", deployment);
-        dynamicParameters.AddIfNotNull("pod", pod);
-        dynamicParameters.AddIfNotNull("logLevel", logLevel);
+
+
 
         var likeClause = new AndOrBuilder();
         likeClause.AppendOr(search, "l.Line LIKE  @search ");
@@ -116,4 +129,92 @@ public class LogRepo
             return await db.QueryAsync<LatestDeploymentEntry>(query);
         }
     }
+    public async Task<LogStatistic> GetStatistics(DateTime? dateStart = null,
+                                                            DateTime? dateEnd = null,
+                                                            string? search = null,
+                                                            string[]? pod = null,
+                                                            string[]? deployment = null,
+                                                            string[]? logLevel = null)
+    {
+        var whereBuilder = new WhereBuilder();
+        whereBuilder.AppendAnd(dateStart, "TimeStamp >= @dateStart");
+        whereBuilder.AppendAnd(dateEnd, "TimeStamp <= @dateEnd");
+        var dynamicParameters = new DynamicParameters();
+
+        AddMany(pod, dynamicParameters, whereBuilder, "plp", "Pod");
+        AddMany(deployment, dynamicParameters, whereBuilder, "dlp", "Deployment");
+        AddMany(logLevel, dynamicParameters, whereBuilder, "llp", "LogLevel");
+
+        if (!string.IsNullOrWhiteSpace(search))
+            search = $"%{search}%";
+        dynamicParameters.AddIfNotNull("dateStart", dateStart);
+        dynamicParameters.AddIfNotNull("dateEnd", dateEnd);
+        dynamicParameters.AddIfNotNull("search", search);
+
+
+
+
+        var isGreaterThan3Days = dateStart == null ? true : DateTime.UtcNow.Subtract(dateStart.Value).TotalDays > 3;
+        var query = "";
+        if (isGreaterThan3Days)
+        {
+            query = $@"
+SELECT 
+    DATE(TimeStamp) AS TimeStamp,
+    LogLevel,
+    COUNT(*) AS Count
+FROM 
+    Log
+{whereBuilder}
+GROUP BY 
+    TimeStamp, LogLevel
+ORDER BY 
+    TimeStamp, LogLevel;
+";
+        }
+        else
+        {
+            query = $@"
+            SELECT 
+                CAST(DATE_FORMAT(TimeStamp, '%Y-%m-%d %H:00:00') AS DATETIME) AS TimeStamp,
+                LogLevel,
+                COUNT(*) AS Count
+            FROM 
+                Log
+                {whereBuilder}
+            GROUP BY 
+               TimeStamp, LogLevel
+            ORDER BY 
+              TimeStamp, LogLevel;
+            "
+            ;
+        }
+        using (var db = _dbFactory.OpenDbConnection())
+        {
+            var counts = new Dictionary<DateTime, Dictionary<string, int>>();
+            var result = await db.QueryAsync<LogLevelStat>(query, dynamicParameters);
+            foreach (var item in result)
+            {
+                if (!counts.ContainsKey(item.TimeStamp))
+                {
+                    counts[item.TimeStamp] = new Dictionary<string, int>();
+                }
+                counts[item.TimeStamp][item.LogLevel] = item.Count;
+            }
+            return new LogStatistic()
+            {
+                Counts = counts,
+                TimePeriod = isGreaterThan3Days ? TimePeriod.Day : TimePeriod.Hour
+            };
+        }
+    }
+
+
+}
+
+public class LogLevelStat
+{
+    public DateTime TimeStamp { get; set; }
+    public required string LogLevel { get; set; }
+    public int Count { get; set; }
 }

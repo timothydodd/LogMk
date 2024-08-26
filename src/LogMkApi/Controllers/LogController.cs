@@ -56,13 +56,30 @@ public class LogController : ControllerBase
         });
         return Ok();
     }
+    [HttpGet("stats")]
+    public async Task<IActionResult> GetLogs(
+                                        [FromQuery] DateTime? dateStart = null,
+                                        [FromQuery] DateTime? dateEnd = null,
+                                        [FromQuery] string? search = null, [FromQuery] string[]? podName = null,
+                                        [FromQuery] string[]? deployment = null, [FromQuery] string[]? logLevel = null
+
+    )
+    {
+        var stats = await _logRepo.GetStatistics(dateStart,
+                                                   dateEnd,
+                                                   search, podName, deployment, logLevel);
+        if (stats == null)
+            return NotFound();
+
+        return Ok(stats);
+    }
     [HttpGet()]
     public async Task<PagedResults<Log>> GetLogs([FromQuery] int page = 1,
                                             [FromQuery] int pageSize = 100,
                                             [FromQuery] DateTime? dateStart = null,
                                             [FromQuery] DateTime? dateEnd = null,
-                                            [FromQuery] string? search = null, [FromQuery] string? podName = null,
-                                            [FromQuery] string? deployment = null, [FromQuery] string? logLevel = null
+                                            [FromQuery] string? search = null, [FromQuery] string[]? podName = null,
+                                            [FromQuery] string[]? deployment = null, [FromQuery] string[]? logLevel = null
 
         )
     {
@@ -87,5 +104,6 @@ public class LogController : ControllerBase
         return entries;
     }
 }
+
 
 

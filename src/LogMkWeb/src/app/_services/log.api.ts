@@ -41,6 +41,24 @@ export class LogApiService {
     const url = `${environment.apiUrl}/api/log/pods`;
     return this.httpClient.get<Pod[]>(url);
   }
+  public getStats(loglevel: string, podName: string, search: string = '', startDate: Date | null) {
+    let params = new HttpParams();
+    if (loglevel && loglevel !== 'All') {
+      params = params.append('loglevel', loglevel);
+    }
+
+    if (podName && podName !== 'All') {
+      params = params.append('podName', podName);
+    }
+    if (search && search !== '') {
+      params = params.append('search', search);
+    }
+    if (startDate) {
+      params = params.append('dateStart', startDate.toISOString());
+    }
+    const url = `${environment.apiUrl}/api/log/stats`;
+    return this.httpClient.get<LogStatistic>(url, { params });
+  }
 }
 export class PagedResults<T> {
   items?: T[];
@@ -51,4 +69,12 @@ export interface Pod {
   deployment: string;
   namespace: string;
   logLevel: string;
+}
+export interface LogStatistic {
+  counts: { [key: string]: { [key: string]: number } };
+  timePeriod: TimePeriod;
+}
+export enum TimePeriod {
+  Hour,
+  Day,
 }
