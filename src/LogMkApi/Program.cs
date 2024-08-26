@@ -19,7 +19,6 @@ public class Program
 {
     public static void Main(string[] args)
     {
-
         var builder = WebApplication.CreateSlimBuilder(args);
         builder.Services.AddRequestDecompression();
         builder.Services.AddResponseCompression(options =>
@@ -84,6 +83,22 @@ public class Program
                 ValidAudience = jwtSettings["Audience"],
                 IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtSettings["Secret"]))
             };
+            options.Events = new JwtBearerEvents
+            {
+                OnMessageReceived = context =>
+                {
+                    var accessToken = context.Request.Query["access_token"];
+
+                    // If the request is for our hub...
+                    var path = context.HttpContext.Request.Path;
+                    if (!string.IsNullOrEmpty(accessToken) && path.StartsWithSegments("/loghub"))
+                    {
+                        // Read the token out of the query string
+                        context.Token = accessToken;
+                    }
+                    return Task.CompletedTask;
+                }
+            };
         });
 
         builder.Services.Configure<BackgroundTaskQueueOptions>(options =>
@@ -105,6 +120,7 @@ public class Program
                                             .SetIsOriginAllowed(x => true)
                                             .AllowCredentials();
                     });
+
             });
         }
         else

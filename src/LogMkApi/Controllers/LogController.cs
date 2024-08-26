@@ -61,7 +61,7 @@ public class LogController : ControllerBase
                                             [FromQuery] int pageSize = 100,
                                             [FromQuery] DateTime? dateStart = null,
                                             [FromQuery] DateTime? dateEnd = null,
-                                            [FromQuery] string? search = null, [FromQuery] string? pod = null,
+                                            [FromQuery] string? search = null, [FromQuery] string? podName = null,
                                             [FromQuery] string? deployment = null, [FromQuery] string? logLevel = null
 
         )
@@ -70,7 +70,7 @@ public class LogController : ControllerBase
                                                    pageSize,
                                                    dateStart,
                                                    dateEnd,
-                                                   search, pod, deployment, logLevel);
+                                                   search, podName, deployment, logLevel);
         return entries;
     }
     [AllowAnonymous]
@@ -80,5 +80,12 @@ public class LogController : ControllerBase
         var entries = await _logRepo.GetLatestEntryTimes();
         return entries;
     }
+    [HttpGet("pods")]
+    public async Task<IEnumerable<Pod>> GetPods()
+    {
+        var entries = await _logRepo.GetPods();
+        return entries;
+    }
 }
+
 

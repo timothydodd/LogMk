@@ -3,7 +3,7 @@ import { CommonModule } from '@angular/common';
 import { ChangeDetectionStrategy, Component, DestroyRef, inject, signal, viewChild } from '@angular/core';
 import { takeUntilDestroyed, toObservable } from '@angular/core/rxjs-interop';
 
-import { filter, map, of, switchMap, take, tap } from 'rxjs';
+import { combineLatest, filter, map, of, switchMap, take, tap } from 'rxjs';
 import { LogApiService } from '../../../_services/log.api';
 import { Log, SignalRService } from '../../../_services/signalr.service';
 import { LogFilterState } from '../_services/log-filter-state';
@@ -50,13 +50,23 @@ export class LogViewportComponent {
 
           if (m === 0) {
             this.page++;
-            return this.logApi.getLogs(this.logFilterState.selectedLogLevel(), this.page).pipe(
-              tap((z) => {
-                const ni = z.items ?? [];
-                this.logs.update((items) => [...ni.reverse(), ...items]);
-                this.scrollToIndex(60);
-              })
-            );
+            return this.logApi
+              .getLogs(
+                this.logFilterState.selectedLogLevel(),
+                this.logFilterState.selectedPod(),
+                this.logFilterState.searchString(),
+                this.logFilterState.selectedTimeRange(),
+                this.page
+              )
+              .pipe(
+                tap((z) => {
+                  const ni = z.items ?? [];
+                  if (ni.length === 0) return;
+
+                  this.logs.update((items) => [...ni.reverse(), ...items]);
+                  this.scrollToIndex(ni.length);
+                })
+              );
           }
           return of(null);
         }),
@@ -64,15 +74,18 @@ export class LogViewportComponent {
       )
       .subscribe();
     const logFilterState = toObservable(this.logFilterState.selectedLogLevel);
+    const logPodFilterState = toObservable(this.logFilterState.selectedPod);
+    const searchString = toObservable(this.logFilterState.searchString);
+    const timeRange = toObservable(this.logFilterState.selectedTimeRange);
     viewPort
       .pipe(
         take(1),
         switchMap(() => {
-          return logFilterState;
+          return combineLatest([logFilterState, logPodFilterState, searchString, timeRange]);
         }),
-        switchMap((ll) => {
+        switchMap(([level, pod, search, date]) => {
           this.page = 1;
-          return this.logApi.getLogs(ll, this.page);
+          return this.logApi.getLogs(level, pod, search, date, this.page);
         }),
         tap((l) => {
           const items = l.items ?? [];

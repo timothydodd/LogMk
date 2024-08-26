@@ -27,6 +27,14 @@ public class LogRepo
         }
 
     }
+    public async Task<IEnumerable<Pod>> GetPods()
+    {
+        using (var db = _dbFactory.OpenDbConnection())
+        {
+            var query = @"SELECT DISTINCT Pod as Name FROM Log";
+            return await db.QueryAsync<Pod>(query);
+        }
+    }
     public async Task<PagedResults<Log>> GetAll(int offset = 0,
                                                             int pageSize = 100,
                                                             DateTime? dateStart = null,
@@ -41,11 +49,13 @@ public class LogRepo
         var whereBuilder = new WhereBuilder();
         whereBuilder.AppendAnd(pod, "l.Pod = @pod");
         whereBuilder.AppendAnd(dateStart, "l.TimeStamp >= @dateStart");
-        whereBuilder.AppendAnd(dateStart, "l.TimeStamp <= @dateEnd");
+        whereBuilder.AppendAnd(dateEnd, "l.TimeStamp <= @dateEnd");
         whereBuilder.AppendAnd(deployment, "l.Deployment = @deployment");
         whereBuilder.AppendAnd(logLevel, "l.LogLevel = @logLevel");
         whereBuilder.AppendAnd(pod, "l.Pod = @pod");
 
+        if (!string.IsNullOrWhiteSpace(search))
+            search = $"%{search}%";
 
         var dynamicParameters = new DynamicParameters();
 
@@ -59,7 +69,7 @@ public class LogRepo
         dynamicParameters.AddIfNotNull("logLevel", logLevel);
 
         var likeClause = new AndOrBuilder();
-        likeClause.AppendOr(search, "l.Line LIKE '%' + @search + '%'");
+        likeClause.AppendOr(search, "l.Line LIKE  @search ");
         if (likeClause.Length > 0)
         {
             whereBuilder.AppendAnd($"({likeClause})");

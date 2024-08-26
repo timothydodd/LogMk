@@ -11,14 +11,20 @@ export class SignalRService {
 
   public logsReceived = new Subject<Log[]>();
 
-  public startConnection() {
-    this.hubConnection = new signalR.HubConnectionBuilder().withUrl(`${environment.apiUrl}/loghub`).build();
+  public startConnection(token: string) {
+    this.hubConnection = new signalR.HubConnectionBuilder()
+      .withUrl(`${environment.apiUrl}/loghub`, {
+        accessTokenFactory: () => token,
+      })
+      .build();
 
     this.hubConnection
       .start()
-      .then(() => console.log('Connection started'))
+      .then(() => {
+        console.log('Connection started');
+        this.addTransferLogDataListener();
+      })
       .catch((err) => console.log('Error while starting connection: ' + err));
-    this.addTransferLogDataListener();
   }
 
   private addTransferLogDataListener() {
@@ -26,10 +32,6 @@ export class SignalRService {
       const a = <Log[]>data;
       this.logsReceived.next(a);
     });
-  }
-
-  public sendMessage(message: string) {
-    this.hubConnection?.invoke('SendMessage', message).catch((err) => console.error(err));
   }
 }
 

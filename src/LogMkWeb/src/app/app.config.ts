@@ -4,7 +4,7 @@ import { provideRouter } from '@angular/router';
 import { HTTP_INTERCEPTORS, provideHttpClient, withInterceptorsFromDi } from '@angular/common/http';
 import { BrowserAnimationsModule, provideAnimations } from '@angular/platform-browser/animations';
 import { JwtModule } from '@auth0/angular-jwt';
-import { LucideAngularModule, User, X } from 'lucide-angular';
+import { Box, Clock, Gauge, LucideAngularModule, Search, User, X } from 'lucide-angular';
 import { provideToastr } from 'ngx-toastr';
 import { environment } from '../environments/environment';
 import { JwtInterceptor } from './_services/jwt-interceptor';
@@ -34,7 +34,7 @@ export const appConfig: ApplicationConfig = {
         },
       })
     ),
-    importProvidersFrom(LucideAngularModule.pick({ X, User })),
+    importProvidersFrom(LucideAngularModule.pick({ X, User, Box, Gauge, Clock, Search })),
     provideToastr(),
   ],
 };

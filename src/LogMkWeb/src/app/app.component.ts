@@ -20,9 +20,12 @@ export class AppComponent {
   loggedIn = signal(false);
   constructor() {
     this.authService.isLoggedIn.subscribe((loggedIn) => {
-      this.loggedIn.update(() => loggedIn);
-      if (loggedIn) {
-        this.signalRService.startConnection();
+      const token = this.authService.getToken();
+
+      this.loggedIn.update(() => loggedIn && !!token);
+
+      if (loggedIn && token) {
+        this.signalRService.startConnection(token);
       } else {
         LoginComponent.showModal(this.modalService);
       }

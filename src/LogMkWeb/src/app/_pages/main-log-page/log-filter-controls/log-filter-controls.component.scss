@@ -1,3 +1,16 @@
 :host {
-  display: block;
+  display: grid;
+  grid-template-columns: auto auto auto auto;
+  gap: 5px;
+
+  >div {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    flex-grow: 1;
+
+    ng-select {
+      width: 100%;
+    }
+  }
 }

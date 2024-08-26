@@ -1,6 +1,5 @@
 import { HttpClient } from '@angular/common/http';
 import { inject, Injectable } from '@angular/core';
-import { Router } from '@angular/router';
 import { BehaviorSubject, shareReplay, tap } from 'rxjs';
 import { environment } from '../../environments/environment';
 
@@ -11,7 +10,6 @@ export class AuthService {
   private tokenKey = 'authToken';
 
   private http = inject(HttpClient);
-  private router = inject(Router);
 
   isLoggedIn = new BehaviorSubject<boolean>(false);
 

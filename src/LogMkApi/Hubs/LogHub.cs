@@ -1,8 +1,10 @@
 ﻿using LogMkApi.Data.Models;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.SignalR;
 
 namespace LogMkApi.Hubs;
 
+[Authorize]
 public class LogHub : Hub
 {
     private readonly LogHubService _logHubService;
@@ -11,9 +13,10 @@ public class LogHub : Hub
     {
         _logHubService = logHubService;
     }
+
     public override Task OnConnectedAsync()
     {
-        var userId = Context.ConnectionId;
+
         _logHubService.SetUserPreferences(Context, new List<string>());
         return base.OnConnectedAsync();
     }
@@ -35,7 +38,7 @@ public class LogHubService
     }
     public Task SetUserPreferences(HubCallerContext context, List<string> preferences)
     {
-        var userId = context.ConnectionId;
+        var userId = context.User?.FindFirst("user-id")?.Value;
         UserPreferences[userId] = preferences;
         return Task.CompletedTask;
     }
