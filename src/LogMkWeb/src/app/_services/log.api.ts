@@ -10,20 +10,24 @@ export class LogApiService {
   httpClient = inject(HttpClient);
 
   public getLogs(
-    loglevel: string,
-    podName: string,
+    loglevel: string[] | null,
+    podName: string[] | null,
     search: string = '',
     startDate: Date | null,
     page: number = 1,
-    pageSize: number = 60
+    pageSize: number = 200
   ) {
     let params = new HttpParams();
-    if (loglevel && loglevel !== 'All') {
-      params = params.append('loglevel', loglevel);
+    if (loglevel && loglevel.length > 0) {
+      for (const level of loglevel) {
+        params = params.append('loglevel', level);
+      }
     }
 
-    if (podName && podName !== 'All') {
-      params = params.append('podName', podName);
+    if (podName && podName.length > 0) {
+      for (const pod of podName) {
+        params = params.append('podName', pod);
+      }
     }
     if (search && search !== '') {
       params = params.append('search', search);
@@ -41,14 +45,18 @@ export class LogApiService {
     const url = `${environment.apiUrl}/api/log/pods`;
     return this.httpClient.get<Pod[]>(url);
   }
-  public getStats(loglevel: string, podName: string, search: string = '', startDate: Date | null) {
+  public getStats(loglevel: string[] | null, podName: string[] | null, search: string = '', startDate: Date | null) {
     let params = new HttpParams();
-    if (loglevel && loglevel !== 'All') {
-      params = params.append('loglevel', loglevel);
+    if (loglevel && loglevel.length > 0) {
+      for (const ll of loglevel) {
+        params = params.append('loglevel', ll);
+      }
     }
 
-    if (podName && podName !== 'All') {
-      params = params.append('podName', podName);
+    if (podName && podName.length > 0) {
+      for (const pod of podName) {
+        params = params.append('podName', pod);
+      }
     }
     if (search && search !== '') {
       params = params.append('search', search);

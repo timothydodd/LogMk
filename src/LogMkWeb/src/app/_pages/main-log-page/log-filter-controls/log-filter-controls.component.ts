@@ -30,6 +30,7 @@ import { LogFilterState } from '../_services/log-filter-state';
       <ng-select
         id="log-level-select"
         [items]="logLevels"
+        [multiple]="true"
         [ngModel]="logFilterState.selectedLogLevel()"
         (ngModelChange)="logFilterState.selectedLogLevel.set($event)"
       ></ng-select>
@@ -39,6 +40,7 @@ import { LogFilterState } from '../_services/log-filter-state';
       <ng-select
         id="pod-select"
         [items]="pods()"
+        [multiple]="true"
         [ngModel]="logFilterState.selectedPod()"
         (ngModelChange)="logFilterState.selectedPod.set($event)"
       ></ng-select>
@@ -61,7 +63,7 @@ export class LogFilterControlsComponent {
   logService = inject(LogApiService);
   logFilterState = inject(LogFilterState);
 
-  logLevels = ['All', 'Debug', 'Information', 'Warning', 'Error'];
+  logLevels = ['Debug', 'Information', 'Warning', 'Error'];
   pods = signal<string[]>([]);
   searchString = signal<string>('');
   selectedTimeFilter = signal<TimeFilter | null>(null);
@@ -88,7 +90,7 @@ export class LogFilterControlsComponent {
         this.logFilterState.searchString.set(searchString);
       });
     this.logService.getPods().subscribe((pods) => {
-      this.pods.set(['All', ...pods.map((p) => p.name)]);
+      this.pods.set(pods.map((p) => p.name));
     });
     this.selectedTimeFilter.set(this.timeFilters[3]);
   }

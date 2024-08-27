@@ -4,7 +4,7 @@ import { provideRouter } from '@angular/router';
 import { HTTP_INTERCEPTORS, provideHttpClient, withInterceptorsFromDi } from '@angular/common/http';
 import { BrowserAnimationsModule, provideAnimations } from '@angular/platform-browser/animations';
 import { JwtModule } from '@auth0/angular-jwt';
-import { BarController, Colors, Legend } from 'chart.js';
+import { BarController, BarElement, CategoryScale, Colors, Legend, LinearScale } from 'chart.js';
 import { Box, Clock, Gauge, LucideAngularModule, Search, User, X } from 'lucide-angular';
 import { provideCharts } from 'ng2-charts';
 import { provideToastr } from 'ngx-toastr';
@@ -27,7 +27,7 @@ export const appConfig: ApplicationConfig = {
       useClass: JwtInterceptor,
       multi: true,
     },
-    provideCharts({ registerables: [BarController, Legend, Colors] }),
+    provideCharts({ registerables: [BarController, Legend, Colors, CategoryScale, LinearScale, BarElement] }),
     importProvidersFrom(
       JwtModule.forRoot({
         config: {

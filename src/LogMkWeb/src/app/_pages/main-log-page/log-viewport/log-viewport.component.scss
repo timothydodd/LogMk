@@ -3,30 +3,32 @@
   flex-direction: column;
   flex-grow: 1;
   padding: 10px;
-}
-
-.log-viewport {
-  display: flex;
-  flex-direction: column;
-  flex-grow: 1;
-
 
 }
 
-::ng-deep {
-  .cdk-virtual-scroll-content-wrapper {
-    display: grid;
-    grid-template-columns: minmax(auto, auto) minmax(auto, auto) 1fr;
-    gap: 5px;
-  }
-}
+// .log-view-wrap {
+//   display: block;
+//   height: 500px;
+//   // display: block;
+
+//   //position: relative;
+// }
+
+// ::ng-deep {
+//   .log-item {
+//     display: grid;
+//     grid-template-columns: minmax(auto, auto) minmax(auto, auto) 1fr;
+//     gap: 5px;
+//   }
+// }
 
 .log-item {
   padding: 2px 10px;
   opacity: 1;
   font-family: "Lucida Console", "Courier New", monospace;
   //animation: fadeIn 1s;
-  display: contents;
+  display: grid;
+  grid-template-columns: 170px 100px minmax(auto, auto) minmax(auto, auto) 1fr;
   flex-direction: row;
   gap: 10px;
 
@@ -42,12 +44,16 @@
     grid-column: 1;
     color: var(--cyan);
     text-wrap: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
   }
 
   .pod {
     grid-column: 2;
     color: var(--orange);
     text-wrap: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
   }
 
   .Warning {

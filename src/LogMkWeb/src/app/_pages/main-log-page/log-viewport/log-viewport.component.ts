@@ -1,24 +1,32 @@
-import { CdkVirtualScrollViewport, ScrollingModule } from '@angular/cdk/scrolling';
 import { CommonModule } from '@angular/common';
-import { ChangeDetectionStrategy, Component, DestroyRef, inject, signal, viewChild } from '@angular/core';
+import { ChangeDetectionStrategy, Component, DestroyRef, ElementRef, inject, signal, viewChild } from '@angular/core';
 import { takeUntilDestroyed, toObservable } from '@angular/core/rxjs-interop';
+import { VirtualScrollerModule } from '@iharbeck/ngx-virtual-scroller';
 
-import { combineLatest, filter, map, of, switchMap, take, tap } from 'rxjs';
+import { combineLatest, Subject, switchMap, tap } from 'rxjs';
 import { LogApiService } from '../../../_services/log.api';
 import { Log, SignalRService } from '../../../_services/signalr.service';
 import { LogFilterState } from '../_services/log-filter-state';
 @Component({
   selector: 'app-log-viewport',
   standalone: true,
-  imports: [CommonModule, ScrollingModule],
+  imports: [CommonModule, VirtualScrollerModule],
   template: `
-    <cdk-virtual-scroll-viewport itemSize="20" class="log-viewport" #scrollViewport>
-      <div *cdkVirtualFor="let log of logs()" class="log-item">
-        <div class="time">{{ log.timeStamp | date: 'short' }}</div>
-        <div class="pod">{{ log.pod }}</div>
-        <div [ngClass]="log.logLevel" class="line">{{ log.line }}</div>
-      </div>
-    </cdk-virtual-scroll-viewport>
+    <virtual-scroller
+      [items]="logs()"
+      #scrollViewport
+      [enableUnequalChildrenSizes]="true"
+      [parentScroll]="scrollViewport.window"
+    >
+      @for (log of scrollViewport.viewPortItems; track log.id) {
+        <div class="log-item">
+          <div class="time">{{ log.timeStamp | date: 'short' }}</div>
+          <div class="pod">{{ log.pod }}</div>
+          <div [ngClass]="log.logLevel" class="line">{{ log.line }}</div>
+        </div>
+      }
+    </virtual-scroller>
+    <button (click)="$loadMoreTrigger.next()">Load More</button>
   `,
   styleUrl: './log-viewport.component.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -28,47 +36,41 @@ export class LogViewportComponent {
   logApi = inject(LogApiService);
   signalRService = inject(SignalRService);
   logs = signal<Log[]>([]);
-  viewport = viewChild<CdkVirtualScrollViewport>('scrollViewport');
   logFilterState = inject(LogFilterState);
   page = 1;
   ignoreScroll = true;
+  $loadMoreTrigger = new Subject<void>();
+  viewPort = viewChild<ElementRef>('scrollViewport');
 
   constructor() {
-    const viewPort = toObservable(this.viewport);
-
-    viewPort
+    // const vpO = toObservable(this.viewPort);
+    // vpO.subscribe((vp: any) => {
+    //   if (vp) {
+    //     vp.element.nativeElement.style.height = vp.element.nativeElement.parentElement?.clientHeight + 'px';
+    //   }
+    // });
+    this.$loadMoreTrigger
+      .asObservable()
       .pipe(
-        filter((vp) => !!vp),
-        take(1),
-        switchMap((vp) => {
-          if (!vp) return of(null);
-          return vp?.elementScrolled().pipe(map(() => vp));
-        }),
-        switchMap((e) => {
-          if (!e || this.ignoreScroll) return of(null);
-          const m = e.measureScrollOffset('top');
-
-          if (m === 0) {
-            this.page++;
-            return this.logApi
-              .getLogs(
-                this.logFilterState.selectedLogLevel(),
-                this.logFilterState.selectedPod(),
-                this.logFilterState.searchString(),
-                this.logFilterState.selectedTimeRange(),
-                this.page
-              )
-              .pipe(
-                tap((z) => {
-                  const ni = z.items ?? [];
-                  if (ni.length === 0) return;
-
-                  this.logs.update((items) => [...ni.reverse(), ...items]);
-                  this.scrollToIndex(ni.length);
-                })
-              );
-          }
-          return of(null);
+        switchMap(() => {
+          this.page++;
+          return this.logApi
+            .getLogs(
+              this.logFilterState.selectedLogLevel(),
+              this.logFilterState.selectedPod(),
+              this.logFilterState.searchString(),
+              this.logFilterState.selectedTimeRange(),
+              this.page
+            )
+            .pipe(
+              tap((z) => {
+                const ni = z.items ?? [];
+                if (ni.length === 0) return;
+                const index = this.logs().length;
+                this.logs.update((items) => [...items, ...ni]);
+                this.scrollToIndex(index);
+              })
+            );
         }),
         takeUntilDestroyed()
       )
@@ -77,59 +79,55 @@ export class LogViewportComponent {
     const logPodFilterState = toObservable(this.logFilterState.selectedPod);
     const searchString = toObservable(this.logFilterState.searchString);
     const timeRange = toObservable(this.logFilterState.selectedTimeRange);
-    viewPort
+    combineLatest([logFilterState, logPodFilterState, searchString, timeRange])
       .pipe(
-        take(1),
-        switchMap(() => {
-          return combineLatest([logFilterState, logPodFilterState, searchString, timeRange]);
-        }),
         switchMap(([level, pod, search, date]) => {
           this.page = 1;
           return this.logApi.getLogs(level, pod, search, date, this.page);
         }),
         tap((l) => {
           const items = l.items ?? [];
-          this.logs.set(items.reverse());
-          this.scrollToBottom();
-        }),
-        switchMap(() => {
-          return this.signalRService.logsReceived;
+          this.logs.set(items);
         }),
         takeUntilDestroyed()
       )
-      .subscribe((logs) => {
-        this.logs.update((items) => [...items, ...logs]);
-        this.scrollToBottom();
+      .subscribe(() => {
+        this.startSignalR();
       });
   }
+  monitoring = false;
+  private startSignalR() {
+    if (this.monitoring) return;
+
+    this.monitoring = true;
+
+    this.signalRService.logsReceived.pipe(takeUntilDestroyed()).subscribe((logs) => {
+      const search = this.logFilterState.searchString();
+      const logLevel = this.logFilterState.selectedLogLevel();
+      const pod = this.logFilterState.selectedPod();
+      const date = this.logFilterState.selectedTimeRange();
+
+      const filteredLogs = logs.filter((log) => {
+        return (
+          (!search || log.line.includes(search)) &&
+          (!logLevel || logLevel.includes(log.logLevel)) &&
+          (!pod || pod.includes(log.pod)) &&
+          (!date || new Date(log.timeStamp) > date)
+        );
+      });
+
+      this.logs.update((x) => [...filteredLogs, ...x]);
+    });
+  }
+
   private scrollToIndex(index: number) {
-    const vp = this.viewport();
-    if (!vp) throw new Error('Viewport not initialized');
-
-    setTimeout(() => {
-      vp.scrollToIndex(index);
-    }, 50);
-    setTimeout(() => {
-      vp.scrollToIndex(index);
-    }, 100);
-  }
-  private scrollToBottom() {
-    this.ignoreScroll = true;
-    const vp = this.viewport();
-    if (!vp) throw new Error('Viewport not initialized');
-
-    setTimeout(() => {
-      vp.scrollTo({
-        bottom: 0,
-        behavior: 'auto',
-      });
-    }, 50);
-    setTimeout(() => {
-      vp.scrollTo({
-        bottom: 0,
-        behavior: 'auto',
-      });
-      this.ignoreScroll = false;
-    }, 100);
+    // const vp = this.viewport();
+    // if (!vp) throw new Error('Viewport not initialized');
+    // setTimeout(() => {
+    //   vp.scrollToIndex(index);
+    // }, 50);
+    // setTimeout(() => {
+    //   vp.scrollToIndex(index);
+    // }, 100);
   }
 }

@@ -4,8 +4,8 @@ import { Injectable, signal } from '@angular/core';
   providedIn: 'root',
 })
 export class LogFilterState {
-  selectedLogLevel = signal<string>('All');
-  selectedPod = signal<string>('All');
+  selectedLogLevel = signal<string[] | null>(null);
+  selectedPod = signal<string[] | null>(null);
   searchString = signal<string>('');
   selectedTimeRange = signal<Date | null>(null);
 }

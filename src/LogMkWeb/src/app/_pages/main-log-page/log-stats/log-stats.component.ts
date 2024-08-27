@@ -60,8 +60,6 @@ export class LogStatsComponent {
     const stats = this.stats();
 
     if (stats?.timePeriod === TimePeriod.Hour) {
-      // genrate label hours form count keys
-
       const hours = Object.keys(stats.counts).map((h) => {
         const date = new Date(h);
         const hour = date.getHours();

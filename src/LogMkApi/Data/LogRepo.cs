@@ -153,6 +153,12 @@ public class LogRepo
 
 
 
+        var likeClause = new AndOrBuilder();
+        likeClause.AppendOr(search, "Line LIKE  @search ");
+        if (likeClause.Length > 0)
+        {
+            whereBuilder.AppendAnd($"({likeClause})");
+        }
 
         var isGreaterThan3Days = dateStart == null ? true : DateTime.UtcNow.Subtract(dateStart.Value).TotalDays > 3;
         var query = "";
