@@ -102,12 +102,17 @@ export class LogViewportComponent {
     this.monitoring = true;
 
     this.signalRService.logsReceived.pipe(takeUntilDestroyed()).subscribe((logs) => {
+      if (!logs || logs.length === 0) return;
       const search = this.logFilterState.searchString();
       const logLevel = this.logFilterState.selectedLogLevel();
       const pod = this.logFilterState.selectedPod();
       const date = this.logFilterState.selectedTimeRange();
 
       const filteredLogs = logs.filter((log) => {
+        if (!log) return false;
+
+        log.timeStamp = new Date(log.timeStamp);
+
         return (
           (!search || log.line.includes(search)) &&
           (!logLevel || logLevel.includes(log.logLevel)) &&

@@ -30,6 +30,7 @@ export class SignalRService {
   private addTransferLogDataListener() {
     this.hubConnection?.on('ReceiveLog', (data) => {
       const a = <Log[]>data;
+
       this.logsReceived.next(a);
     });
   }
