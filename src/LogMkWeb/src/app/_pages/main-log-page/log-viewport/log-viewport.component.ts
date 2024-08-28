@@ -101,7 +101,7 @@ export class LogViewportComponent {
 
     this.monitoring = true;
 
-    this.signalRService.logsReceived.pipe(takeUntilDestroyed()).subscribe((logs) => {
+    this.signalRService.logsReceived.pipe(takeUntilDestroyed(this.destroyRef)).subscribe((logs) => {
       if (!logs || logs.length === 0) return;
       const search = this.logFilterState.searchString();
       const logLevel = this.logFilterState.selectedLogLevel();
