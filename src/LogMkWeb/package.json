@@ -29,7 +29,7 @@
     "@popperjs/core": "^2.11.8",
     "bootstrap": "^5.3.2",
     "bootstrap-pretty": "^0.2.2",
-    "chart.js": "^4.4.4",
+    "chart.js": "^4.4.5",
     "date-fns": "^4.1.0",
     "lucide-angular": "^0.447.0",
     "ng2-charts": "^6.0.1",
