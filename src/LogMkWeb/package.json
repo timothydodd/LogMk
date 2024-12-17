@@ -31,7 +31,7 @@
     "bootstrap-pretty": "^0.2.2",
     "chart.js": "^4.4.6",
     "date-fns": "^4.1.0",
-    "lucide-angular": "^0.460.0",
+    "lucide-angular": "^0.468.0",
     "ng2-charts": "^7.0.0",
     "ngx-toastr": "^19.0.0",
     "ngx-valdemort": "^12.0.0",
