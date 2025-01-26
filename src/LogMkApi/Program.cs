@@ -19,7 +19,7 @@ public class Program
 {
     public static void Main(string[] args)
     {
-        var builder = WebApplication.CreateSlimBuilder(args);
+        var builder = WebApplication.CreateBuilder(args);
         builder.Services.AddRequestDecompression();
         builder.Services.AddResponseCompression(options =>
         {
