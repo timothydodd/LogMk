@@ -152,9 +152,12 @@ public class Program
 
         app.UseAuthentication();
         app.UseAuthorization();
+        app.UseDefaultFiles();
+        app.UseStaticFiles();
         app.MapControllers();
         app.MapHub<LogHub>("/loghub");
         app.UseHealthChecks("/api/health", new HealthCheckOptions { ResponseWriter = HealthCheck.WriteResponse });
+        app.MapFallbackToFile("/index.html");
         app.Run();
     }
 }
