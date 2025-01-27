@@ -80,7 +80,7 @@ ng serve
 Access the web portal via your browser.
 Use the filter and search functionalities to find specific logs.
 Monitor logs in real-time through the SignalR integration.
-
+The Api also hosts the web project
 ## Contributing
 Contributions are welcome! Please fork the repository and submit a pull request.
 
