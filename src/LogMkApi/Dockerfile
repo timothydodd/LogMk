@@ -10,8 +10,18 @@ ARG BUILD_CONFIGURATION=Release
 WORKDIR /src
 COPY ["LogMkApi/LogMkApi.csproj", "LogMkApi/"]
 COPY ["LogMkCommon/LogMkCommon.csproj", "LogMkCommon/"]
+COPY ["LogMkWeb\logmk.esproj", "LogMkWeb/"]
 RUN dotnet restore "./LogMkApi/LogMkApi.csproj"
+# Install Node.js and Angular CLI
+RUN curl -fsSL https://deb.nodesource.com/setup_18.x | bash - \
+    && apt-get install -y nodejs \
+    && npm install -g @angular/cli@18
+
+
 COPY . .
+RUN chmod +x ./api/replace_vars.sh
+RUN ./api/replace_vars.sh ./web/home-dash/src/environments
+
 WORKDIR "/src/LogMkApi"
 RUN dotnet build "./LogMkApi.csproj" -c $BUILD_CONFIGURATION -o /app/build
 
