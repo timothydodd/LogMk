@@ -19,7 +19,7 @@ RUN curl -fsSL https://deb.nodesource.com/setup_18.x | bash - \
 
 
 COPY . .
-RUN chmod +x ./api/replace_vars.sh
+RUN chmod +x ./LogMkApi/replace_vars.sh
 RUN ./LogMkApi/replace_vars.sh ./LogMkWeb/src/environments
 
 WORKDIR "/src/LogMkApi"
