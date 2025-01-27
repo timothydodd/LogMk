@@ -10,7 +10,7 @@ ARG BUILD_CONFIGURATION=Release
 WORKDIR /src
 COPY ["LogMkApi/LogMkApi.csproj", "LogMkApi/"]
 COPY ["LogMkCommon/LogMkCommon.csproj", "LogMkCommon/"]
-COPY ["LogMkWeb\logmk.esproj", "LogMkWeb/"]
+COPY ["LogMkWeb/logmk.esproj", "LogMkWeb/"]
 RUN dotnet restore "./LogMkApi/LogMkApi.csproj"
 # Install Node.js and Angular CLI
 RUN curl -fsSL https://deb.nodesource.com/setup_18.x | bash - \
