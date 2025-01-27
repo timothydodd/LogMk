@@ -20,7 +20,7 @@ RUN curl -fsSL https://deb.nodesource.com/setup_18.x | bash - \
 
 COPY . .
 RUN chmod +x ./api/replace_vars.sh
-RUN ./api/replace_vars.sh ./web/home-dash/src/environments
+RUN ./LogMkApi/replace_vars.sh ./LogMkWeb/src/environments
 
 WORKDIR "/src/LogMkApi"
 RUN dotnet build "./LogMkApi.csproj" -c $BUILD_CONFIGURATION -o /app/build
