@@ -1,105 +1,8 @@
 /* You can add global styles to this file, and also import other style files */
 
 @import url('https://fonts.googleapis.com/css2?family=Roboto:ital,wght@0,100;0,300;0,400;0,500;0,700;0,900;1,100;1,300;1,400;1,500;1,700;1,900&family=Space+Mono:ital,wght@0,400;0,700;1,400;1,700&display=swap');
+@import "variables.scss";
 
-:root {
-    --background: #282a36;
-    --current-line: #44475a;
-    --foreground: #f8f8f2;
-    --comment: #6272a4;
-    --cyan: #8be9fd;
-    --green: #50fa7b;
-    --orange: #ffb86c;
-    --pink: #ff79c6;
-    --purple: #bd93f9;
-    --red: #ff5555;
-    --yellow: #f1fa8c;
-    --bGLighter: #424450;
-    --bGLight: #343746;
-    --bGDark: #21222C;
-    --bGDarker: #191A21;
-}
-
-// Color system
-$color-contrast-dark: #000;
-$color-contrast-light: #fff;
-
-// scss-docs-start gray-color-variables
-$white: #fff;
-$gray-100: #eaeaeb;
-$gray-200: #d4d4d7;
-$gray-300: #bfbfc3;
-$gray-400: #a9aaaf;
-$gray-500: #696a72;
-$gray-600: #53555e;
-$gray-700: #3e3f4a;
-$gray-800: #282a36; // syntax highlight background
-$gray-900: #20222b;
-$black: #000;
-// scss-docs-end gray-color-variables
-
-// scss-docs-start color-variables
-$blue: #007e90;
-$indigo: #7e8ec2;
-$purple: #855fbf;
-$pink: #c13f8e;
-$red: #d82f39;
-$orange: #7d4800;
-$yellow: #4c5b00;
-$green: #006400;
-$teal: #005f60;
-$cyan: #005f60;
-// scss-docs-end color-variables
-
-// scss-docs-start theme-color-variables
-$primary: $purple;
-$secondary: $gray-600;
-$success: $green;
-$info: $cyan;
-$warning: $yellow;
-$danger: $red;
-$light: $gray-200;
-$dark: $gray-900;
-// scss-docs-end theme-color-variables
-
-// scss-docs-start color-variables-dark
-$blue-dark: #8be9fd;
-$indigo-dark: #6272a4;
-$purple-dark: #bd93f9;
-$pink-dark: #ff79c6;
-$red-dark: #f55;
-$orange-dark: #ffb86c;
-$yellow-dark: #f1fa8c;
-$green-dark: #50fa7b;
-$teal-dark: #a4ffff;
-$cyan-dark: #a4ffff;
-// scss-docs-end color-variables-dark
-
-// scss-docs-start theme-color-dark-variables
-$primary-dark: $purple-dark;
-$secondary-dark: $gray-500;
-$success-dark: $green-dark;
-$info-dark: $cyan-dark;
-$warning-dark: $yellow-dark;
-$danger-dark: $red-dark;
-// scss-docs-end theme-color-dark-variables
-
-// Shiki
-// Only applied if using a defined Shiki theme
-
-$ng-select-input-text: #f8f8f2;
-$ng-select-highlight: #bd93f9;
-$ng-select-primary-text: #f8f8f2;
-$ng-select-disabled-text: #f9f9f9;
-$ng-select-border: #191A21;
-$ng-select-bg: #424450;
-$ng-select-selected: #343746;
-$ng-select-dropdown-optgroup-marked: $ng-select-input-text;
-
-//$ng-select-marked-text: $ng-select-primary-text;
-//$ng-select-dropdown-optgroup-text: $ng-select-primary-text;
-$ng-select-dropdown-option-text: $ng-select-primary-text;
-//$ng-select-dropdown-optgroup-marked: $ng-select-input-text;
 @import "../node_modules/@ng-select/ng-select/scss/default.theme.scss";
 @import "../node_modules/bootstrap/scss/bootstrap.scss";
 
@@ -120,6 +23,7 @@ html {
         display: flex;
         flex-direction: column;
         margin: 0;
+        overflow: hidden;
     }
 }
 

@@ -141,18 +141,30 @@ public class LogWatcher : BackgroundService
                 fs.Seek(deploymentSettings.LastReadPosition, SeekOrigin.Begin);
                 using (var sr = new StreamReader(fs))
                 {
-
                     string line;
                     while ((line = sr.ReadLine()) != null)
                     {
                         if (string.IsNullOrWhiteSpace(line))
                             continue;
-                        var logLevel = GetLogLevel(line);
+                        line = Regex.Replace(line, RemoveANSIEscapePattern, string.Empty);
+
+                        var firstSpace = line.IndexOf(' ');
+                        var secondSpace = line.IndexOf(' ', firstSpace + 1);
+                        var thirdSpace = line.IndexOf(' ', secondSpace + 1);
+
+                        var outType = line.Substring(firstSpace + 1, secondSpace - firstSpace - 1);
+                        var cleanLine = line;
+                        if (outType == "stdout" || outType == "stderr")
+                        {
+                            cleanLine = cleanLine.Substring(thirdSpace + 1);
+                        }
+
+                        var logLevel = GetLogLevel(cleanLine);
                         if (logLevel < podLogLevel)
                         {
                             continue;
                         }
-                        var logLine = ParseLogLine(line, info.PodName, info.DeploymentName, logLevel);
+                        var logLine = ParseLogLine(line, cleanLine, info.PodName, info.DeploymentName, logLevel);
 
                         if (timeStamp.HasValue)
                         {
@@ -181,15 +193,12 @@ public class LogWatcher : BackgroundService
         }
     }
     const string RemoveANSIEscapePattern = @"\x1B\[[0-9;]*[A-Za-z]";
-    private LogLine ParseLogLine(string line, string podName, string deploymentName, LogLevel logLevel)
+    private LogLine ParseLogLine(string line, string cleanLine, string podName, string deploymentName, LogLevel logLevel)
     {
         // Regex pattern to match ANSI escape codes
 
-
-        // Remove ANSI escape codes
-        line = Regex.Replace(line, RemoveANSIEscapePattern, string.Empty);
-
         var firstSpace = line.IndexOf(' ');
+
         if (firstSpace >= 0)
         {
             var dt = line.Substring(0, firstSpace);
@@ -197,18 +206,11 @@ public class LogWatcher : BackgroundService
 
             if (DateTimeOffset.TryParseExact(dt, "yyyy-MM-ddTHH:mm:ss.fffffffZ", CultureInfo.InvariantCulture, DateTimeStyles.None, out var timestamp))
             {
-                var secondSpace = line.IndexOf(' ', firstSpace + 1);
-                var thirdSpace = line.IndexOf(' ', secondSpace + 1);
 
-                var outType = line.Substring(firstSpace + 1, secondSpace - firstSpace - 1);
-                if (outType == "stdout" || outType == "stderr")
-                {
-                    line = line.Substring(thirdSpace + 1);
-                }
-                return new LogLine() { DeploymentName = deploymentName, PodName = podName, Line = line, LogLevel = logLevel, TimeStamp = timestamp };
+                return new LogLine() { DeploymentName = deploymentName, PodName = podName, Line = cleanLine, LogLevel = logLevel, TimeStamp = timestamp };
             }
         }
-        return new LogLine() { DeploymentName = deploymentName, PodName = podName, Line = line, LogLevel = logLevel, TimeStamp = DateTimeOffset.UtcNow };
+        return new LogLine() { DeploymentName = deploymentName, PodName = podName, Line = cleanLine, LogLevel = logLevel, TimeStamp = DateTimeOffset.UtcNow };
 
     }
     static string TruncateFractionalSeconds(string timestamp, int maxFractionalDigits)

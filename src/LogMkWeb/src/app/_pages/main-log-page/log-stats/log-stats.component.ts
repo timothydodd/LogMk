@@ -32,13 +32,20 @@ export class LogStatsComponent {
     scales: {
       x: {
         stacked: true, // Enable stacking for the x-axis
+         grid: {
+          color: 'rgba(246, 197, 208, 0.12)'  // Change X-axis grid color
+        }
       },
       y: {
         stacked: true, // Enable stacking for the y-axis
         beginAtZero: true,
+         grid: {
+          color: 'rgba(246, 197, 208, 0.12)'  // Change X-axis grid color
+        }
       },
     },
   };
+   
   constructor() {
     const logFilterState = toObservable(this.logFilterState.selectedLogLevel);
     const logPodFilterState = toObservable(this.logFilterState.selectedPod);
@@ -112,8 +119,8 @@ export class LogStatsComponent {
       {
         label: 'Other',
         data: this.getDataSet(stats, 'Any'),
-        backgroundColor: 'rgba(201, 203, 207, 0.2)', // Purple color
-        borderColor: 'rgba(201, 203, 207, 1)',
+        backgroundColor: 'rgba(18, 18, 19, 0.2)', // Purple color
+        borderColor: 'rgba(52, 52, 53, 0.2)',
         borderWidth: 1,
       },
     ];

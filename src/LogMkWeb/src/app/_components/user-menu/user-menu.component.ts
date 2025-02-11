@@ -10,7 +10,7 @@ import { UserSettingsComponent } from '../user-settings/user-settings.component'
 @Component({
   selector: 'app-user-menu',
   standalone: true,
-  imports: [CommonModule, NgbModule, LucideAngularModule, UserSettingsComponent],
+  imports: [CommonModule, NgbModule, LucideAngularModule],
   template: `
     @if (user()) {
       <div class="dropdown" ngbDropdown display="dynamic" #userMenu="ngbDropdown">

@@ -12,20 +12,15 @@ import { LogFilterState } from '../_services/log-filter-state';
   standalone: true,
   imports: [CommonModule, VirtualScrollerModule],
   template: `
-    <virtual-scroller
-      [items]="logs()"
-      #scrollViewport
-      [enableUnequalChildrenSizes]="true"
-      [parentScroll]="scrollViewport.window"
-    >
-      @for (log of scrollViewport.viewPortItems; track log.id) {
+
+      @for (log of logs(); track log.id) {
         <div class="log-item">
           <div class="time">{{ log.timeStamp | date: 'short' }}</div>
           <div class="pod">{{ log.pod }}</div>
           <div [ngClass]="log.logLevel" class="line">{{ log.line }}</div>
         </div>
       }
-    </virtual-scroller>
+
     <button (click)="$loadMoreTrigger.next()">Load More</button>
   `,
   styleUrl: './log-viewport.component.scss',

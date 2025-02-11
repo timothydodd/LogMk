@@ -1,9 +1,45 @@
 @if (loggedIn()) {
+  <div class="gradient"></div>
   <nav class="navbar navbar-expand-lg">
     <div class="container-fluid">
-      <a class="navbar-brand" href="#">LogMk</a>
+      <a class="navbar-brand" href="#"
+        ><svg
+          baseProfile="full"
+          height="30px"
+          width="100px"
+          version="1.1"
+          xmlns="http://www.w3.org/2000/svg"
+          xmlns:ev="http://www.w3.org/2001/xml-events"
+          xmlns:xlink="http://www.w3.org/1999/xlink"
+        >
+          <defs>
+            <linearGradient gradientUnits="userSpaceOnUse" id="neon-glow" x1="0%" x2="100%" y1="0%" y2="0%">
+              <stop offset="0" stop-color="#8be9fd" stop-opacity="0.9" />
+              <stop offset="1" stop-color="#ff79c6" stop-opacity="0.9" />
+            </linearGradient>
+          </defs>
+
+          <text
+            fill="url(#neon-glow)"
+            font-family="Arial, sans-serif"
+            font-size="20px"
+            font-weight="bold"
+            style="text-shadow: 0px 0px 10px rgba(255, 255, 255, 0.6)"
+            text-anchor="middle"
+            x="50%"
+            y="60%"
+          >
+            LogMk
+          </text>
+        </svg></a
+      >
       <app-user-menu></app-user-menu>
     </div>
   </nav>
-  <router-outlet />
+
+  <div class="scroll-box">
+    <div class="scroller">
+      <router-outlet />
+    </div>
+  </div>
 }

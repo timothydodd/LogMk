@@ -8,7 +8,7 @@ import { SignalRService } from './_services/signalr.service';
 @Component({
   selector: 'app-root',
   standalone: true,
-  imports: [RouterOutlet, LoginComponent, NgbModule, UserMenuComponent],
+  imports: [RouterOutlet, NgbModule, UserMenuComponent],
   templateUrl: './app.component.html',
   styleUrl: './app.component.scss',
 })
