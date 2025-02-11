@@ -225,23 +225,58 @@ public class LogWatcher : BackgroundService
     }
     private LogLevel GetLogLevel(string logLine)
     {
-        if (logLine.Contains("ERROR", StringComparison.OrdinalIgnoreCase))
+        if (string.IsNullOrEmpty(logLine))
+            return LogLevel.Any;
+
+        // Convert to lowercase for case-insensitive search
+        string lowerLogLine = logLine.ToLower();
+
+        // Find positions of keywords
+        int errorIndex = FindFirst(lowerLogLine, "err", "error");
+        int warningIndex = FindFirst(lowerLogLine, "warn", "wrn");
+        int infoIndex = FindFirst(lowerLogLine, "info", "inf");
+        int debug = FindFirst(lowerLogLine, "debug");
+
+        // Determine the first occurrence
+        int firstIndex = MinNonNegative(errorIndex, warningIndex, infoIndex, debug);
+        if (firstIndex == -1)
         {
+            return LogLevel.Any;
+        }
+        // Return the corresponding log type
+        if (firstIndex == errorIndex)
             return LogLevel.Error;
-        }
-        else if (logLine.Contains("WARN", StringComparison.OrdinalIgnoreCase))
-        {
+        if (firstIndex == warningIndex)
             return LogLevel.Warning;
-        }
-        else if (logLine.Contains("INFO", StringComparison.OrdinalIgnoreCase))
-        {
+        if (firstIndex == infoIndex)
             return LogLevel.Information;
-        }
-        else if (logLine.Contains("DEBUG", StringComparison.OrdinalIgnoreCase))
-        {
+        if (firstIndex == debug)
             return LogLevel.Debug;
-        }
         return LogLevel.Any;
+    }
+    private static int FindFirst(string line, string keyword1, string? keyword2 = null)
+    {
+        int index1 = line.IndexOf(keyword1);
+        if (keyword2 == null)
+        {
+            return index1;
+        }
+        int index2 = line.IndexOf(keyword2);
+
+        return MinNonNegative(index1, index2);
+    }
+
+    private static int MinNonNegative(params int[] values)
+    {
+        int min = int.MaxValue;
+        foreach (int value in values)
+        {
+            if (value >= 0 && value < min)
+            {
+                min = value;
+            }
+        }
+        return min == int.MaxValue ? -1 : min;
     }
     public override void Dispose()
     {

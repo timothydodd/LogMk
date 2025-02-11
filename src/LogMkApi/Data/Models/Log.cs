@@ -14,6 +14,7 @@ public class Log
     [CustomField("TEXT")]
     public required string Line { get; set; }
     public required string LogLevel { get; set; }
+    [Index]
     public required DateTime TimeStamp { get; set; }
 }
 
