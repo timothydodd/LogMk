@@ -5,7 +5,7 @@ LogMk is a lightweight log monitoring solution for Kubernetes environments. It m
 - Real-Time Log Monitoring: View logs in real-time using the web portal.
 - Centralized Storage: All logs are stored in a MySQL database.
 - Filter and Search: Easily filter and search logs to find specific entries.
-- Simple Deployment: Deploy a .NET 8 worker agent on all Kubernetes nodes to start collecting logs.
+- Simple Deployment: Deploy a .NET 9 worker agent on all Kubernetes nodes to start collecting logs.
 
 
 ![image](https://github.com/user-attachments/assets/b8ed57d9-6e7a-459e-8a42-7832925f9354)
@@ -14,7 +14,7 @@ LogMk is a lightweight log monitoring solution for Kubernetes environments. It m
 ## Components
 LogMk consists of three main components:
 
-1.  .NET 8 Worker Agent
+1.  .NET 9 Worker Agent
 
 Deployed on all Kubernetes nodes.
 Collects pod logs and sends them to the central API.
@@ -24,7 +24,7 @@ Collects pod logs and sends them to the central API.
 Provides a user-friendly interface for viewing and filtering logs.
 Utilizes SignalR for real-time log updates.
 
-3.  .NET 8 API
+3.  .NET 9 API
 
 - Receives log data from the worker agents.
 - Exposes endpoints for the web portal to access log data.
@@ -33,13 +33,13 @@ Utilizes SignalR for real-time log updates.
 ## Installation
 ### Prerequisites
 - Kubernetes Cluster
-- .NET 8 SDK (for building)
+- .NET 9 SDK (for building)
 - MySQL Database
 - Angular CLI (for web portal development)
 ### Setup
 1. Deploy Worker Agent
 
-Build and deploy the .NET 8 worker agent on all Kubernetes nodes.
+Build and deploy the .NET 9 worker agent on all Kubernetes nodes.
 
 ``` bash
 # Example command to build the worker agent
@@ -55,7 +55,7 @@ Create a MySQL database to store the logs. Update the connection string in the A
 
 3. Deploy API
 
-Build and deploy the .NET 8 API.
+Build and deploy the .NET 9 API.
 
 ``` bash
 

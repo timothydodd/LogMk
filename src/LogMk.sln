@@ -14,6 +14,7 @@ EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "solution-files", "solution-files", "{990DBF62-9D81-40AF-888B-DF4DD60E2B35}"
 	ProjectSection(SolutionItems) = preProject
 		..\.github\workflows\docker-image.yml = ..\.github\workflows\docker-image.yml
+		..\README.md = ..\README.md
 	EndProjectSection
 EndProject
 Global
