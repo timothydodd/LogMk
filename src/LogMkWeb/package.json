@@ -26,7 +26,7 @@
     "@iharbeck/ngx-virtual-scroller": "^19.0.1",
     "@microsoft/signalr": "^8.0.7",
     "@ng-bootstrap/ng-bootstrap": "^18.0.0",
-    "@ng-select/ng-select": "^14.2.2",
+    "@ng-select/ng-select": "^14.2.3",
     "@popperjs/core": "^2.11.8",
     "bootstrap": "^5.3.3",
     "bootstrap-pretty": "^0.2.2",
@@ -52,8 +52,8 @@
     "@angular/localize": "^19.2.1",
     "@types/jasmine": "~5.1.7",
     "@types/node": "^22.13.10",
-    "@typescript-eslint/eslint-plugin": "8.26.0",
-    "@typescript-eslint/parser": "8.26.0",
+    "@typescript-eslint/eslint-plugin": "8.26.1",
+    "@typescript-eslint/parser": "8.26.1",
     "angular-eslint": "^19.2.1",
     "eslint": "~9.22.0",
     "eslint-config-prettier": "^10.1.1",
@@ -67,6 +67,6 @@
     "prettier": "^3.5.3",
     "prettier-eslint": "^16.3.0",
     "typescript": "~5.8.2",
-    "typescript-eslint": "^8.26.0"
+    "typescript-eslint": "^8.26.1"
   }
 }
