@@ -21,6 +21,7 @@ public class DatabaseInitializer
         using (var db = _dbFactory.OpenDbConnection())
         {
             db.CreateTableIfNotExists<Log>();
+            db.CreateTableIfNotExists<LogSummary>();
             if (db.CreateTableIfNotExists<User>())
             {
                 var user = new User

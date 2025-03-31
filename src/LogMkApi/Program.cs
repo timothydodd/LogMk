@@ -4,6 +4,7 @@ using LogMkApi.Common;
 using LogMkApi.Data;
 using LogMkApi.Hubs;
 using LogMkApi.Services;
+using LogSummaryService;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Microsoft.AspNetCore.ResponseCompression;
@@ -37,6 +38,7 @@ public class Program
         });
         builder.Services.AddSingleton<IBackgroundTaskQueue, BackgroundTaskQueue>();
         builder.Services.AddHostedService<BackgroundWorkerService>();
+        builder.Services.AddHostedService<LogSummaryBackgroundService>();
         builder.Services.AddControllers();
         builder.Services.AddSignalR();
         builder.Services.AddMemoryCache();
@@ -51,6 +53,7 @@ public class Program
         builder.Services.AddSingleton<IDbConnectionFactory>(dbFactory);
         builder.Services.AddTransient<IDbConnection>(sp => sp.GetRequiredService<IDbConnectionFactory>().OpenDbConnection());
         builder.Services.AddScoped<LogRepo>();
+        builder.Services.AddScoped<LogSummaryRepo>();
         builder.Services.AddScoped<LogHubService>();
         builder.Services.AddScoped<DatabaseInitializer>();
         builder.Services.AddSingleton<PasswordService>();

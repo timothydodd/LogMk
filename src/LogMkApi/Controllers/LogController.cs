@@ -19,12 +19,14 @@ public class LogController : ControllerBase
     private readonly ILogger<LogController> _logger;
     private readonly LogRepo _logRepo;
     private readonly IBackgroundTaskQueue _taskQueue;
-    public LogController(ILogger<LogController> logger, LogRepo logRepo, LogHubService logHubService, IBackgroundTaskQueue taskQueue)
+    private readonly LogSummaryRepo _logSummaryRepo;
+    public LogController(ILogger<LogController> logger, LogRepo logRepo, LogHubService logHubService, IBackgroundTaskQueue taskQueue, LogSummaryRepo logSummaryRepo)
     {
         _logger = logger;
         _logRepo = logRepo;
         _logHubService = logHubService;
         _taskQueue = taskQueue;
+        _logSummaryRepo = logSummaryRepo;
     }
     [AllowAnonymous]
     [HttpPost]
@@ -41,7 +43,10 @@ public class LogController : ControllerBase
                     Pod = x.PodName,
                     Line = x.Line,
                     LogLevel = x.LogLevel.ToString(),
-                    TimeStamp = x.TimeStamp.UtcDateTime
+                    TimeStamp = x.TimeStamp.UtcDateTime,
+                    LogDate = x.TimeStamp.UtcDateTime.Date,
+                    LogHour = x.TimeStamp.UtcDateTime.Hour
+
                 };
                 return l;
             });
@@ -65,7 +70,7 @@ public class LogController : ControllerBase
 
     )
     {
-        var stats = await _logRepo.GetStatistics(dateStart,
+        var stats = await _logSummaryRepo.GetStatistics(dateStart,
                                                    dateEnd,
                                                    search, podName, deployment, logLevel);
         if (stats == null)
