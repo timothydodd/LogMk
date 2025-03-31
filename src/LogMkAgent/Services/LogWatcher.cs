@@ -36,11 +36,12 @@ public class LogWatcher : BackgroundService
             var podSettings = GetPodSettings(p.Key);
             podSettings.LogLevel = p.Value;
         }
-        foreach (var pod in options.Value?.IgnorePods)
-        {
-            var getPod = GetPodSettings(pod);
-            getPod.Ignore = true;
-        }
+        if (options.Value.IgnorePods != null)
+            foreach (var pod in options.Value.IgnorePods)
+            {
+                var getPod = GetPodSettings(pod);
+                getPod.Ignore = true;
+            }
         var times = client.GetDataAsync<List<LatestDeploymentEntry>>("api/log/times").GetAwaiter().GetResult();
         if (times != null)
         {
@@ -131,22 +132,28 @@ public class LogWatcher : BackgroundService
             deploymentSettings.LastReadPosition = 0;
             _logger.LogInformation($"New log file detected: {filePath}");
         }
+
         DateTime? timeStamp = deploymentSettings.LastDeploymentTime;
 
         var foundRecent = false;
         try
         {
+            var pos = deploymentSettings.LastReadPosition;
+            if (pos < 0)
+            {
+                pos = 0;
+            }
             using (var fs = new FileStream(filePath, FileMode.Open, FileAccess.Read))
             {
-                fs.Seek(deploymentSettings.LastReadPosition, SeekOrigin.Begin);
+                fs.Seek(pos, SeekOrigin.Begin);
                 using (var sr = new StreamReader(fs))
                 {
-                    string line;
+                    string? line;
                     while ((line = sr.ReadLine()) != null)
                     {
                         if (string.IsNullOrWhiteSpace(line))
                             continue;
-                        line = Regex.Replace(line, RemoveANSIEscapePattern, string.Empty);
+                        line = RemoveANSIEscapeRegex.Replace(line, string.Empty);
 
                         var firstSpace = line.IndexOf(' ');
                         var secondSpace = line.IndexOf(' ', firstSpace + 1);
@@ -192,7 +199,8 @@ public class LogWatcher : BackgroundService
             _logger.LogError($"Error reading log file {filePath}: {ex.Message}");
         }
     }
-    const string RemoveANSIEscapePattern = @"\x1B\[[0-9;]*[A-Za-z]";
+    static readonly string RemoveANSIEscapePattern = @"\x1B\[[0-9;]*[A-Za-z]";
+    static readonly Regex RemoveANSIEscapeRegex = new Regex(RemoveANSIEscapePattern, RegexOptions.Compiled);
     private LogLine ParseLogLine(string line, string cleanLine, string podName, string deploymentName, LogLevel logLevel)
     {
         // Regex pattern to match ANSI escape codes

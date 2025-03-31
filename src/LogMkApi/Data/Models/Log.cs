@@ -4,6 +4,7 @@ namespace LogMkApi.Data.Models;
 
 [CompositeIndex(nameof(LogDate), nameof(LogLevel))]
 [CompositeIndex(nameof(LogDate), nameof(LogHour), nameof(LogLevel))]
+[CompositeIndex(nameof(Deployment), nameof(Pod), nameof(TimeStamp))]
 public class Log
 {
     [PrimaryKey]
