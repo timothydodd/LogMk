@@ -1,5 +1,5 @@
-﻿using MySql.Data.MySqlClient;
-using ServiceStack.Data;
+﻿using ServiceStack.Data;
+using ServiceStack.OrmLite;
 
 namespace LogSummaryService
 {
@@ -81,24 +81,21 @@ namespace LogSummaryService
 
 
 
-                // Delete existing entries for yesterday
-                using (var deleteCommand = new MySqlCommand())
-                {
-                    deleteCommand.Connection = (MySqlConnection)connection;
-                    deleteCommand.CommandText = @"
-                        DELETE FROM LogSummary 
-                        WHERE LogDate = @yesterday";
-                    deleteCommand.Parameters.AddWithValue("@yesterday", yesterday);
+                await connection.ExecuteNonQueryAsync(@"
+                    CREATE TABLE IF NOT EXISTS LogSummary (
+                        Deployment VARCHAR(255),
+                        Pod VARCHAR(255),
+                        LogLevel VARCHAR(50),
+                        LogDate DATE,
+                        Count INT,
+                        LastUpdated DATETIME,
+                        PRIMARY KEY (Deployment, Pod, LogLevel, LogDate)
+                    )", new { yesterday });
 
-                    await deleteCommand.ExecuteNonQueryAsync();
-                }
 
-                // Insert fresh summary data for yesterday
-                using (var insertCommand = new MySqlCommand())
-                {
-                    insertCommand.Connection = (MySqlConnection)connection;
-                    insertCommand.CommandText = @"
-                        INSERT INTO LogSummary (Deployment, Pod, LogLevel, LogDate, Count, LastUpdated)
+
+                await connection.ExecuteNonQueryAsync(@"
+                      INSERT INTO LogSummary (Deployment, Pod, LogLevel, LogDate, Count, LastUpdated)
                         SELECT 
                             Deployment,
                             Pod,
@@ -111,11 +108,8 @@ namespace LogSummaryService
                         WHERE 
                             LogDate = @yesterday
                         GROUP BY 
-                            Deployment, Pod, LogLevel, LogDate";
-                    insertCommand.Parameters.AddWithValue("@yesterday", yesterday);
+                            Deployment, Pod, LogLevel, LogDate", new { yesterday });
 
-                    await insertCommand.ExecuteNonQueryAsync();
-                }
             }
 
         }
