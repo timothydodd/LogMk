@@ -3,16 +3,16 @@ using ServiceStack.OrmLite;
 
 namespace LogSummaryService
 {
-    public class LogSummaryBackgroundService : BackgroundService
+    public class LogSummaryDailyBackgroundService : BackgroundService
     {
-        private readonly ILogger<LogSummaryBackgroundService> _logger;
+        private readonly ILogger<LogSummaryDailyBackgroundService> _logger;
         private readonly IDbConnectionFactory _dbFactory;
 
 
         private readonly TimeSpan _executionTime;
 
-        public LogSummaryBackgroundService(IDbConnectionFactory dbFactory,
-            ILogger<LogSummaryBackgroundService> logger)
+        public LogSummaryDailyBackgroundService(IDbConnectionFactory dbFactory,
+            ILogger<LogSummaryDailyBackgroundService> logger)
         {
             _dbFactory = dbFactory;
             _logger = logger;
@@ -78,19 +78,10 @@ namespace LogSummaryService
                 var yesterday = DateTime.Now.AddDays(-1).Date;
                 _logger.LogInformation($"Updating log summary for {yesterday:yyyy-MM-dd}");
 
-
-
-
+                // delete records from LogSummaryHourly where LogDate is > 4 days from now
                 await connection.ExecuteNonQueryAsync(@"
-                    CREATE TABLE IF NOT EXISTS LogSummary (
-                        Deployment VARCHAR(255),
-                        Pod VARCHAR(255),
-                        LogLevel VARCHAR(50),
-                        LogDate DATE,
-                        Count INT,
-                        LastUpdated DATETIME,
-                        PRIMARY KEY (Deployment, Pod, LogLevel, LogDate)
-                    )", new { yesterday });
+                    DELETE FROM LogSummaryHour WHERE LogDate < @date", new { date = yesterday.AddDays(-4) });
+
 
 
 

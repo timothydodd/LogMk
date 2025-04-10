@@ -38,7 +38,8 @@ public class Program
         });
         builder.Services.AddSingleton<IBackgroundTaskQueue, BackgroundTaskQueue>();
         builder.Services.AddHostedService<BackgroundWorkerService>();
-        builder.Services.AddHostedService<LogSummaryBackgroundService>();
+        builder.Services.AddHostedService<LogSummaryDailyBackgroundService>();
+        builder.Services.AddHostedService<LogSummaryHourlyBackgroundService>();
         builder.Services.AddControllers();
         builder.Services.AddSignalR();
         builder.Services.AddMemoryCache();

@@ -58,8 +58,7 @@ public class LogRepo
         var result = new PagedResults<Log>();
         var sortOrderBuilder = new List<string>();
         var whereBuilder = new WhereBuilder();
-        whereBuilder.AppendAnd(dateStart, "l.TimeStamp >= @dateStart");
-        whereBuilder.AppendAnd(dateEnd, "l.TimeStamp <= @dateEnd");
+
 
         var dynamicParameters = new DynamicParameters();
 
@@ -75,11 +74,14 @@ public class LogRepo
 
         dynamicParameters.AddIfNotNull("offset", offset);
         dynamicParameters.AddIfNotNull("pageSize", pageSize);
-        dynamicParameters.AddIfNotNull("dateStart", dateStart);
-        dynamicParameters.AddIfNotNull("dateEnd", dateEnd);
+        dynamicParameters.AddIfNotNull("dateStart", dateStart?.Date);
+        dynamicParameters.AddIfNotNull("dateStartHour", dateStart?.Date.Hour);
+        dynamicParameters.AddIfNotNull("dateEnd", dateStart?.Date);
+
         dynamicParameters.AddIfNotNull("search", search);
 
-
+        whereBuilder.AppendAnd(dateStart, "l.LogDate >= @dateStart AND l.LogHour >= @dateStartHour");
+        whereBuilder.AppendAnd(dateEnd, "l.LogDate <= @dateEnd");
 
         var likeClause = new AndOrBuilder();
         likeClause.AppendOr(search, "l.Line LIKE  @search ");
@@ -111,7 +113,7 @@ public class LogRepo
             query.AppendLine($" ORDER BY l.TimeStamp DESC LIMIT @pageSize OFFSET @offset;");
             result.TotalCount = totalCount;
             var qq = query.ToString();
-            result.Items = await db.QueryAsync<Log>(query.ToString(), dynamicParameters);
+            result.Items = await db.QueryAsync<Log>(qq, dynamicParameters);
             result.Items ??= new List<Log>();
 
             return result;

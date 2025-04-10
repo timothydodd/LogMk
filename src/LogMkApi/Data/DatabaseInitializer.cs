@@ -22,6 +22,7 @@ public class DatabaseInitializer
         {
             db.CreateTableIfNotExists<Log>();
             db.CreateTableIfNotExists<LogSummary>();
+            db.CreateTableIfNotExists<LogSummaryHour>();
             if (db.CreateTableIfNotExists<User>())
             {
                 var user = new User

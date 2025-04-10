@@ -74,14 +74,9 @@ ORDER BY
         else
         {
 
-            whereBuilder.AppendAnd(dateStart, "TimeStamp >= @dateStart");
-            whereBuilder.AppendAnd(dateEnd, "TimeStamp <= @dateEnd");
-            var likeClause = new AndOrBuilder();
-            likeClause.AppendOr(search, "Line LIKE  @search ");
-            if (likeClause.Length > 0)
-            {
-                whereBuilder.AppendAnd($"({likeClause})");
-            }
+            whereBuilder.AppendAnd(dateStart, "LogDate >= @dateStart");
+            whereBuilder.AppendAnd(dateEnd, "LogDate <= @dateEnd");
+
 
             query = $@"
             SELECT 
@@ -89,7 +84,7 @@ ORDER BY
                 LogLevel,
                 COUNT(*) AS Count
             FROM 
-                Log
+                LogSummaryHour
                 {whereBuilder}
             GROUP BY 
                 LogDate, LogHour, LogLevel
