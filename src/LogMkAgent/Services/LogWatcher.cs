@@ -145,6 +145,13 @@ public class LogWatcher : BackgroundService
             }
             using (var fs = new FileStream(filePath, FileMode.Open, FileAccess.Read))
             {
+                // Add this validation
+                if (pos > fs.Length)
+                {
+                    _logger.LogWarning($"Stored position ({pos}) is beyond file length ({fs.Length}). Resetting to beginning.");
+                    pos = 0;
+                }
+
                 fs.Seek(pos, SeekOrigin.Begin);
                 using (var sr = new StreamReader(fs))
                 {
@@ -156,10 +163,28 @@ public class LogWatcher : BackgroundService
                         line = RemoveANSIEscapeRegex.Replace(line, string.Empty);
 
                         var firstSpace = line.IndexOf(' ');
+                        if (firstSpace <= 0) // Ensure firstSpace is a valid position
+                        {
+                            _logger.LogWarning($"Invalid log line format (no space found): {line}");
+                            continue;
+                        }
+
                         var secondSpace = line.IndexOf(' ', firstSpace + 1);
+                        if (secondSpace <= 0) // Ensure firstSpace is a valid position
+                        {
+                            _logger.LogWarning($"Invalid log line format (no secondSpace found): {line}");
+                            continue;
+                        }
+
                         var thirdSpace = line.IndexOf(' ', secondSpace + 1);
+                        if (thirdSpace <= 0) // Ensure firstSpace is a valid position
+                        {
+                            _logger.LogWarning($"Invalid log line format (no thirdSpace found): {line}");
+                            continue;
+                        }
 
                         var outType = line.Substring(firstSpace + 1, secondSpace - firstSpace - 1);
+
                         var cleanLine = line;
                         if (outType == "stdout" || outType == "stderr")
                         {
@@ -210,12 +235,18 @@ public class LogWatcher : BackgroundService
         if (firstSpace >= 0)
         {
             var dt = line.Substring(0, firstSpace);
-            dt = TruncateFractionalSeconds(dt, 7);
-
-            if (DateTimeOffset.TryParseExact(dt, "yyyy-MM-ddTHH:mm:ss.fffffffZ", CultureInfo.InvariantCulture, DateTimeStyles.None, out var timestamp))
+            try
             {
+                dt = TruncateFractionalSeconds(dt, 7);
 
-                return new LogLine() { DeploymentName = deploymentName, PodName = podName, Line = cleanLine, LogLevel = logLevel, TimeStamp = timestamp };
+                if (DateTimeOffset.TryParseExact(dt, "yyyy-MM-ddTHH:mm:ss.fffffffZ", CultureInfo.InvariantCulture, DateTimeStyles.None, out var timestamp))
+                {
+                    return new LogLine() { DeploymentName = deploymentName, PodName = podName, Line = cleanLine, LogLevel = logLevel, TimeStamp = timestamp };
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning($"Error truncating timestamp or parsing date: {ex.Message}");
             }
         }
         return new LogLine() { DeploymentName = deploymentName, PodName = podName, Line = cleanLine, LogLevel = logLevel, TimeStamp = DateTimeOffset.UtcNow };
