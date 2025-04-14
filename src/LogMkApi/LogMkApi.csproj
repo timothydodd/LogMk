@@ -1,4 +1,4 @@
-﻿<Project Sdk="Microsoft.NET.Sdk.Web">
+<Project Sdk="Microsoft.NET.Sdk.Web">
 
   <PropertyGroup>
     <TargetFramework>net9.0</TargetFramework>
@@ -21,7 +21,7 @@
     <PackageReference Include="ServiceStack.OrmLite.MySql" Version="8.6.0" />
     <PackageReference Include="System.Text.Json" Version="9.0.3" />
     <PackageReference Include="Microsoft.AspNetCore.SpaProxy">
-      <Version>9.0.3</Version>
+      <Version>9.0.4</Version>
     </PackageReference>
   </ItemGroup>
   <ItemGroup>
