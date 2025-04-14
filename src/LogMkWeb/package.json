@@ -19,7 +19,7 @@
     "@angular/core": "^19.2.5",
     "@angular/forms": "^19.2.5",
     "@angular/platform-browser": "^19.2.5",
-    "@angular/platform-browser-dynamic": "^19.2.5",
+    "@angular/platform-browser-dynamic": "^19.2.6",
     "@angular/router": "^19.2.5",
     "@auth0/angular-jwt": "^5.2.0",
     "@auth0/auth0-spa-js": "^2.1.3",
