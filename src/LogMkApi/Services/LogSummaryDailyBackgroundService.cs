@@ -27,7 +27,7 @@ namespace LogSummaryService
             while (!stoppingToken.IsCancellationRequested)
             {
                 // Calculate time until next execution
-                var now = DateTime.Now;
+                var now = DateTime.UtcNow;
                 var nextRun = CalculateNextRunTime(now);
                 var delay = nextRun - now;
 
@@ -75,7 +75,7 @@ namespace LogSummaryService
         {
             using (var connection = _dbFactory.OpenDbConnection())
             {
-                var yesterday = DateTime.Now.AddDays(-1).Date;
+                var yesterday = DateTime.UtcNow.AddDays(-1).Date;
                 _logger.LogInformation($"Updating log summary for {yesterday:yyyy-MM-dd}");
 
                 // delete records from LogSummaryHourly where LogDate is > 4 days from now

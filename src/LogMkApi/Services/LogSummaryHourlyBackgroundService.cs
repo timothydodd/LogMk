@@ -31,7 +31,7 @@ namespace LogSummaryService
                 }
 
                 // Calculate time until next execution (1 hour from now)
-                var now = DateTime.Now;
+                var now = DateTime.UtcNow;
                 var nextRun = CalculateNextRunTime(now);
                 var delay = nextRun - now;
 
@@ -58,8 +58,8 @@ namespace LogSummaryService
         {
             using (var connection = _dbFactory.OpenDbConnection())
             {
-                var date = DateTime.Now.Date;
-                var hour = DateTime.Now.Hour;
+                var date = DateTime.UtcNow.Date;
+                var hour = DateTime.UtcNow.Hour;
 
                 _logger.LogInformation($"Updating log summary for hour {hour} on {date:yyyy-MM-dd}");
 

@@ -67,8 +67,8 @@ public class Program
                 c.IncludeScopes = false;
                 c.TimestampFormat = "HH:mm:ss ";
             });
-
-            logging.AddDebug();
+            var logLevel = builder.Configuration.GetSection("Logging");
+            logging.AddConfiguration(logLevel); // This is key!
         });
         builder.Services.AddAuthentication(options =>
         {
