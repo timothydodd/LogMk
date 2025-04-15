@@ -6,18 +6,20 @@ import { VirtualScrollerModule } from '@iharbeck/ngx-virtual-scroller';
 import { combineLatest, Subject, switchMap, tap } from 'rxjs';
 import { LogApiService } from '../../../_services/log.api';
 import { Log, SignalRService } from '../../../_services/signalr.service';
+import { HighlightLogPipe, LogLevelPipe } from '../_services/highlight.directive';
 import { LogFilterState } from '../_services/log-filter-state';
 @Component({
   selector: 'app-log-viewport',
   standalone: true,
-  imports: [CommonModule, VirtualScrollerModule],
+  imports: [CommonModule, VirtualScrollerModule,HighlightLogPipe,LogLevelPipe],
   template: `
 
       @for (log of logs(); track log.id) {
         <div class="log-item">
           <div class="time">{{ log.timeStamp | date: 'short' }}</div>
-          <div class="pod">{{ log.pod }}</div>
-          <div [ngClass]="log.logLevel" class="line">{{ log.line }}</div>
+          <div class="pod" [ngStyle]="{'color':log.podColor}">{{ log.pod }}</div>
+          <div class="type" [ngClass]="log.logLevel">{{ log.logLevel | LogLevelPipe }}</div>
+          <div  class="line flexible-wrap"  [innerHTML]="log.view | highlightLog" [title]="log.line"></div>
         </div>
       }
 
@@ -59,7 +61,13 @@ export class LogViewportComponent {
             )
             .pipe(
               tap((z) => {
-                const ni = z.items ?? [];
+                const ni = (z.items ?? []).map((z) => {
+                  return {
+                    ...z,
+                    podColor: getPodColor(z.pod),
+                    view: this.cleanLogLine(z.line),
+                    };
+                  });;
                 if (ni.length === 0) return;
                 const index = this.logs().length;
                 this.logs.update((items) => [...items, ...ni]);
@@ -81,7 +89,13 @@ export class LogViewportComponent {
           return this.logApi.getLogs(level, pod, search, date, this.page);
         }),
         tap((l) => {
-          const items = l.items ?? [];
+          const items = (l.items ?? []).map((z) => {
+            return {
+              ...z,
+              podColor: getPodColor(z.pod),
+              view: this.cleanLogLine(z.line),
+              };
+            });
           this.logs.set(items);
         }),
         takeUntilDestroyed()
@@ -90,6 +104,16 @@ export class LogViewportComponent {
         this.startSignalR();
       });
   }
+  
+   cleanLogLine(line: string): string {
+  // Match formats like:
+  // [2025-04-15 17:52:04] INFO ...
+  // 04:09:34 fail: ...
+  return line.replace(
+    /^(\[\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}\]\s+\b(INFO|DEBUG|ERROR|WARN|TRACE|FATAL)\b\s*|^\d{2}:\d{2}:\d{2}\s+\w+:\s*)/,
+    ''
+  );
+}
   monitoring = false;
   private startSignalR() {
     if (this.monitoring) return;
@@ -97,12 +121,13 @@ export class LogViewportComponent {
     this.monitoring = true;
 
     this.signalRService.logsReceived.pipe(takeUntilDestroyed(this.destroyRef)).subscribe((logs) => {
+
       if (!logs || logs.length === 0) return;
       const search = this.logFilterState.searchString();
       const logLevel = this.logFilterState.selectedLogLevel();
       const pod = this.logFilterState.selectedPod();
       const date = this.logFilterState.selectedTimeRange();
-
+ 
       const filteredLogs = logs.filter((log) => {
         if (!log) return false;
 
@@ -114,6 +139,15 @@ export class LogViewportComponent {
           (!pod || pod.includes(log.pod)) &&
           (!date || new Date(log.timeStamp) > date)
         );
+      }).map(z=>{
+        return {
+          ...z,
+          podColor: getPodColor(z.pod),
+          view: this.cleanLogLine(z.line),
+        };
+      }).sort((a, b) => {
+        // Sort by timestamp in descending order
+        return new Date(b.timeStamp).getTime() - new Date(a.timeStamp).getTime();
       });
 
       this.logs.update((x) => [...filteredLogs, ...x]);
@@ -130,4 +164,53 @@ export class LogViewportComponent {
     //   vp.scrollToIndex(index);
     // }, 100);
   }
+}
+const podColorCache = new Map<string, string>();
+
+export function getPodColor(podName: string): string {
+   if (podColorCache.has(podName)) {
+    return podColorCache.get(podName)!;
+  }
+
+  // Hash the pod name to a numeric value
+  let hash = 0;
+  for (let i = 0; i < podName.length; i++) {
+    hash = podName.charCodeAt(i) + ((hash << 5) - hash);
+  }
+
+  // Generate RGB values in a vibrant cyberpunk range
+  const baseR = 180 + (hash % 75);         // 180–255
+  const baseG = 30 + ((hash >> 8) % 100);  // 30–130
+  const baseB = 200 + ((hash >> 16) % 55); // 200–255
+
+  let r = clamp(baseR);
+  let g = clamp(baseG);
+  let b = clamp(baseB);
+
+  // Ensure it contrasts well with #20222b (dark background)
+  if (getLuminance(r, g, b) < 0.4) {
+    r = clamp(r + 40);
+    g = clamp(g + 40);
+    b = clamp(b + 40);
+  }
+
+  const color = `rgb(${r}, ${g}, ${b})`;
+  podColorCache.set(podName, color);
+  return color;
+}
+
+function clamp(v: number): number {
+  return Math.max(0, Math.min(255, v));
+}
+
+// Relative luminance calculation (WCAG contrast model)
+function getLuminance(r: number, g: number, b: number): number {
+  const toLinear = (c: number) => {
+    const sRGB = c / 255;
+    return sRGB <= 0.03928
+      ? sRGB / 12.92
+      : Math.pow((sRGB + 0.055) / 1.055, 2.4);
+  };
+  const l = 0.2126 * toLinear(r) + 0.7152 * toLinear(g) + 0.0722 * toLinear(b);
+  return l;
 }

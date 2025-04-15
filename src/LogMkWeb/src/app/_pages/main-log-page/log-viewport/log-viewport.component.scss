@@ -6,54 +6,40 @@
 
 }
 
-// .log-view-wrap {
-//   display: block;
-//   height: 500px;
-//   // display: block;
-
-//   //position: relative;
-// }
-
-// ::ng-deep {
-//   .log-item {
-//     display: grid;
-//     grid-template-columns: minmax(auto, auto) minmax(auto, auto) 1fr;
-//     gap: 5px;
-//   }
-// }
-
 .log-item {
   padding: 2px 10px;
   opacity: 1;
   font-family: "Lucida Console", "Courier New", monospace;
   //animation: fadeIn 1s;
-  display: grid;
-  grid-template-columns: 170px 100px minmax(auto, auto) minmax(auto, auto) 1fr;
+  display: flex;
+ // align-items: flex-start;
+  // grid-template-columns: 170px 100px minmax(auto, auto) minmax(auto, auto) 1fr;
   flex-direction: row;
-  gap: 10px;
-
+  justify-content: start;
+  gap: 5px;
 
 
   &.line {
     color: #CCC;
-    word-break: normal;
     grid-column: 3;
+    flex: 1 1 0;
+    overflow-wrap:anywhere;
+    white-space: normal;
+    word-break: break-all;
+    min-width: 0;
   }
-
+  
   .time {
     grid-column: 1;
     color: var(--cyan);
-    text-wrap: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
+
+     text-wrap: nowrap;
   }
 
   .pod {
     grid-column: 2;
     color: var(--orange);
     text-wrap: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
   }
 
   .Warning {
@@ -63,6 +49,27 @@
   .Error {
     color: var(--red);
   }
+  ::ng-deep{
+     .http-method {
+       color: #42a5f5;
+       font-weight: bold;
+     }
+  
+     .http-success {
+       color: #4caf50;
+       font-weight: bold;
+     }
+  
+     .http-client-error {
+       color: #ff9800;
+       font-weight: bold;
+     }
+  
+     .http-server-error {
+       color: #f44336;
+       font-weight: bold;
+     }
+    }
 }
 
 @keyframes fadeIn {

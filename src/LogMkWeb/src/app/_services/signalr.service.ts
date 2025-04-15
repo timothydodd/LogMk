@@ -41,6 +41,8 @@ export interface Log {
   deployment: string;
   pod: string;
   line: string;
+  view: string;
   logLevel: string;
   timeStamp: Date;
+  podColor:string;
 }

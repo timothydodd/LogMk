@@ -7,7 +7,7 @@ export const environment = {
   cache: {
     logging: false,
   },
-  apiUrl: 'http://localhost:5278'
+  apiUrl: 'http://192.168.2.247'
 };
 
 /*
