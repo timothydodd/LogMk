@@ -8,7 +8,8 @@ LogMk is a lightweight log monitoring solution for Kubernetes environments. It m
 - Simple Deployment: Deploy a .NET 9 worker agent on all Kubernetes nodes to start collecting logs.
 
 
-![image](https://github.com/user-attachments/assets/b8ed57d9-6e7a-459e-8a42-7832925f9354)
+![image](https://github.com/user-attachments/assets/85e4dc31-0ff7-4183-9125-8ebbf5885b6f)
+
 
 
 ## Components
