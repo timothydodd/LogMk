@@ -41,8 +41,8 @@ public class LogSummaryRepo
 
         if (!string.IsNullOrWhiteSpace(search))
             search = $"%{search}%";
-        dynamicParameters.AddIfNotNull("dateStart", dateStart);
-        dynamicParameters.AddIfNotNull("dateEnd", dateEnd);
+        dynamicParameters.AddIfNotNull("dateStart", dateStart?.Date);
+        dynamicParameters.AddIfNotNull("dateEnd", dateEnd?.Date);
         dynamicParameters.AddIfNotNull("search", search);
 
 
@@ -55,8 +55,9 @@ public class LogSummaryRepo
         var query = "";
         if (isGreaterThan3Days)
         {
-            whereBuilder.AppendAnd(dateStart, "LogDate >= @dateStart");
-            whereBuilder.AppendAnd(dateEnd, "LogDate <= @dateEnd");
+
+            whereBuilder.AppendAnd(dateStart?.Date, "LogDate >= @dateStart");
+            whereBuilder.AppendAnd(dateEnd?.Date, "LogDate <= @dateEnd");
             query = $@"
 SELECT 
     LogDate AS TimeStamp,
@@ -74,8 +75,12 @@ ORDER BY
         else
         {
 
-            whereBuilder.AppendAnd(dateStart, "LogDate >= @dateStart");
-            whereBuilder.AppendAnd(dateEnd, "LogDate <= @dateEnd");
+            var date = dateStart!.Value.Date;
+            var hour = dateStart.Value.Hour;
+
+            dynamicParameters.AddIfNotNull("hour", hour);
+            whereBuilder.AppendAnd(date, "LogDate >= @dateStart");
+            whereBuilder.AppendAnd(hour, "(LogHour >= @hour or LogDate > @dateStart)");
 
 
             query = $@"
