@@ -106,11 +106,12 @@ export class LogViewportComponent {
   }
   
    cleanLogLine(line: string): string {
-  // Match formats like:
+  // Matches:
   // [2025-04-15 17:52:04] INFO ...
   // 04:09:34 fail: ...
+  // 2025-04-17T00:15:51Z WRN ...
   return line.replace(
-    /^(\[\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}\]\s+\b(INFO|DEBUG|ERROR|WARN|TRACE|FATAL)\b\s*|^\d{2}:\d{2}:\d{2}\s+\w+:\s*)/,
+    /^(\[\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}\]\s+\b(INFO|DEBUG|ERROR|WARN|TRACE|FATAL)\b\s*|^\d{2}:\d{2}:\d{2}\s+\w+:\s*|^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z\s+\b(INFO|DEBUG|ERROR|WARN|TRACE|FATAL|INF|DBG|ERR|WRN|TRC|FTL)\b\s*)/,
     ''
   );
 }

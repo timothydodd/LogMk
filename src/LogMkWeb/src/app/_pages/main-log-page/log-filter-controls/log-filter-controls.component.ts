@@ -70,6 +70,7 @@ export class LogFilterControlsComponent {
   timeFilters: TimeFilter[] = [
     { label: 'Any', value: null },
     { label: 'Last Hour', value: subHours(startOfToday(), 1) },
+    { label: 'Last 3 Hours', value: subHours(startOfToday(), 3) },
     { label: 'Last 6 Hours', value: subHours(startOfToday(), 6) },
     { label: 'Last Day', value: subDays(startOfToday(), 1) },
     { label: 'Last 3 Days', value: subDays(startOfToday(), 3) },

@@ -2,8 +2,10 @@
   display: flex;
   flex-direction: column;
   flex-grow: 1;
-  padding: 10px;
-
+  padding: 5px;
+  gap: 3px;
+  padding-left: 10px;
+  padding-right: 10px;
 }
 
 .log-item {
@@ -17,16 +19,18 @@
   flex-direction: row;
   justify-content: start;
   gap: 5px;
-
-
-  &.line {
-    color: #CCC;
-    grid-column: 3;
+  border-radius: 3px;
+    background-color: rgba($color: #000000, $alpha: 0.2);
+  .line {
+    color:#e7e7e7;
     flex: 1 1 0;
     overflow-wrap:anywhere;
     white-space: normal;
     word-break: break-all;
     min-width: 0;
+
+
+
   }
   
   .time {

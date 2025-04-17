@@ -8,19 +8,19 @@ export class HighlightLogPipe implements PipeTransform {
   transform(value: string): SafeHtml {
     if (!value) return value;
 
-    const replacements: [RegExp, string][] = [
-      // HTTP Methods
-      [/\b(GET|POST|PUT|DELETE|PATCH)\b/g, `<span class="http-method">$1</span>`],
+const replacements: [RegExp, string][] = [
+  // HTTP Methods (surrounded by quotes or whitespace)
+  [/(?<=[\s"'])\b(GET|POST|PUT|DELETE|PATCH)\b(?=[\s"'.,;:?!])/g, `<span class="http-method">$1</span>`],
 
-      // Success Codes
-      [/\b(200|201|204)\b/g, `<span class="http-success">$1</span>`],
+  // Success Codes (200, 201, 204)
+  [/(?<=[\s"'])\b(200|201|204)\b(?=[\s"'.,;:?!])/g, `<span class="http-success">$1</span>`],
 
-      // Client Error Codes
-      [/\b(400|401|403|404)\b/g, `<span class="http-client-error">$1</span>`],
+  // Client Error Codes (400–404)
+  [/(?<=[\s"'])\b(400|401|403|404|301|204|302)\b(?=[\s"'.,;:?!])/g, `<span class="http-client-error">$1</span>`],
 
-      // Server Error Codes
-      [/\b(500|503)\b/g, `<span class="http-server-error">$1</span>`],
-    ];
+  // Server Error Codes (500, 503)
+  [/(?<=[\s"'])\b(500|503)\b(?=[\s"'.,;:?!])/g, `<span class="http-server-error">$1</span>`],
+];
 
     for (const [pattern, replacement] of replacements) {
       value = value.replace(pattern, replacement);
