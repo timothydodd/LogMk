@@ -59,11 +59,12 @@ namespace LogSummaryService
             using (var connection = _dbFactory.OpenDbConnection())
             {
                 var date = DateTime.UtcNow.Date;
-                var hour = DateTime.UtcNow.Hour;
+                var hour = DateTime.UtcNow.Hour - 1;
 
                 _logger.LogInformation($"Updating log summary for hour {hour} on {date:yyyy-MM-dd}");
-
-                await connection.ExecuteNonQueryAsync(@"
+                try
+                {
+                    await connection.ExecuteNonQueryAsync(@"
                     DELETE FROM LogSummaryHour WHERE LogDate = @date AND LogHour = @hour;
                     INSERT INTO LogSummaryHour (Deployment, Pod, LogLevel, LogDate, LogHour, Count, LastUpdated)
                     SELECT 
@@ -79,7 +80,12 @@ namespace LogSummaryService
                     WHERE 
                         LogDate = @date AND LogHour = @hour
                     GROUP BY 
-                        Deployment, Pod, LogLevel, LogHour, LogDate", new { date, hour });
+                        Deployment, Pod, LogLevel, LogHour, LogDate;", new { date, hour });
+                }
+                catch (Exception e)
+                {
+                    _logger.LogError("UpdateCurrentHourSummaryAsync:" + e.Message);
+                }
             }
         }
     }
