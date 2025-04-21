@@ -79,8 +79,8 @@ namespace LogSummaryService
                 _logger.LogInformation($"Updating log summary for {yesterday:yyyy-MM-dd}");
 
                 // delete records from LogSummaryHourly where LogDate is > 4 days from now
-                await connection.ExecuteNonQueryAsync(@"
-                    DELETE FROM LogSummaryHour WHERE LogDate < @date", new { date = yesterday.AddDays(-4) });
+                //await connection.ExecuteNonQueryAsync(@"
+                //    DELETE FROM LogSummaryHour WHERE LogDate < @date", new { date = yesterday.AddDays(-4) });
 
 
 

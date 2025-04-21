@@ -161,34 +161,34 @@ public class LogWatcher : BackgroundService
                         if (string.IsNullOrWhiteSpace(line))
                             continue;
                         line = RemoveANSIEscapeRegex.Replace(line, string.Empty);
-
-                        var firstSpace = line.IndexOf(' ');
-                        if (firstSpace <= 0) // Ensure firstSpace is a valid position
-                        {
-                            _logger.LogWarning($"Invalid log line format (no space found): {line}");
-                            continue;
-                        }
-
-                        var secondSpace = line.IndexOf(' ', firstSpace + 1);
-                        if (secondSpace <= 0) // Ensure firstSpace is a valid position
-                        {
-                            _logger.LogWarning($"Invalid log line format (no secondSpace found): {line}");
-                            continue;
-                        }
-
-                        var thirdSpace = line.IndexOf(' ', secondSpace + 1);
-                        if (thirdSpace <= 0) // Ensure firstSpace is a valid position
-                        {
-                            _logger.LogWarning($"Invalid log line format (no thirdSpace found): {line}");
-                            continue;
-                        }
-
-                        var outType = line.Substring(firstSpace + 1, secondSpace - firstSpace - 1);
-
                         var cleanLine = line;
-                        if (outType == "stdout" || outType == "stderr")
+                        var firstSpace = line.IndexOf(' ');
+                        if (firstSpace > 0) // Ensure firstSpace is a valid position
                         {
-                            cleanLine = cleanLine.Substring(thirdSpace + 1);
+
+
+                            var secondSpace = line.IndexOf(' ', firstSpace + 1);
+                            if (secondSpace <= 0) // Ensure firstSpace is a valid position
+                            {
+                                _logger.LogWarning($"Invalid log line format (no secondSpace found): {line}");
+                                continue;
+                            }
+
+                            var thirdSpace = line.IndexOf(' ', secondSpace + 1);
+                            if (thirdSpace <= 0) // Ensure firstSpace is a valid position
+                            {
+                                _logger.LogWarning($"Invalid log line format (no thirdSpace found): {line}");
+                                continue;
+                            }
+
+                            var outType = line.Substring(firstSpace + 1, secondSpace - firstSpace - 1);
+
+                            cleanLine = line;
+                            if (outType == "stdout" || outType == "stderr")
+                            {
+                                cleanLine = cleanLine.Substring(thirdSpace + 1);
+                            }
+
                         }
 
                         var logLevel = GetLogLevel(cleanLine);
@@ -196,6 +196,7 @@ public class LogWatcher : BackgroundService
                         {
                             continue;
                         }
+
                         var logLine = ParseLogLine(line, cleanLine, info.PodName, info.DeploymentName, logLevel);
 
                         if (timeStamp.HasValue)

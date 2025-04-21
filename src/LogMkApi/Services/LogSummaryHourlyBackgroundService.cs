@@ -64,8 +64,10 @@ namespace LogSummaryService
                 _logger.LogInformation($"Updating log summary for hour {hour} on {date:yyyy-MM-dd}");
                 try
                 {
-                    await connection.ExecuteNonQueryAsync(@"
-                    DELETE FROM LogSummaryHour WHERE LogDate = @date AND LogHour = @hour;
+                    var rowsDeleted = await connection.ExecuteNonQueryAsync(@"
+                        DELETE FROM LogSummaryHour WHERE LogDate = @date AND LogHour = @hour", new { date, hour });
+                    _logger.LogInformation($"Deleted {rowsDeleted} rows from summary.");
+                    var rowsInserted = await connection.ExecuteNonQueryAsync(@"          
                     INSERT INTO LogSummaryHour (Deployment, Pod, LogLevel, LogDate, LogHour, Count, LastUpdated)
                     SELECT 
                         Deployment,
@@ -81,6 +83,8 @@ namespace LogSummaryService
                         LogDate = @date AND LogHour = @hour
                     GROUP BY 
                         Deployment, Pod, LogLevel, LogHour, LogDate;", new { date, hour });
+
+                    _logger.LogInformation($"Inserted {rowsInserted} rows into summary.");
                 }
                 catch (Exception e)
                 {
