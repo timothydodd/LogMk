@@ -147,8 +147,13 @@ export class LogViewportComponent {
           view: this.cleanLogLine(z.line),
         };
       }).sort((a, b) => {
-        // Sort by timestamp in descending order
-        return new Date(b.timeStamp).getTime() - new Date(a.timeStamp).getTime();
+
+        var timedif =new Date(b.timeStamp).getTime() - new Date(a.timeStamp).getTime();
+        if (timedif > 0) return 1;
+        if (timedif < 0) return -1;
+        if(a.id > b.id) return 1;
+        if(a.id < b.id) return -1;
+        return 0;
       });
 
       this.logs.update((x) => [...filteredLogs, ...x]);

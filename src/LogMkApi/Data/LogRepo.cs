@@ -110,7 +110,7 @@ public class LogRepo
                 ({query}) b";
                 totalCount = await db.ExecuteScalarAsync<int>(q2, dynamicParameters);
             }
-            query.AppendLine($" ORDER BY l.TimeStamp DESC LIMIT @pageSize OFFSET @offset;");
+            query.AppendLine($" ORDER BY l.TimeStamp, l.Id DESC LIMIT @pageSize OFFSET @offset;");
             result.TotalCount = totalCount;
             var qq = query.ToString();
             result.Items = await db.QueryAsync<Log>(qq, dynamicParameters);
