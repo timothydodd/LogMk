@@ -28,6 +28,14 @@ public class LogRepo
         }
 
     }
+    public async Task InsertAsync(Log log)
+    {
+        using (var db = _dbFactory.OpenDbConnection())
+        {
+            await db.InsertAsync(log);
+        }
+
+    }
     public async Task<IEnumerable<Pod>> GetPods()
     {
         using (var db = _dbFactory.OpenDbConnection())
@@ -110,7 +118,7 @@ public class LogRepo
                 ({query}) b";
                 totalCount = await db.ExecuteScalarAsync<int>(q2, dynamicParameters);
             }
-            query.AppendLine($" ORDER BY l.TimeStamp, l.Id DESC LIMIT @pageSize OFFSET @offset;");
+            query.AppendLine($" ORDER BY l.TimeStamp DESC,l.SequenceNumber DESC LIMIT @pageSize OFFSET @offset;");
             result.TotalCount = totalCount;
             var qq = query.ToString();
             result.Items = await db.QueryAsync<Log>(qq, dynamicParameters);

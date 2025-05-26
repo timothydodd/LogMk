@@ -1,13 +1,16 @@
 ﻿using System.Data;
 using System.Text;
 using LogMkApi.Common;
+using LogMkApi.Common.HealthCheck;
 using LogMkApi.Data;
+using LogMkApi.HealthChecks;
 using LogMkApi.Hubs;
 using LogMkApi.Services;
 using LogSummaryService;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Microsoft.AspNetCore.ResponseCompression;
+using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
 using ServiceStack;
 using ServiceStack.Data;
@@ -57,19 +60,11 @@ public class Program
         builder.Services.AddScoped<LogSummaryRepo>();
         builder.Services.AddScoped<LogHubService>();
         builder.Services.AddScoped<DatabaseInitializer>();
+        builder.Services.AddSingleton<LogApiMetrics>();
         builder.Services.AddSingleton<PasswordService>();
         builder.Services.AddSingleton<AuthService>();
-        builder.Services.AddLogging(logging =>
-        {
-            logging.AddSimpleConsole(c =>
-            {
-                c.SingleLine = true;
-                c.IncludeScopes = false;
-                c.TimestampFormat = "HH:mm:ss ";
-            });
-            var logLevel = builder.Configuration.GetSection("Logging");
-            logging.AddConfiguration(logLevel); // This is key!
-        });
+        builder.Services.AddSingleton<IOptions<LoggingHealthOptions>>(
+          new OptionsWrapper<LoggingHealthOptions>(new LoggingHealthOptions()));
         builder.Services.AddAuthentication(options =>
         {
             options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
@@ -138,7 +133,7 @@ public class Program
                     .AllowAnyHeader());
             });
         }
-        HealthCheck.AddHealthChecks(builder.Services, connectionString);
+        HealthCheck.AddHealthChecks(builder.Services, dbFactory);
         SqlMapper.AddTypeHandler(new DateTimeHandler());
 
         var app = builder.Build();

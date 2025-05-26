@@ -7,49 +7,58 @@ public class Program
 {
     public static async Task Main(string[] args)
     {
-        var host = Host.CreateDefaultBuilder(args)
+        var host = Host.CreateDefaultBuilder(args).ConfigureAppConfiguration((hostingContext, config) =>
+            {
+                var env = hostingContext.HostingEnvironment;
+
+                config.AddJsonFile("appsettings.json", optional: true, reloadOnChange: true)
+                      .AddJsonFile($"appsettings.{env.EnvironmentName}.json", optional: true, reloadOnChange: true)
+                      .AddEnvironmentVariables();
+
+
+                // Add user secrets for development
+                //  if (env.IsDevelopment())
+                // {
+                config.AddUserSecrets<Program>();
+                // }
+            })
             .ConfigureServices((hostContext, services) =>
             {
-                // Configuration
-                IConfiguration configuration = hostContext.Configuration;
+                var configuration = hostContext.Configuration;
 
-                // Services
+                // Configure strongly typed settings
+                services.Configure<LogWatcherOptions>(configuration.GetSection("LogWatcherOptions"));
+                services.Configure<ApiSettings>(configuration.GetSection("LoggingApi"));
+
+                // Register services
                 services.AddSingleton<BatchingService>();
                 services.AddSingleton<HttpLogger>();
-                var settings = configuration.GetSection("LogWatcherOptions");
-                var apiSettings = configuration.GetSection("LoggingApi");
 
-                services.Configure<LogWatcherOptions>(settings);
-                services.Configure<ApiSettings>(apiSettings);
-                services.AddHttpClient();
+                // Configure HttpClient with typed client
                 services.AddHttpClient<LogApiClient>((serviceProvider, client) =>
                 {
-                    var settings = serviceProvider.GetRequiredService<IOptions<ApiSettings>>().Value;
-                    client.BaseAddress = new Uri(settings.BaseUrl);
-                    // Additional configuration like timeouts, headers, etc.
-                }).AddLogger<HttpLogger>(wrapHandlersPipeline: true);
+                    var apiSettings = serviceProvider.GetRequiredService<IOptions<ApiSettings>>().Value;
+                    client.BaseAddress = new Uri(apiSettings.BaseUrl);
 
-                // Configure strongly typed settings objects
-                //var serviceConfig = configuration.GetSection("ServiceConfig").Get<ServiceConfig>();
-                //services.AddSingleton(serviceConfig);
+                    // Configure additional settings like timeouts, headers, etc.
+                    client.Timeout = TimeSpan.FromSeconds(30);
+                })
+                .AddLogger<HttpLogger>(wrapHandlersPipeline: true);
+
+                // Configure logging
                 services.AddLogging(logging =>
                 {
-                    logging.AddSimpleConsole(c =>
-                   {
-                       c.SingleLine = true;
-                       c.IncludeScopes = true;
-                       c.TimestampFormat = "HH:mm:ss ";
-                   });
+                    logging.AddSimpleConsole(options =>
+                    {
+                        options.SingleLine = true;
+                        options.IncludeScopes = true;
+                        options.TimestampFormat = "HH:mm:ss ";
+                    });
                 });
-                // Add hosted service
+
+                // Register hosted service
                 services.AddHostedService<LogWatcher>();
-            })
-            .ConfigureAppConfiguration((hostingContext, config) =>
-            {
-                // Additional configuration settings can be set here if needed
-                config.AddJsonFile("appsettings.json", optional: true, reloadOnChange: true).AddEnvironmentVariables();
-            })
-            .Build();
+            }).Build();
 
         await host.RunAsync();
     }
