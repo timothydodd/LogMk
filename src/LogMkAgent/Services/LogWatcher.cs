@@ -482,14 +482,19 @@ public class LogWatcher : BackgroundService
 
         var firstIndex = MinNonNegative(errorIndex, warningIndex, infoIndex, debugIndex);
 
-        return firstIndex switch
-        {
-            var i when i == errorIndex => LogLevel.Error,
-            var i when i == warningIndex => LogLevel.Warning,
-            var i when i == infoIndex => LogLevel.Information,
-            var i when i == debugIndex => LogLevel.Debug,
-            _ => LogLevel.Any
-        };
+        if (firstIndex < 0)
+            return LogLevel.Any; // No recognizable log level found
+        if (firstIndex >= (int)LogLevel.Error)
+            return LogLevel.Error;
+        if (firstIndex >= (int)LogLevel.Warning)
+            return LogLevel.Warning;
+        if (firstIndex >= (int)LogLevel.Information)
+            return LogLevel.Information;
+        if (firstIndex >= (int)LogLevel.Debug)
+            return LogLevel.Debug;
+
+
+        return LogLevel.Trace; // Default to Trace if no specific level found
     }
 
     private LogLine ParseLogLine(string originalLine, string cleanLine, string podName, string deploymentName, LogLevel logLevel)
