@@ -1,3 +1,7 @@
+
+![logmk-128](https://github.com/user-attachments/assets/15f1c5b9-f636-4135-b9c2-1cdeb1274bf6)
+
+
 # LogMk
 LogMk is a lightweight log monitoring solution for Kubernetes environments. It monitors pod logs, saves them in a central MySQL database, and provides a web portal for viewing and filtering log activity. Designed for simplicity, LogMk may not be robust enough for large enterprise-scale environments but is perfect for smaller setups or development environments.
 
