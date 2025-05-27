@@ -484,13 +484,13 @@ public class LogWatcher : BackgroundService
 
         if (firstIndex < 0)
             return LogLevel.Any; // No recognizable log level found
-        if (firstIndex >= (int)LogLevel.Error)
+        if (firstIndex == errorIndex)
             return LogLevel.Error;
-        if (firstIndex >= (int)LogLevel.Warning)
+        if (firstIndex == warningIndex)
             return LogLevel.Warning;
-        if (firstIndex >= (int)LogLevel.Information)
+        if (firstIndex == infoIndex)
             return LogLevel.Information;
-        if (firstIndex >= (int)LogLevel.Debug)
+        if (firstIndex == debugIndex)
             return LogLevel.Debug;
 
 
