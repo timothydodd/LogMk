@@ -1,4 +1,4 @@
-import { CommonModule } from '@angular/common';
+
 import { ChangeDetectionStrategy, Component, inject, signal } from '@angular/core';
 
 import { NgbModal, NgbModule } from '@ng-bootstrap/ng-bootstrap';
@@ -10,7 +10,7 @@ import { UserSettingsComponent } from '../user-settings/user-settings.component'
 @Component({
   selector: 'app-user-menu',
   standalone: true,
-  imports: [CommonModule, NgbModule, LucideAngularModule],
+  imports: [NgbModule, LucideAngularModule],
   template: `
     @if (user()) {
       <div class="dropdown" ngbDropdown display="dynamic" #userMenu="ngbDropdown">

@@ -1,4 +1,4 @@
-import { CommonModule } from '@angular/common';
+
 import { ChangeDetectionStrategy, Component, inject, output, signal } from '@angular/core';
 import {
   AbstractControl,
@@ -18,7 +18,7 @@ import { ValidationDefaultsComponent } from '../../validation-defaults/validatio
 @Component({
   selector: 'app-change-password',
   standalone: true,
-  imports: [CommonModule, FormsModule, ReactiveFormsModule, ValdemortModule, ValidationDefaultsComponent],
+  imports: [FormsModule, ReactiveFormsModule, ValdemortModule, ValidationDefaultsComponent],
   template: `
     <div [formGroup]="form()" class="flex-column gap10">
       <div class="form-group">

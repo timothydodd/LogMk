@@ -1,4 +1,4 @@
-import { CommonModule } from '@angular/common';
+
 import { ChangeDetectionStrategy, Component, inject, signal } from '@angular/core';
 import { takeUntilDestroyed, toObservable } from '@angular/core/rxjs-interop';
 import { FormsModule } from '@angular/forms';
@@ -12,7 +12,7 @@ import { LogFilterState } from '../_services/log-filter-state';
 @Component({
   selector: 'app-log-filter-controls',
   standalone: true,
-  imports: [CommonModule, FormsModule, NgSelectModule, LucideAngularModule],
+  imports: [FormsModule, NgSelectModule, LucideAngularModule],
   template: `
     <div>
       <lucide-icon name="search"></lucide-icon>

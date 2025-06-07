@@ -1,4 +1,4 @@
-import { CommonModule } from '@angular/common';
+
 import { ChangeDetectionStrategy, Component, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { NgbActiveModal, NgbModal, NgbModalOptions, NgbModule } from '@ng-bootstrap/ng-bootstrap';
@@ -10,7 +10,7 @@ import { ChangePasswordComponent } from './change-password/change-password.compo
 @Component({
   selector: 'app-user-settings',
   standalone: true,
-  imports: [CommonModule, FormsModule, NgbModule, LucideAngularModule, ChangePasswordComponent],
+  imports: [FormsModule, NgbModule, LucideAngularModule, ChangePasswordComponent],
   template: ` <div class="modal-header">
       <h5 class="modal-title">Settings</h5>
       <button type="button" class="btn-close" data-dismiss="modal" aria-label="Close" (click)="closeClick()"></button>

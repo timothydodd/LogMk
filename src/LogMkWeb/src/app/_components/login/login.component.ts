@@ -1,4 +1,4 @@
-import { CommonModule } from '@angular/common';
+
 import { ChangeDetectionStrategy, Component, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { NgbActiveModal, NgbModal, NgbModalOptions, NgbModule } from '@ng-bootstrap/ng-bootstrap';
@@ -9,7 +9,7 @@ import { AuthService } from '../../_services/auth-service';
 @Component({
   selector: 'app-login',
   standalone: true,
-  imports: [CommonModule, FormsModule, NgbModule, LucideAngularModule],
+  imports: [FormsModule, NgbModule, LucideAngularModule],
   template: ` <form (submit)="login()">
     <div class="modal-header">
       <h5 class="modal-title">Login</h5>

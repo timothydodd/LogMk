@@ -1,4 +1,4 @@
-import { CommonModule } from '@angular/common';
+
 import { ChangeDetectionStrategy, Component, effect, inject, TemplateRef, viewChild } from '@angular/core';
 import { AuthService } from '../../_services/auth-service';
 import { ToolbarService } from '../../_services/toolbar.service';
@@ -9,7 +9,7 @@ import { LogViewportComponent } from './log-viewport/log-viewport.component';
 @Component({
   selector: 'app-main-log-page',
   standalone: true,
-  imports: [CommonModule, LogViewportComponent, LogFilterControlsComponent, LogStatsComponent],
+  imports: [LogViewportComponent, LogFilterControlsComponent, LogStatsComponent],
   template: `
    <ng-template #filters>
     <app-log-filter-controls></app-log-filter-controls>

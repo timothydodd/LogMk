@@ -1,4 +1,4 @@
-import { CommonModule } from '@angular/common';
+
 import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
 import { takeUntilDestroyed, toObservable } from '@angular/core/rxjs-interop';
 import { ChartOptions } from 'chart.js';
@@ -9,7 +9,7 @@ import { LogFilterState } from '../_services/log-filter-state';
 @Component({
   selector: 'app-log-stats',
   standalone: true,
-  imports: [CommonModule, BaseChartDirective],
+  imports: [BaseChartDirective],
 
   template: `@if (stats() !== null) {
     <canvas baseChart [data]="barChartView()" [options]="barChartOptions" [type]="'bar'"> </canvas>
