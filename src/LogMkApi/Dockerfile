@@ -13,9 +13,9 @@ COPY ["LogMkCommon/LogMkCommon.csproj", "LogMkCommon/"]
 COPY ["LogMkWeb/logmk.esproj", "LogMkWeb/"]
 RUN dotnet restore "./LogMkApi/LogMkApi.csproj"
 # Install Node.js and Angular CLI
-RUN curl -fsSL https://deb.nodesource.com/setup_18.x | bash - \
+RUN curl -fsSL https://deb.nodesource.com/setup_22.x | bash - \
     && apt-get install -y nodejs \
-    && npm install -g @angular/cli@18
+    && npm install -g @angular/cli@20
 
 
 COPY . .
