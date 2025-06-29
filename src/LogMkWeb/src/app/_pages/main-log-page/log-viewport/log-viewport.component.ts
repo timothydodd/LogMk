@@ -1,7 +1,7 @@
 import { CommonModule } from '@angular/common';
-import { ChangeDetectionStrategy, Component, DestroyRef, ElementRef, inject, signal, viewChild } from '@angular/core';
+import { afterNextRender, ChangeDetectionStrategy, Component, DestroyRef, ElementRef, inject, signal, viewChild } from '@angular/core';
 import { takeUntilDestroyed, toObservable } from '@angular/core/rxjs-interop';
-import { VirtualScrollerModule } from '@iharbeck/ngx-virtual-scroller';
+import { VirtualScrollerComponent, VirtualScrollerModule } from '@iharbeck/ngx-virtual-scroller';
 
 import { combineLatest, Subject, switchMap, tap } from 'rxjs';
 import { LogApiService } from '../../../_services/log.api';
@@ -13,17 +13,36 @@ import { LogFilterState } from '../_services/log-filter-state';
   standalone: true,
   imports: [CommonModule, VirtualScrollerModule,HighlightLogPipe,LogLevelPipe],
   template: `
-
-      @for (log of logs(); track log.id) {
+    @if(parentScrollElement(); as parentScrollElement) {
+    <virtual-scroller 
+      #scrollViewport 
+      [items]="logs()" 
+      [bufferAmount]="10"
+      [scrollThrottlingTime]="50"
+      [enableUnequalChildrenSizes]="false"
+      [checkResizeInterval]="1000"
+      [scrollAnimationTime]="750"
+      [parentScroll]="parentScrollElement"
+      class="virtual-scroll-container">
+      
+      @for (log of scrollViewport.viewPortItems; track log.id) {
         <div class="log-item">
           <div class="time">{{ log.timeStamp | date: 'short' }}</div>
           <div class="pod" [ngStyle]="{'color':log.podColor}">{{ log.pod }}</div>
           <div class="type" [ngClass]="log.logLevel">{{ log.logLevel | LogLevelPipe }}</div>
-          <div  class="line flexible-wrap"  [innerHTML]="log.view | highlightLog" [title]="log.line"></div>
+          <div class="line flexible-wrap" [innerHTML]="log.view | highlightLog" [title]="log.line"></div>
         </div>
       }
-
-    <button (click)="$loadMoreTrigger.next()">Load More</button>
+      
+      @if (logs().length > 0) {
+        <div class="load-more-container">
+          <button (click)="$loadMoreTrigger.next()" class="btn btn-primary">
+            Load More Logs
+          </button>
+        </div>
+      }
+    </virtual-scroller>
+    }
   `,
   styleUrl: './log-viewport.component.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -37,9 +56,26 @@ export class LogViewportComponent {
   page = 1;
   ignoreScroll = true;
   $loadMoreTrigger = new Subject<void>();
-  viewPort = viewChild<ElementRef>('scrollViewport');
+  viewPort = viewChild<VirtualScrollerComponent>('scrollViewport');
+  private elementRef = inject(ElementRef);
+  
+  // Memory management
+  private readonly MAX_LOGS_IN_MEMORY = 5000; // Limit logs to prevent memory leaks
+  
+  // Parent scroll element for virtual scroller
+  parentScrollElement = signal<Element | Window | null>(null);
+  
+  // TrackBy function for better performance
+  trackByLogId = (index: number, item: Log): string => {
+    return item.id.toString();
+  };
 
   constructor() {
+    // Find the parent scroll container after render
+    afterNextRender(() => {
+      this.findParentScrollContainer();
+    });
+    
     // const vpO = toObservable(this.viewPort);
     // vpO.subscribe((vp: any) => {
     //   if (vp) {
@@ -70,7 +106,14 @@ export class LogViewportComponent {
                   });;
                 if (ni.length === 0) return;
                 const index = this.logs().length;
-                this.logs.update((items) => [...items, ...ni]);
+                this.logs.update((items) => {
+                  const newItems = [...items, ...ni];
+                  // Trim logs if we exceed memory limit
+                  if (newItems.length > this.MAX_LOGS_IN_MEMORY) {
+                    return newItems.slice(-this.MAX_LOGS_IN_MEMORY);
+                  }
+                  return newItems;
+                });
                 this.scrollToIndex(index);
               })
             );
@@ -156,51 +199,120 @@ export class LogViewportComponent {
         return 0;
       });
 
-      this.logs.update((x) => [...filteredLogs, ...x]);
+      this.logs.update((x) => {
+        const newLogs = [...filteredLogs, ...x];
+        // Trim logs if we exceed memory limit
+        if (newLogs.length > this.MAX_LOGS_IN_MEMORY) {
+          return newLogs.slice(0, this.MAX_LOGS_IN_MEMORY);
+        }
+        return newLogs;
+      });
     });
   }
 
   private scrollToIndex(index: number) {
-    // const vp = this.viewport();
-    // if (!vp) throw new Error('Viewport not initialized');
-    // setTimeout(() => {
-    //   vp.scrollToIndex(index);
-    // }, 50);
-    // setTimeout(() => {
-    //   vp.scrollToIndex(index);
-    // }, 100);
+    const vp = this.viewPort();
+    if (!vp) {
+      console.warn('Virtual scroller not initialized');
+      return;
+    }
+    
+    // Use setTimeout to ensure the DOM has updated
+    setTimeout(() => {
+      try {
+        vp.scrollToIndex(index, true, 0, 0);
+      } catch (error) {
+        console.warn('Error scrolling to index:', error);
+      }
+    }, 50);
+  }
+
+  private findParentScrollContainer(): void {
+    // Start from this component's host element
+    let element = this.elementRef.nativeElement.parentElement;
+    
+    // Look for the main scroll container - usually has classes like 'scroll-box', 'scroller', or 'main-content'
+    while (element && element !== document.body) {
+      const computedStyle = window.getComputedStyle(element);
+      const hasScroll = computedStyle.overflowY === 'auto' || 
+                       computedStyle.overflowY === 'scroll' ||
+                       computedStyle.overflow === 'auto' ||
+                       computedStyle.overflow === 'scroll';
+      
+      // Check for common scroll container class names
+      const isScrollContainer = element.classList.contains('scroll-box') ||
+                               element.classList.contains('scroller') ||
+                               element.classList.contains('main-content') ||
+                               element.classList.contains('content-area');
+      
+      if (hasScroll || isScrollContainer) {
+        this.parentScrollElement.set(element);
+        console.log('Found parent scroll container:', element);
+        return;
+      }
+      
+      element = element.parentElement;
+    }
+    
+    // Fallback to window if no scroll container found
+    this.parentScrollElement.set(window);
+    console.log('Using window as scroll container');
   }
 }
 const podColorCache = new Map<string, string>();
 
 export function getPodColor(podName: string): string {
-   if (podColorCache.has(podName)) {
+  if (podColorCache.has(podName)) {
     return podColorCache.get(podName)!;
   }
 
-  // Hash the pod name to a numeric value
-  let hash = 0;
+  // Generate multiple hash values for better distribution
+  let hash1 = 0;
+  let hash2 = 0;
   for (let i = 0; i < podName.length; i++) {
-    hash = podName.charCodeAt(i) + ((hash << 5) - hash);
+    hash1 = podName.charCodeAt(i) + ((hash1 << 5) - hash1);
+    hash2 = podName.charCodeAt(i) + ((hash2 << 3) - hash2) + i;
   }
 
-  // Generate RGB values in a vibrant cyberpunk range
-  const baseR = 180 + (hash % 75);         // 180–255
-  const baseG = 30 + ((hash >> 8) % 100);  // 30–130
-  const baseB = 200 + ((hash >> 16) % 55); // 200–255
+  // Create distinct color palette with wider ranges and better separation
+  const colorSchemes = [
+    // Bright, distinct color ranges for better visibility
+    { r: [220, 255], g: [50, 120], b: [50, 120] },   // Warm reds/oranges
+    { r: [50, 120], g: [220, 255], b: [50, 120] },   // Bright greens  
+    { r: [50, 120], g: [50, 120], b: [220, 255] },   // Bright blues
+    { r: [220, 255], g: [220, 255], b: [50, 120] },  // Bright yellows
+    { r: [220, 255], g: [50, 120], b: [220, 255] },  // Bright magentas
+    { r: [50, 120], g: [220, 255], b: [220, 255] },  // Bright cyans
+    { r: [180, 220], g: [140, 200], b: [50, 100] },  // Orange variations
+    { r: [140, 200], g: [50, 100], b: [180, 220] },  // Purple variations
+    { r: [50, 100], g: [180, 220], b: [140, 200] },  // Teal variations
+    { r: [255, 255], g: [160, 200], b: [160, 200] }, // Light corals
+    { r: [160, 200], g: [255, 255], b: [160, 200] }, // Light greens
+    { r: [160, 200], g: [160, 200], b: [255, 255] }  // Light blues
+  ];
 
-  let r = clamp(baseR);
-  let g = clamp(baseG);
-  let b = clamp(baseB);
+  // Select color scheme based on first hash
+  const schemeIndex = Math.abs(hash1) % colorSchemes.length;
+  const scheme = colorSchemes[schemeIndex];
 
-  // Ensure it contrasts well with #20222b (dark background)
-  if (getLuminance(r, g, b) < 0.4) {
-    r = clamp(r + 40);
-    g = clamp(g + 40);
-    b = clamp(b + 40);
+  // Generate RGB values within the selected scheme's ranges
+  const r = scheme.r[0] + (Math.abs(hash1) % (scheme.r[1] - scheme.r[0]));
+  const g = scheme.g[0] + (Math.abs(hash2) % (scheme.g[1] - scheme.g[0]));
+  const b = scheme.b[0] + (Math.abs(hash1 ^ hash2) % (scheme.b[1] - scheme.b[0]));
+
+  // Ensure minimum contrast for readability
+  let finalR = clamp(r);
+  let finalG = clamp(g);
+  let finalB = clamp(b);
+
+  // Boost colors that are too dim for dark theme
+  if (getLuminance(finalR, finalG, finalB) < 0.3) {
+    finalR = clamp(finalR + 60);
+    finalG = clamp(finalG + 60);
+    finalB = clamp(finalB + 60);
   }
 
-  const color = `rgb(${r}, ${g}, ${b})`;
+  const color = `rgb(${finalR}, ${finalG}, ${finalB})`;
   podColorCache.set(podName, color);
   return color;
 }

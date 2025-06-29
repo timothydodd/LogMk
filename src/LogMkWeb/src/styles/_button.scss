@@ -1,0 +1,342 @@
+/* Button Components - Reusable button styles */
+
+button.close:focus {
+  outline: 0;
+}
+
+button.close:hover {
+  color: var(--primary);
+}
+
+button.btn-link {
+  background-color: transparent;
+  text-decoration: underline;
+  border: none;
+}
+
+button.btn-no-border {
+  background-color: transparent;
+  border: none;
+}
+
+:focus {
+  outline: none;
+}
+
+.btn-tool,
+.btn-primary,
+.btn-super,
+.btn-secondary {
+  box-sizing: border-box;
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: black;
+  padding: 10px 30px;
+  background-color: transparent;
+  border: 1px solid black;
+  border-radius: 5px;
+  font-size: 14px;
+  text-transform: uppercase;
+  letter-spacing: 2px;
+}
+
+.btn-tool:not(:disabled):not(.disabled):hover,
+.btn-super:not(:disabled):not(.disabled):hover,
+.btn-secondary:not(:disabled):not(.disabled):hover {
+  background-color: transparent;
+  border-color: var(--primary);
+  color: var(--font-color)
+}
+
+.btn-tool:focus,
+.btn-super:focus,
+.btn-secondary:focus {
+  outline: 0px;
+  box-shadow: 0 0 0 0.2rem rgba(134, 167, 252, 0.5);
+}
+
+.btn-primary:focus {
+  outline: 0px;
+  box-shadow: 0 0 0 3px var(--primary), 0 0 0 5px rgba(0, 0, 0, 0.1);
+}
+
+.btn.btn-primary {
+  color: white;
+  background-color: var(--primary);
+  border: 1px solid transparent;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  transition: all 0.2s ease;
+  font-weight: 500;
+  
+  &:hover:not(:disabled) {
+    background-color: var(--primary);
+    filter: brightness(1.1);
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.15);
+    transform: translateY(-1px);
+  }
+  
+  &:active:not(:disabled) {
+    transform: translateY(0);
+    filter: brightness(0.95);
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+  }
+}
+
+.btn-tool:disabled,
+.btn-tool.disabled,
+.btn-primary:disabled,
+.btn-primary.disabled,
+.btn-super:disabled,
+.btn-super.disabled,
+.btn-secondary:disabled,
+.btn-secondary.disabled {
+  opacity: 0.2;
+  color: gray;
+  background-color: white;
+  border-color: gray;
+}
+
+.btn-tool.active:not(:disabled):not(.disabled),
+.btn-primary.active:not(:disabled):not(.disabled),
+.btn-super.active:not(:disabled):not(.disabled),
+.btn-secondary.active:not(:disabled):not(.disabled) {
+  background-color: var(--primary);
+  color: white;
+}
+
+.btn-super {
+  background-color: var(--secondary);
+  color: white;
+}
+
+.btn-danger {
+  box-sizing: border-box;
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  background-color: #dc3545;
+  border: 1px solid #dc3545;
+  
+  &:hover:not(:disabled) { 
+    background-color: #c82333; 
+    border-color: #c82333;
+  }
+}
+
+.btn-danger:disabled,
+.btn-danger.disabled {
+  color: white;
+  opacity: 0.6;
+}
+
+.btn-secondary {
+  background-color: var(--comment);
+  color: white;
+}
+
+.round-btn {
+  box-sizing: border-box;
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  background-color: var(--secondary);
+  border-width: 0;
+  border-radius: 50%;
+  color: var(--primary);
+  margin-right: 16px;
+  padding: 0;
+}
+
+.btn-group-toggle .btn-primary.btn {
+  background-color: white;
+  color: var(--primary);
+}
+
+.btn.lg {
+  padding: 30px 30px;
+  border-radius: 6px;
+  font-size: 20px;
+  line-height: 20px;
+}
+
+.btn.exlg {
+  padding: 30px 50px;
+  border-radius: 6px;
+  font-size: 30px;
+  line-height: 40px;
+}
+
+@keyframes btn-spinner {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.btn.spinner {
+  color: white;
+  background-color: var(--primary);
+}
+
+.btn.spinner:before,
+.spin-it:before {
+  content: "";
+  box-sizing: border-box;
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 20px;
+  height: 20px;
+  margin-top: -10px;
+  margin-left: -10px;
+  border-radius: 50%;
+  border: 2px solid #ffffff;
+  border-top-color: transparent;
+  animation: btn-spinner 0.8s linear infinite;
+}
+
+.btn-check:checked+.btn,
+.btn-check:active+.btn,
+.btn:active,
+.btn.active,
+.btn.show {
+  color: white;
+  background-color: var(--primary);
+  border-color: var(--primary);
+}
+
+.btn.btn-word,
+.btn.btn-word.active {
+  border: none;
+  border-color: transparent;
+  background-color: transparent;
+  color: var(--primary);
+  font-weight: 500;
+  font-size: 0.875rem;
+  padding: 0;
+}
+
+.btn.btn-word:focus {
+  border: none;
+  outline: none;
+  box-shadow: none;
+}
+
+.btn.btn-word:hover {
+  text-decoration: underline;
+  border: none;
+  background-color: unset;
+  color: var(--primary);
+}
+
+.btn-no-border {
+  border: none;
+  outline: none;
+  box-shadow: none;
+}
+
+.btn-icon {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  background-color: transparent;
+  color: var(--font-color);
+  border-radius: 50%;
+  outline: none;
+  border: none;
+  color: var(--primary);
+  padding: 0px;
+}
+
+.btn-icon:hover,
+.btn.btn-icon:hover {
+  border-color: var(--hover-color);
+  color: var(--secondary);
+  border: none;
+  background-color: unset;
+}
+
+.btn-error {
+  box-sizing: border-box;
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-color: var(--danger);
+  background-color: white;
+  color: var(--danger);
+}
+
+/* Common button styles */
+.btn {
+  padding: 0.5rem 1rem;
+  border: none;
+  border-radius: 6px;
+  font: 500 0.875rem system-ui, -apple-system, sans-serif;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+
+  &:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+  }
+
+  &.btn-secondary {
+    background-color: var(--comment);
+    color: white;
+    &:hover:not(:disabled) { background-color: rgba(98, 114, 164, 0.9); }
+  }
+
+  &.btn-outline {
+    background-color: transparent;
+    color: var(--foreground);
+    border: 1px solid var(--border-color);
+    &:hover:not(:disabled) {
+      background-color: var(--hover-bg);
+      border-color: var(--primary);
+    }
+  }
+
+  &.btn-sm {
+    padding: 0.25rem 0.75rem;
+    font-size: 0.75rem;
+  }
+
+  &.w-100 {
+    width: 100%;
+  }
+}
+
+.spinner-border {
+  display: inline-block;
+  width: 1rem;
+  height: 1rem;
+  vertical-align: -0.125em;
+  border: 0.125em solid currentcolor;
+  border-right-color: transparent;
+  border-radius: 50%;
+  animation: spinner-border 0.75s linear infinite;
+}
+
+.spinner-border-sm {
+  width: 0.875rem;
+  height: 0.875rem;
+  border-width: 0.125em;
+}
+
+@keyframes spinner-border {
+  to {
+    transform: rotate(360deg);
+  }
+}

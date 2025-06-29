@@ -6,11 +6,13 @@ using LogMkApi.Services;
 using LogMkCommon;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 using ServiceStack;
 
 namespace LogMkApi.Controllers;
 
 [Authorize]
+[EnableRateLimiting("ApiPolicy")]
 [ApiController]
 [Microsoft.AspNetCore.Mvc.Route("api/log")]
 public class LogController : ControllerBase
@@ -46,6 +48,24 @@ public class LogController : ControllerBase
         if (logLines == null || !logLines.Any())
         {
             return BadRequest(new { Error = "No log lines provided" });
+        }
+        
+        // Check for basic model validation errors
+        if (!ModelState.IsValid)
+        {
+            var validationErrors = ModelState
+                .Where(x => x.Value?.Errors.Count > 0)
+                .ToDictionary(
+                    kvp => kvp.Key,
+                    kvp => kvp.Value?.Errors.Select(e => e.ErrorMessage).ToArray() ?? Array.Empty<string>()
+                );
+            return BadRequest(new { Error = "Validation failed", Errors = validationErrors });
+        }
+        
+        // Additional rate limiting for large batches
+        if (logLines.Count > 1000)
+        {
+            return BadRequest(new { Error = "Batch size cannot exceed 1000 log lines" });
         }
 
         var batchId = Guid.NewGuid().ToString("N")[..8];

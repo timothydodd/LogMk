@@ -11,39 +11,47 @@ import {
   Validators,
 } from '@angular/forms';
 import { ToastrService } from 'ngx-toastr';
-import { ValdemortModule } from 'ngx-valdemort';
 import { AuthService } from '../../../_services/auth-service';
-import { ValidationDefaultsComponent } from '../../validation-defaults/validation-defaults.component';
 
 @Component({
   selector: 'app-change-password',
   standalone: true,
-  imports: [FormsModule, ReactiveFormsModule, ValdemortModule, ValidationDefaultsComponent],
+  imports: [FormsModule, ReactiveFormsModule],
   template: `
     <div [formGroup]="form()" class="flex-column gap10">
       <div class="form-group">
         <label for="op">Old Password</label>
         <input formControlName="oldPassword" type="password" class="form-control" id="op" />
-        <val-errors controlName="oldPassword" label="Old Password"></val-errors>
+        @if (form().get('oldPassword')?.invalid && form().get('oldPassword')?.touched) {
+          <div class="text-danger">Old Password is required</div>
+        }
       </div>
       <div class="form-group">
         <label for="np">New Password</label>
         <input formControlName="newPassword" type="password" class="form-control" id="np" />
-        <val-errors controlName="newPassword" label="New Password"></val-errors>
+        @if (form().get('newPassword')?.invalid && form().get('newPassword')?.touched) {
+          <div class="text-danger">New Password is required</div>
+        }
       </div>
       <div class="form-group">
         <label for="np2">Confirm New Password</label>
         <input formControlName="newPassword2" type="password" class="form-control" id="np2" />
-        <val-errors controlName="newPassword2" label="Confirm New Password">
-          <ng-template valError="noMatch">Password must match</ng-template>
-        </val-errors>
+        @if (form().get('newPassword2')?.invalid && form().get('newPassword2')?.touched) {
+          <div class="text-danger">
+            @if (form().get('newPassword2')?.errors?.['required']) {
+              Confirm New Password is required
+            }
+            @if (form().get('newPassword2')?.errors?.['noMatch']) {
+              Password must match
+            }
+          </div>
+        }
       </div>
       <button class="btn btn-primary" (click)="submit()">Save</button>
       @if (errorMessage()) {
         <div class="text-danger">{{ errorMessage() }}</div>
       }
     </div>
-    <app-validation-defaults> </app-validation-defaults>
   `,
   styleUrl: './change-password.component.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,

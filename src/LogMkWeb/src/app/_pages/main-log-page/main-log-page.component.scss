@@ -2,9 +2,27 @@
   display: flex;
   flex-direction: column;
   flex-grow: 1;
-  padding: 0px 40px;
+  padding: 0 2rem;
+  
   app-log-stats,
   app-log-filter-controls {
     flex-shrink: 1;
+  }
+  
+  app-log-viewport {
+    flex-grow: 1;
+    width: 100%;
+  }
+}
+
+@media (max-width: 768px) {
+  :host {
+    padding: 0 1rem;
+  }
+}
+
+@media (max-width: 480px) {
+  :host {
+    padding: 0 0.5rem;
   }
 }

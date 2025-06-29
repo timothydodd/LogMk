@@ -9,6 +9,7 @@ using LogMkApi.Services;
 using LogSummaryService;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
+using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.AspNetCore.ResponseCompression;
 using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
@@ -39,6 +40,45 @@ public class Program
             options.SerializerOptions.TypeInfoResolver = new ApiJsonSerializerContext();
 
         });
+
+        // Add rate limiting
+        builder.Services.AddRateLimiter(options =>
+        {
+            // Strict rate limiting for authentication endpoints
+            options.AddFixedWindowLimiter("AuthPolicy", limiterOptions =>
+            {
+                limiterOptions.PermitLimit = 5; // 5 attempts per window
+                limiterOptions.Window = TimeSpan.FromMinutes(1); // 1 minute window
+                limiterOptions.QueueProcessingOrder = System.Threading.RateLimiting.QueueProcessingOrder.OldestFirst;
+                limiterOptions.QueueLimit = 2; // Allow 2 queued requests
+            });
+
+            // More lenient rate limiting for general API endpoints
+            options.AddFixedWindowLimiter("ApiPolicy", limiterOptions =>
+            {
+                limiterOptions.PermitLimit = 100; // 100 requests per window
+                limiterOptions.Window = TimeSpan.FromMinutes(1); // 1 minute window
+                limiterOptions.QueueProcessingOrder = System.Threading.RateLimiting.QueueProcessingOrder.OldestFirst;
+                limiterOptions.QueueLimit = 10;
+            });
+
+            // Default policy for other endpoints
+            options.GlobalLimiter = System.Threading.RateLimiting.PartitionedRateLimiter.Create<HttpContext, string>(context =>
+                System.Threading.RateLimiting.RateLimitPartition.GetFixedWindowLimiter(
+                    partitionKey: context.User?.Identity?.Name ?? context.Request.Headers.Host.ToString(),
+                    factory: partition => new System.Threading.RateLimiting.FixedWindowRateLimiterOptions
+                    {
+                        AutoReplenishment = true,
+                        PermitLimit = 200,
+                        Window = TimeSpan.FromMinutes(1)
+                    }));
+
+            options.OnRejected = async (context, token) =>
+            {
+                context.HttpContext.Response.StatusCode = 429;
+                await context.HttpContext.Response.WriteAsync("Too many requests. Please try again later.", cancellationToken: token);
+            };
+        });
         builder.Services.AddSingleton<IBackgroundTaskQueue, BackgroundTaskQueue>();
         builder.Services.AddHostedService<BackgroundWorkerService>();
         builder.Services.AddHostedService<LogSummaryDailyBackgroundService>();
@@ -46,6 +86,7 @@ public class Program
         builder.Services.AddControllers();
         builder.Services.AddSignalR();
         builder.Services.AddMemoryCache();
+        
         var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
 
         if (connectionString is null)
@@ -63,6 +104,7 @@ public class Program
         builder.Services.AddSingleton<LogApiMetrics>();
         builder.Services.AddSingleton<PasswordService>();
         builder.Services.AddSingleton<AuthService>();
+        builder.Services.AddScoped<RefreshTokenService>();
         builder.Services.AddSingleton<IOptions<LoggingHealthOptions>>(
           new OptionsWrapper<LoggingHealthOptions>(new LoggingHealthOptions()));
         builder.Services.AddAuthentication(options =>
@@ -72,6 +114,7 @@ public class Program
         }).AddJwtBearer(options =>
         {
             var jwtSettings = builder.Configuration.GetSection("JwtSettings");
+            
             options.TokenValidationParameters = new TokenValidationParameters
             {
                 ValidateIssuer = true,
@@ -80,7 +123,7 @@ public class Program
                 ValidateIssuerSigningKey = true,
                 ValidIssuer = jwtSettings["Issuer"],
                 ValidAudience = jwtSettings["Audience"],
-                IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtSettings["Secret"]))
+                IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtSettings["Secret"] ?? throw new InvalidOperationException("JWT secret not configured")))
             };
             options.Events = new JwtBearerEvents
             {
@@ -106,7 +149,7 @@ public class Program
         });
 
         var origins = builder.Configuration.GetValue<string>("CorsOrigins")?.Split(',');
-        if (origins is not null)
+        if (origins is not null && origins.Length > 0 && !string.IsNullOrWhiteSpace(origins[0]))
         {
             builder.Services.AddCors(options =>
             {
@@ -116,7 +159,6 @@ public class Program
                         policy.WithOrigins(origins) // Specify the allowed domains
                                             .AllowAnyHeader()
                                             .AllowAnyMethod()
-                                            .SetIsOriginAllowed(x => true)
                                             .AllowCredentials();
                     });
 
@@ -124,13 +166,21 @@ public class Program
         }
         else
         {
+            // For development only - require explicit CORS_ORIGINS environment variable in production
+            var isDevelopment = builder.Environment.IsDevelopment();
+            if (!isDevelopment)
+            {
+                throw new InvalidOperationException("CORS origins must be explicitly configured in production. Set CorsOrigins configuration value.");
+            }
+
             builder.Services.AddCors(options =>
             {
                 options.AddPolicy("LogMkOrigins",
-                builder => builder
-                    .AllowAnyOrigin()
-                    .AllowAnyMethod()
-                    .AllowAnyHeader());
+                    policy => policy
+                        .WithOrigins("http://localhost:6200", "https://localhost:6200") // Development origins only
+                        .AllowAnyHeader()
+                        .AllowAnyMethod()
+                        .AllowCredentials());
             });
         }
         HealthCheck.AddHealthChecks(builder.Services, dbFactory);
@@ -148,6 +198,9 @@ public class Program
         // Enable middleware to handle decompression
         app.UseResponseCompression();
         app.UseRequestDecompression();
+
+        // Enable rate limiting
+        app.UseRateLimiter();
 
         app.UseAuthentication();
         app.UseAuthorization();

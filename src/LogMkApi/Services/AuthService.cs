@@ -50,4 +50,49 @@ public class AuthService
     {
         return _passwordService.VerifyPassword(user, password);
     }
+
+    public ClaimsPrincipal? GetPrincipalFromExpiredToken(string token)
+    {
+        var jwtSettings = _configuration.GetSection("JwtSettings");
+        var secretKey = jwtSettings["Secret"];
+
+        var tokenValidationParameters = new TokenValidationParameters
+        {
+            ValidateAudience = false,
+            ValidateIssuer = false,
+            ValidateIssuerSigningKey = true,
+            IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(secretKey)),
+            ValidateLifetime = false // Don't validate lifetime for expired tokens
+        };
+
+        var tokenHandler = new JwtSecurityTokenHandler();
+        try
+        {
+            var principal = tokenHandler.ValidateToken(token, tokenValidationParameters, out SecurityToken validatedToken);
+            var jwtToken = validatedToken as JwtSecurityToken;
+            
+            if (jwtToken == null || !jwtToken.Header.Alg.Equals(SecurityAlgorithms.HmacSha256, StringComparison.InvariantCultureIgnoreCase))
+            {
+                return null;
+            }
+
+            return principal;
+        }
+        catch
+        {
+            return null;
+        }
+    }
+
+    public string? GetUserNameFromPrincipal(ClaimsPrincipal principal)
+    {
+        return principal.Claims.FirstOrDefault(c => c.Type == ClaimTypes.NameIdentifier)?.Value ??
+               principal.Claims.FirstOrDefault(c => c.Type == JwtRegisteredClaimNames.Sub)?.Value;
+    }
+
+    public Guid? GetUserIdFromPrincipal(ClaimsPrincipal principal)
+    {
+        var userIdStr = principal.Claims.FirstOrDefault(c => c.Type == "user-id")?.Value;
+        return Guid.TryParse(userIdStr, out var userId) ? userId : null;
+    }
 }

@@ -23,6 +23,7 @@ public class DatabaseInitializer
             db.CreateTableIfNotExists<Log>();
             db.CreateTableIfNotExists<LogSummary>();
             db.CreateTableIfNotExists<LogSummaryHour>();
+            db.CreateTableIfNotExists<RefreshToken>();
             if (db.CreateTableIfNotExists<User>())
             {
                 var user = new User

@@ -4,8 +4,59 @@
     flex-grow: 1;
     background: linear-gradient(135deg, #1e1f29, #3c3d51);
 
-    .scroll-box {
+    .navbar {
+        background: var(--navbar-bg);
+        backdrop-filter: blur(10px);
+        border-bottom: 1px solid var(--border-color);
+        padding: 0.75rem 0;
+        min-height: 60px;
+        position: relative;
+        z-index: 1000;
+        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
 
+        .navbar-container {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 2rem;
+            width: 100%;
+        }
+
+        .navbar-brand {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            text-decoration: none;
+            color: var(--on-surface);
+
+            img {
+                border-radius: 8px;
+                box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+            }
+
+            .brand-text {
+                font-size: 1.5rem;
+                font-weight: 600;
+                color: var(--on-surface);
+                letter-spacing: -0.5px;
+            }
+        }
+
+        .navbar-content {
+            flex: 1;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .navbar-actions {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+    }
+
+    .scroll-box {
         flex-grow: 1;
         position: relative;
 
@@ -17,6 +68,37 @@
             right: 0px;
             bottom: 0px;
             overflow-y: auto;
+            
+            /* Custom scrollbar for dark theme - matching dropdown style */
+            &::-webkit-scrollbar {
+                width: 12px;
+                background: transparent;
+            }
+            
+            &::-webkit-scrollbar-track {
+                background: #2a2c3a;
+                border-radius: 6px;
+                margin: 4px 0;
+            }
+            
+            &::-webkit-scrollbar-thumb {
+                background: #6272a4;
+                border-radius: 6px;
+                border: 2px solid #2a2c3a;
+                min-height: 20px;
+                
+                &:hover {
+                    background: #7a84b0;
+                }
+                
+                &:active {
+                    background: #8a94c0;
+                }
+            }
+            
+            /* Firefox scrollbar */
+            scrollbar-width: thin;
+            scrollbar-color: #6272a4 #2a2c3a;
         }
     }
 }

@@ -1,14 +1,20 @@
 @if (loggedIn()) {
-  <div class="gradient"></div>
-  <nav class="navbar navbar-expand-lg">
-    <div class="container-fluid">
-      <a class="navbar-brand" href="#">
-        <img src="logmk-128.png" alt="LogMkWeb Logo" width="64" height="64" class="d-inline-block align-text-top" />
-      </a>
+  <nav class="navbar">
+    <div class="navbar-container">
+      <div class="navbar-brand">
+        <img src="logmk-128.png" alt="LogMkWeb Logo" width="48" height="48" />
+        <span class="brand-text">LogMk</span>
+      </div>
+
       @if (templateRef()) {
-        <ng-container class="toolbar" *ngTemplateOutlet="templateRef()"></ng-container>
+        <div class="navbar-content">
+          <ng-container [ngTemplateOutlet]="templateRef()"></ng-container>
+        </div>
       }
-      <app-user-menu></app-user-menu>
+
+      <div class="navbar-actions">
+        <app-user-menu></app-user-menu>
+      </div>
     </div>
   </nav>
 
@@ -17,4 +23,8 @@
       <router-outlet />
     </div>
   </div>
+} @else {
+  <router-outlet />
 }
+
+<app-modal></app-modal>

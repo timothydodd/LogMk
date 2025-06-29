@@ -1,4 +1,5 @@
 :root {
+    // Core Dracula theme colors
     --background: #282a36;
     --current-line: #44475a;
     --foreground: #f8f8f2;
@@ -10,10 +11,79 @@
     --purple: #bd93f9;
     --red: #ff5555;
     --yellow: #f1fa8c;
+    
+    // Background variations
     --bGLighter: #424450;
     --bGLight: #343746;
     --bGDark: #21222C;
     --bGDarker: #191A21;
+    
+    // Semantic color system
+    --primary: #3B82F6;
+    --secondary: #6272a4;
+    --success: #50fa7b;
+    --danger: #ff5555;
+    --warning: #f1fa8c;
+    --info: #7df9ff;
+    --light: #f8f8f2;
+    --dark: #282a36;
+    
+    // Surface colors for components
+    --surface: #343746;
+    --surface-variant: #424450;
+    --surface-container: #44475a;
+    --surface-container-high: #4d5066;
+    --surface-container-highest: #565872;
+    
+    // Text colors
+    --on-surface: #f8f8f2;
+    --on-surface-variant: #e0e0e0;
+    --on-surface-muted: #a0a0a0;
+    --on-primary: #1a1a1a;
+    --on-secondary: #f8f8f2;
+    
+    // Component-specific variables
+    --navbar-bg: rgba(52, 55, 70, 0.95);
+    --modal-bg: #343746;
+    --modal-backdrop: rgba(0, 0, 0, 0.5);
+    --dropdown-bg: #343746;
+    --card-bg: #343746;
+    --input-bg: #424450;
+    --button-bg: #424450;
+    
+    // Border and outline colors
+    --border-color: #44475a;
+    --border-color-light: #565872;
+    --outline-color: #3B82F6;
+    --divider-color: #44475a;
+    
+    // State colors
+    --hover-bg: #424450;
+    --active-bg: #4d5066;
+    --focus-ring: rgba(59, 130, 246, 0.3);
+    --disabled-bg: #2a2c3a;
+    --disabled-text: #6b6b7b;
+    
+    // Feedback colors (dark theme optimized)
+    --success-bg: rgba(80, 250, 123, 0.15);
+    --success-border: rgba(80, 250, 123, 0.3);
+    --success-text: #50fa7b;
+    
+    --danger-bg: rgba(255, 85, 85, 0.15);
+    --danger-border: rgba(255, 85, 85, 0.3);
+    --danger-text: #ff5555;
+    
+    --warning-bg: rgba(241, 250, 140, 0.15);
+    --warning-border: rgba(241, 250, 140, 0.3);
+    --warning-text: #f1fa8c;
+    
+    --info-bg: rgba(125, 249, 255, 0.15);
+    --info-border: rgba(125, 249, 255, 0.3);
+    --info-text: #7df9ff;
+    
+    // Legacy compatibility
+    --font-color: #f8f8f2;
+    --hover-color: #3B82F6;
 }
 
 // Color system
@@ -95,3 +165,119 @@ $ng-select-dropdown-optgroup-marked: $ng-select-input-text;
 //$ng-select-marked-text: $ng-select-primary-text;
 //$ng-select-dropdown-optgroup-text: $ng-select-primary-text;
 $ng-select-dropdown-option-text: $ng-select-primary-text;
+
+// Shared Component Mixins
+@mixin focus-ring($color: var(--primary)) {
+  outline: none;
+  border-color: $color;
+  box-shadow: 0 0 0 0.2rem rgba(189, 147, 249, 0.3);
+}
+
+@mixin button-base {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.75rem 1.5rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+  line-height: 1;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  text-decoration: none;
+  user-select: none;
+  white-space: nowrap;
+  
+  &:disabled {
+    background-color: var(--disabled-bg);
+    color: var(--disabled-text);
+    cursor: not-allowed;
+    opacity: 1;
+  }
+}
+
+@mixin button-variant($bg-color, $text-color: var(--on-primary), $border-color: transparent) {
+  background-color: $bg-color;
+  color: $text-color;
+  border-color: $border-color;
+  
+  &:hover:not(:disabled) {
+    filter: brightness(1.1);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+  }
+  
+  &:active:not(:disabled) {
+    transform: translateY(0);
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+  }
+  
+  &:focus:not(:disabled) {
+    @include focus-ring($bg-color);
+  }
+}
+
+@mixin form-control-base {
+  padding: 0.75rem;
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  font-size: 1rem;
+  background-color: var(--input-bg);
+  color: var(--on-surface);
+  font-family: system-ui, -apple-system, sans-serif;
+  transition: all 0.2s ease;
+  width: 100%;
+  box-sizing: border-box;
+  
+  &::placeholder {
+    color: var(--on-surface-muted);
+  }
+  
+  &:focus {
+    @include focus-ring(var(--primary));
+    background-color: var(--surface-variant);
+  }
+  
+  &:disabled {
+    background-color: var(--disabled-bg);
+    color: var(--disabled-text);
+    cursor: not-allowed;
+    opacity: 1;
+  }
+}
+
+@mixin dropdown-menu {
+  background: var(--dropdown-bg);
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.4);
+  z-index: 1000;
+  overflow: hidden;
+  animation: dropdownFadeIn 0.15s ease-out;
+  
+  @keyframes dropdownFadeIn {
+    from {
+      opacity: 0;
+      transform: translateY(-4px) scale(0.98);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0) scale(1);
+    }
+  }
+}
+
+@mixin card-base {
+  background: var(--card-bg);
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  overflow: hidden;
+}
+
+@mixin truncate-text {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}

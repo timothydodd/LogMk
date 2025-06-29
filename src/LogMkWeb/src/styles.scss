@@ -1,13 +1,18 @@
+
+// Import custom Bootstrap replacement styles
+@use "styles/_button.scss";
+@use "styles/_forms.scss";
+@use "styles/_alerts.scss";
+@use "styles/_layouts.scss";
+@use "styles/_scaffolding.scss";
+@use "styles/_bootstrap.scss";
+@use "styles/_utils.scss";
 /* You can add global styles to this file, and also import other style files */
 
 @import url('https://fonts.googleapis.com/css2?family=Roboto:ital,wght@0,100;0,300;0,400;0,500;0,700;0,900;1,100;1,300;1,400;1,500;1,700;1,900&family=Space+Mono:ital,wght@0,400;0,700;1,400;1,700&display=swap');
 @import "variables.scss";
-
 @import "../node_modules/@ng-select/ng-select/scss/default.theme.scss";
-@import "../node_modules/bootstrap/scss/bootstrap.scss";
-
 @import "../src/styles/ng-select.scss";
-@import '../node_modules/ngx-toastr/toastr-bs5-alert';
 
 html {
     background-color: var(--background);

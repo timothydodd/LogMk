@@ -1,15 +1,13 @@
 
 import { ChangeDetectionStrategy, Component, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { NgbActiveModal, NgbModal, NgbModalOptions, NgbModule } from '@ng-bootstrap/ng-bootstrap';
 import { LucideAngularModule } from 'lucide-angular';
-import { from } from 'rxjs';
 import { AuthService } from '../../_services/auth-service';
 
 @Component({
   selector: 'app-login',
   standalone: true,
-  imports: [FormsModule, NgbModule, LucideAngularModule],
+  imports: [FormsModule, LucideAngularModule],
   template: ` <form (submit)="login()">
     <div class="modal-header">
       <h5 class="modal-title">Login</h5>
@@ -40,15 +38,15 @@ import { AuthService } from '../../_services/auth-service';
 })
 export class LoginComponent {
   private authService = inject(AuthService);
-  activeModal = inject(NgbActiveModal);
 
   userName: string = '';
   password: string = '';
   errorMessage = signal('');
+  
   login() {
     this.authService.login(this.userName, this.password).subscribe({
       next: () => {
-        this.activeModal.close();
+        // This component is deprecated - use login-page instead
       },
       error: (error) => {
         const message = error.status == 401 ? 'Invalid UserName or Password' : 'An error occurred';
@@ -56,15 +54,9 @@ export class LoginComponent {
       },
     });
   }
+  
   closeClick() {
-    this.activeModal.close();
-  }
-  static showModal(modalService: NgbModal) {
-    const modalOption: NgbModalOptions = { backdrop: 'static', size: 'lg', centered: true };
-
-    const modalRef = modalService.open(LoginComponent, modalOption);
-
-    return from(modalRef.result as Promise<ReasonResponse>);
+    // This component is deprecated - use login-page instead
   }
 }
 export interface ReasonResponse {

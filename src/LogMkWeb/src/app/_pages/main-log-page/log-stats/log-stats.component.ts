@@ -33,14 +33,20 @@ export class LogStatsComponent {
       x: {
         stacked: true, // Enable stacking for the x-axis
          grid: {
-          color: 'rgba(246, 197, 208, 0.12)'  // Change X-axis grid color
+          color: 'rgba(68, 71, 90, 0.4)'  // Use theme border color
+        },
+        ticks: {
+          color: '#a0a0a0'  // Use theme muted text color
         }
       },
       y: {
         stacked: true, // Enable stacking for the y-axis
         beginAtZero: true,
          grid: {
-          color: 'rgba(246, 197, 208, 0.12)'  // Change X-axis grid color
+          color: 'rgba(68, 71, 90, 0.4)'  // Use theme border color
+        },
+        ticks: {
+          color: '#a0a0a0'  // Use theme muted text color
         }
       },
     },
@@ -98,29 +104,29 @@ export class LogStatsComponent {
       {
         label: 'Information',
         data: this.getDataSet(stats, 'Information'),
-        backgroundColor: 'rgba(75, 192, 192, 0.2)',
-        borderColor: 'rgba(75, 192, 192, 1)',
+        backgroundColor: 'rgba(59, 130, 246, 0.3)', // Primary blue
+        borderColor: 'rgba(59, 130, 246, 0.8)',
         borderWidth: 1,
       },
       {
         label: 'Warnings',
         data: this.getDataSet(stats, 'Warning'),
-        backgroundColor: 'rgba(255, 206, 86, 0.2)', // Yellow color
-        borderColor: 'rgba(255, 206, 86, 1)',
+        backgroundColor: 'rgba(241, 250, 140, 0.3)', // Theme warning yellow
+        borderColor: 'rgba(241, 250, 140, 0.8)',
         borderWidth: 1,
       },
       {
         label: 'Errors',
         data: this.getDataSet(stats, 'Error'),
-        backgroundColor: 'rgba(255, 99, 132, 0.2)',
-        borderColor: 'rgba(255, 99, 132, 1)',
+        backgroundColor: 'rgba(255, 85, 85, 0.3)', // Theme danger red
+        borderColor: 'rgba(255, 85, 85, 0.8)',
         borderWidth: 1,
       },
       {
         label: 'Other',
         data: this.getDataSet(stats, 'Any'),
-        backgroundColor: 'rgba(18, 18, 19, 0.2)', // Purple color
-        borderColor: 'rgba(52, 52, 53, 0.2)',
+        backgroundColor: 'rgba(98, 114, 164, 0.3)', // Theme secondary
+        borderColor: 'rgba(98, 114, 164, 0.8)',
         borderWidth: 1,
       },
     ];
