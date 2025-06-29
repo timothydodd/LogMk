@@ -3,7 +3,12 @@
   width: 100%;
   height: 140px;
 
-  canvas {
+  .chart-canvas {
     width: 100%;
+    cursor: pointer;
+    
+    &:hover {
+      opacity: 0.9;
+    }
   }
 }

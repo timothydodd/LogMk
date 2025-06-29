@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { Component, ElementRef, HostListener, viewChild, forwardRef, signal, inject, input, output, computed } from '@angular/core';
+import { Component, ElementRef, HostListener, viewChild, forwardRef, signal, inject, input, output, computed, effect } from '@angular/core';
 import { ControlValueAccessor, NG_VALUE_ACCESSOR } from '@angular/forms';
 import { LucideAngularModule } from 'lucide-angular';
 
@@ -150,6 +150,18 @@ export class DropdownComponent implements ControlValueAccessor {
   
   private onChange = (value: any) => {};
   private onTouched = () => {};
+  private lastWrittenValue: any = null;
+  
+  constructor() {
+    // Effect to update selected items when options change
+    effect(() => {
+      const options = this.processedOptions();
+      if (options.length > 0 && this.lastWrittenValue !== null) {
+        // Re-apply the last written value now that we have options
+        this.writeValue(this.lastWrittenValue);
+      }
+    });
+  }
   
   isSelected(option: DropdownOption): boolean {
     if (this.multiple()) {
@@ -220,17 +232,27 @@ export class DropdownComponent implements ControlValueAccessor {
   
   // ControlValueAccessor implementation
   writeValue(value: any): void {
+    this.lastWrittenValue = value;
+    
     if (this.multiple()) {
       const values = Array.isArray(value) ? value : [];
       const options = this.processedOptions();
-      const selectedItems = values.map(v => 
-        options.find(opt => opt.value === v)
-      ).filter(Boolean) as DropdownOption[];
-      this.selectedItems.set(selectedItems);
+      
+      // If options aren't loaded yet, store the raw values
+      if (options.length === 0 && values.length > 0) {
+        // Create temporary options from the values
+        const tempItems = values.map(v => ({ value: v, label: v }));
+        this.selectedItems.set(tempItems);
+      } else {
+        const selectedItems = values.map(v => 
+          options.find(opt => opt.value === v) || { value: v, label: v }
+        ).filter(Boolean) as DropdownOption[];
+        this.selectedItems.set(selectedItems);
+      }
     } else {
       this.selectedValue.set(value);
       const option = this.processedOptions().find(opt => opt.value === value);
-      this.selectedLabel.set(option?.label || '');
+      this.selectedLabel.set(option?.label || value || '');
     }
   }
   

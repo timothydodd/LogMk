@@ -1,7 +1,7 @@
 
 import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
 import { takeUntilDestroyed, toObservable } from '@angular/core/rxjs-interop';
-import { ChartOptions } from 'chart.js';
+import { ActiveElement, ChartEvent, ChartOptions } from 'chart.js';
 import { BaseChartDirective } from 'ng2-charts';
 import { combineLatest, switchMap } from 'rxjs';
 import { LogApiService, LogStatistic, TimePeriod } from '../../../_services/log.api';
@@ -12,7 +12,10 @@ import { LogFilterState } from '../_services/log-filter-state';
   imports: [BaseChartDirective],
 
   template: `@if (stats() !== null) {
-    <canvas baseChart [data]="barChartView()" [options]="barChartOptions" [type]="'bar'"> </canvas>
+    <canvas baseChart [data]="barChartView()" [options]="barChartOptions" [type]="'bar'" 
+            (chartClick)="onChartClick($event, $any($event.active))" 
+            class="chart-canvas"> 
+    </canvas>
   }`,
   styleUrl: './log-stats.component.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -26,9 +29,19 @@ export class LogStatsComponent {
   barChartView = computed(() => {
     return this.getBarChat();
   });
+
   barChartOptions: ChartOptions<'bar'> = {
     responsive: true,
     maintainAspectRatio: false,
+    interaction: {
+      intersect: false,
+      mode: 'index'
+    },
+    onHover: (event, elements) => {
+      if (event.native?.target) {
+        (event.native.target as HTMLElement).style.cursor = elements.length > 0 ? 'pointer' : 'default';
+      }
+    },
     scales: {
       x: {
         stacked: true, // Enable stacking for the x-axis
@@ -57,11 +70,17 @@ export class LogStatsComponent {
     const logPodFilterState = toObservable(this.logFilterState.selectedPod);
     const searchString = toObservable(this.logFilterState.searchString);
     const timeRange = toObservable(this.logFilterState.selectedTimeRange);
+    const customTimeRange = toObservable(this.logFilterState.customTimeRange);
 
-    combineLatest([logFilterState, logPodFilterState, searchString, timeRange])
+    combineLatest([logFilterState, logPodFilterState, searchString, timeRange, customTimeRange])
       .pipe(
-        switchMap(([loglevel, podName, search, startDate]) => {
-          return this.logService.getStats(loglevel, podName, search, startDate);
+        switchMap(([loglevel, podName, search, startDate, custom]) => {
+          // Use custom time range if available, otherwise use regular time range
+          if (custom) {
+            return this.logService.getStats(loglevel, podName, search, custom.start, custom.end);
+          } else {
+            return this.logService.getStats(loglevel, podName, search, startDate);
+          }
         }),
         takeUntilDestroyed()
       )
@@ -104,29 +123,29 @@ export class LogStatsComponent {
       {
         label: 'Information',
         data: this.getDataSet(stats, 'Information'),
-        backgroundColor: 'rgba(59, 130, 246, 0.3)', // Primary blue
-        borderColor: 'rgba(59, 130, 246, 0.8)',
-        borderWidth: 1,
+        backgroundColor: 'rgba(0, 234, 255, 0.15)', // Electric cyan
+        borderColor: 'rgba(0, 234, 255, 0.7)',
+        borderWidth: 2,
       },
       {
         label: 'Warnings',
         data: this.getDataSet(stats, 'Warning'),
-        backgroundColor: 'rgba(241, 250, 140, 0.3)', // Theme warning yellow
-        borderColor: 'rgba(241, 250, 140, 0.8)',
-        borderWidth: 1,
+        backgroundColor: 'rgba(157, 0, 255, 0.15)', // Neon purple
+        borderColor: 'rgba(157, 0, 255, 0.7)',
+        borderWidth: 2,
       },
       {
         label: 'Errors',
         data: this.getDataSet(stats, 'Error'),
-        backgroundColor: 'rgba(255, 85, 85, 0.3)', // Theme danger red
-        borderColor: 'rgba(255, 85, 85, 0.8)',
-        borderWidth: 1,
+        backgroundColor: 'rgba(255, 0, 170, 0.15)', // Hot magenta
+        borderColor: 'rgba(255, 0, 170, 0.7)',
+        borderWidth: 2,
       },
       {
         label: 'Other',
         data: this.getDataSet(stats, 'Any'),
-        backgroundColor: 'rgba(98, 114, 164, 0.3)', // Theme secondary
-        borderColor: 'rgba(98, 114, 164, 0.8)',
+        backgroundColor: 'rgba(30, 30, 40, 0.15)', // Dark cyber gray
+        borderColor: 'rgba(30, 30, 40, 0.4)',
         borderWidth: 1,
       },
     ];
@@ -143,4 +162,39 @@ export class LogStatsComponent {
     }
     return data;
   }
+
+  onChartClick(event: ChartEvent | any, activeElements: ActiveElement[]): void {
+    if (activeElements && activeElements.length > 0) {
+      const activePoint = activeElements[0];
+      const dataIndex = activePoint.index;
+      const stats = this.stats();
+      
+      if (stats && dataIndex !== undefined) {
+        const timeKeys = Object.keys(stats.counts);
+        const clickedTimeKey = timeKeys[dataIndex];
+        
+        if (clickedTimeKey) {
+          const clickedDate = new Date(clickedTimeKey);
+          let startTime: Date;
+          let endTime: Date;
+          
+          if (stats.timePeriod === TimePeriod.Hour) {
+            // For hourly data, filter by the clicked hour
+            startTime = new Date(clickedDate);
+            endTime = new Date(clickedDate.getTime() + 60 * 60 * 1000); // Add 1 hour
+          } else {
+            // For daily data, filter by the clicked day
+            startTime = new Date(clickedDate);
+            startTime.setHours(0, 0, 0, 0);
+            endTime = new Date(clickedDate);
+            endTime.setHours(23, 59, 59, 999);
+          }
+          
+          // Set custom time range in filter state
+          this.logFilterState.setCustomTimeRange(startTime, endTime);
+        }
+      }
+    }
+  }
+
 }

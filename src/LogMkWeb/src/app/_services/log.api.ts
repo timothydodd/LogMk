@@ -14,6 +14,7 @@ export class LogApiService {
     podName: string[] | null,
     search: string = '',
     startDate: Date | null,
+    endDate?: Date | null,
     page: number = 1,
     pageSize: number = 200
   ) {
@@ -35,6 +36,9 @@ export class LogApiService {
     if (startDate) {
       params = params.append('dateStart', startDate.toISOString());
     }
+    if (endDate) {
+      params = params.append('dateEnd', endDate.toISOString());
+    }
 
     params = params.append('page', page.toString());
     params = params.append('pageSize', pageSize.toString());
@@ -45,7 +49,7 @@ export class LogApiService {
     const url = `${environment.apiUrl}/api/log/pods`;
     return this.httpClient.get<Pod[]>(url);
   }
-  public getStats(loglevel: string[] | null, podName: string[] | null, search: string = '', startDate: Date | null) {
+  public getStats(loglevel: string[] | null, podName: string[] | null, search: string = '', startDate: Date | null, endDate?: Date | null) {
     let params = new HttpParams();
     if (loglevel && loglevel.length > 0) {
       for (const ll of loglevel) {
@@ -63,6 +67,9 @@ export class LogApiService {
     }
     if (startDate) {
       params = params.append('dateStart', startDate.toISOString());
+    }
+    if (endDate) {
+      params = params.append('dateEnd', endDate.toISOString());
     }
     const url = `${environment.apiUrl}/api/log/stats`;
     return this.httpClient.get<LogStatistic>(url, { params });

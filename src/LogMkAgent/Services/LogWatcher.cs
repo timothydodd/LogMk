@@ -324,6 +324,11 @@ public class LogWatcher : BackgroundService
         var foundRecent = false;
         var linesProcessed = 0;
         var logLines = new List<LogLine>();
+        
+        // Multi-line buffering
+        LogLine? pendingLogLine = null;
+        var multiLineBuffer = new StringBuilder();
+        var lastTimestamp = DateTimeOffset.MinValue;
 
         try
         {
@@ -346,12 +351,30 @@ public class LogWatcher : BackgroundService
                 if (string.IsNullOrWhiteSpace(line))
                     continue;
 
-                var processedLine = ProcessLogLine(line, info, podSettings, deploymentSettings, ref foundRecent);
-                if (processedLine != null)
+                // Check if this line is a continuation of the previous log entry
+                if (IsLineContinuation(line, info, lastTimestamp))
                 {
-                    logLines.Add(processedLine);
-                    linesProcessed++;
+                    // Add to the buffer for the current pending log entry
+                    if (pendingLogLine != null)
+                    {
+                        multiLineBuffer.AppendLine(line);
+                        continue;
+                    }
+                }
 
+                // If we have a pending log entry, finalize it
+                if (pendingLogLine != null)
+                {
+                    // Append any buffered continuation lines
+                    if (multiLineBuffer.Length > 0)
+                    {
+                        pendingLogLine.Line += Environment.NewLine + multiLineBuffer.ToString().TrimEnd();
+                        multiLineBuffer.Clear();
+                    }
+                    
+                    logLines.Add(pendingLogLine);
+                    linesProcessed++;
+                    
                     // Batch processing to avoid overwhelming the system
                     if (logLines.Count >= 100)
                     {
@@ -362,6 +385,29 @@ public class LogWatcher : BackgroundService
                         logLines.Clear();
                     }
                 }
+
+                // Process the new log line
+                var processedLine = ProcessLogLine(line, info, podSettings, deploymentSettings, ref foundRecent);
+                if (processedLine != null)
+                {
+                    pendingLogLine = processedLine;
+                    lastTimestamp = processedLine.TimeStamp;
+                }
+                else
+                {
+                    pendingLogLine = null;
+                }
+            }
+
+            // Finalize any pending log entry
+            if (pendingLogLine != null)
+            {
+                if (multiLineBuffer.Length > 0)
+                {
+                    pendingLogLine.Line += Environment.NewLine + multiLineBuffer.ToString().TrimEnd();
+                }
+                logLines.Add(pendingLogLine);
+                linesProcessed++;
             }
 
             // Process remaining lines
@@ -563,6 +609,53 @@ public class LogWatcher : BackgroundService
     {
         var validValues = values.Where(v => v >= 0);
         return validValues.Any() ? validValues.Min() : -1;
+    }
+    
+    private bool IsLineContinuation(string line, PodInfo info, DateTimeOffset lastTimestamp)
+    {
+        if (string.IsNullOrWhiteSpace(line))
+            return false;
+            
+        // Parse container format to get the actual log content
+        var cleanLine = RemoveANSIEscapeRegex.Replace(line, string.Empty);
+        var processedLine = ParseContainerLogFormat(line, cleanLine);
+        
+        // Check if line has a timestamp at the beginning
+        var timestamp = ParseTimestamp(line);
+        if (timestamp.HasValue)
+        {
+            // If timestamps are very close (within 100ms), it might be a continuation
+            var timeDiff = Math.Abs((timestamp.Value - lastTimestamp).TotalMilliseconds);
+            if (timeDiff > 100)
+                return false;
+        }
+        
+        // Common patterns for continuation lines:
+        // 1. Stack trace lines starting with "at "
+        if (processedLine.TrimStart().StartsWith("at ", StringComparison.OrdinalIgnoreCase))
+            return true;
+            
+        // 2. Lines starting with whitespace (indented)
+        if (processedLine.Length > 0 && char.IsWhiteSpace(processedLine[0]))
+            return true;
+            
+        // 3. Lines that look like stack trace file references
+        if (processedLine.Contains("file:///") && processedLine.Contains(".mjs:"))
+            return true;
+            
+        // 4. Lines that are just closing braces or brackets
+        if (processedLine.Trim() == "}" || processedLine.Trim() == "]" || processedLine.Trim() == ")")
+            return true;
+            
+        // 5. Lines without any log level indicators
+        var logLevel = GetLogLevelCached(processedLine);
+        if (logLevel == LogLevel.Any && !timestamp.HasValue)
+        {
+            // No log level and no timestamp - likely a continuation
+            return true;
+        }
+        
+        return false;
     }
 
     public override void Dispose()

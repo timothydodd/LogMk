@@ -1,5 +1,5 @@
 
-import { ChangeDetectionStrategy, Component, inject, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
 import { takeUntilDestroyed, toObservable } from '@angular/core/rxjs-interop';
 import { FormsModule } from '@angular/forms';
 import { startOfToday, subDays, subHours, subMonths } from 'date-fns'; // Import date-fns for date manipulations
@@ -51,15 +51,28 @@ import { LogFilterState } from '../_services/log-filter-state';
     </div>
     <div>
       <lucide-icon name="clock"></lucide-icon>
-      <app-dropdown
-        id="time-filter-select"
-        [items]="timeFilters"
-        [ngModel]="selectedTimeFilter()"
-        (ngModelChange)="selectedTimeFilter.set($event)"
-        bindLabel="label"
-        [bindValue]="null"
-        placeholder="Select time range"
-      ></app-dropdown>
+      @if (customTimeRangeDisplay()) {
+        <div class="d-flex align-items-center gap-2 form-control bg-primary text-white">
+          <span class="flex-grow-1 text-truncate" title="{{ customTimeRangeDisplay() }}">
+            📊 {{ customTimeRangeDisplay() }}
+          </span>
+          <button class="btn btn-sm btn-outline-light ms-auto" 
+                  (click)="clearCustomTimeRange()" 
+                  title="Clear chart selection">
+            ✕
+          </button>
+        </div>
+      } @else {
+        <app-dropdown
+          id="time-filter-select"
+          [items]="timeFilters"
+          [ngModel]="selectedTimeFilter()"
+          (ngModelChange)="selectedTimeFilter.set($event)"
+          bindLabel="label"
+          [bindValue]="null"
+          placeholder="Select time range"
+        ></app-dropdown>
+      }
     </div>
   `,
   styleUrl: './log-filter-controls.component.scss',
@@ -73,6 +86,25 @@ export class LogFilterControlsComponent {
   pods = signal<string[]>([]);
   searchString = signal<string>('');
   selectedTimeFilter = signal<TimeFilter | null>(null);
+
+  customTimeRangeDisplay = computed(() => {
+    const customRange = this.logFilterState.customTimeRange();
+    if (!customRange) return null;
+    
+    const start = customRange.start.toLocaleString(undefined, { 
+      month: 'short', 
+      day: 'numeric', 
+      hour: '2-digit', 
+      minute: '2-digit' 
+    });
+    const end = customRange.end.toLocaleString(undefined, { 
+      month: 'short', 
+      day: 'numeric', 
+      hour: '2-digit', 
+      minute: '2-digit' 
+    });
+    return `${start} - ${end}`;
+  });
   timeFilters: TimeFilter[] = [
     { label: 'Any', value: null },
     { label: 'Last Hour', value: subHours(startOfToday(), 1) },
@@ -114,6 +146,10 @@ export class LogFilterControlsComponent {
     this.logService.getPods().pipe(takeUntilDestroyed()).subscribe((pods) => {
       this.pods.set(pods.map((p) => p.name));
     });
+  }
+
+  clearCustomTimeRange(): void {
+    this.logFilterState.customTimeRange.set(null);
   }
 }
 

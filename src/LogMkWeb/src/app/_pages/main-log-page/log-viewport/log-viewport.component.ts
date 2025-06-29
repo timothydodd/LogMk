@@ -29,7 +29,7 @@ import { LogFilterState } from '../_services/log-filter-state';
         <div class="log-item">
           <div class="time">{{ log.timeStamp | date: 'short' }}</div>
           <div class="pod" [ngStyle]="{'color':log.podColor}">{{ log.pod }}</div>
-          <div class="type" [ngClass]="log.logLevel">{{ log.logLevel | LogLevelPipe }}</div>
+          <div class="type" [ngClass]="log.logLevel | LogLevelPipe">{{ log.logLevel | LogLevelPipe }}</div>
           <div class="line flexible-wrap" [innerHTML]="log.view | highlightLog" [title]="log.line"></div>
         </div>
       }
@@ -87,15 +87,29 @@ export class LogViewportComponent {
       .pipe(
         switchMap(() => {
           this.page++;
-          return this.logApi
-            .getLogs(
-              this.logFilterState.selectedLogLevel(),
-              this.logFilterState.selectedPod(),
-              this.logFilterState.searchString(),
-              this.logFilterState.selectedTimeRange(),
-              this.page
-            )
-            .pipe(
+          const customRange = this.logFilterState.customTimeRange();
+          if (customRange) {
+            return this.logApi
+              .getLogs(
+                this.logFilterState.selectedLogLevel(),
+                this.logFilterState.selectedPod(),
+                this.logFilterState.searchString(),
+                customRange.start,
+                customRange.end,
+                this.page
+              );
+          } else {
+            return this.logApi
+              .getLogs(
+                this.logFilterState.selectedLogLevel(),
+                this.logFilterState.selectedPod(),
+                this.logFilterState.searchString(),
+                this.logFilterState.selectedTimeRange(),
+                undefined,
+                this.page
+              );
+          }
+        }),
               tap((z) => {
                 const ni = (z.items ?? []).map((z) => {
                   return {
@@ -116,8 +130,7 @@ export class LogViewportComponent {
                 });
                 this.scrollToIndex(index);
               })
-            );
-        }),
+        ,
         takeUntilDestroyed()
       )
       .subscribe();
@@ -125,11 +138,16 @@ export class LogViewportComponent {
     const logPodFilterState = toObservable(this.logFilterState.selectedPod);
     const searchString = toObservable(this.logFilterState.searchString);
     const timeRange = toObservable(this.logFilterState.selectedTimeRange);
-    combineLatest([logFilterState, logPodFilterState, searchString, timeRange])
+    const customTimeRange = toObservable(this.logFilterState.customTimeRange);
+    combineLatest([logFilterState, logPodFilterState, searchString, timeRange, customTimeRange])
       .pipe(
-        switchMap(([level, pod, search, date]) => {
+        switchMap(([level, pod, search, date, custom]) => {
           this.page = 1;
-          return this.logApi.getLogs(level, pod, search, date, this.page);
+          if (custom) {
+            return this.logApi.getLogs(level, pod, search, custom.start, custom.end, this.page);
+          } else {
+            return this.logApi.getLogs(level, pod, search, date, undefined, this.page);
+          }
         }),
         tap((l) => {
           const items = (l.items ?? []).map((z) => {
@@ -171,17 +189,27 @@ export class LogViewportComponent {
       const logLevel = this.logFilterState.selectedLogLevel();
       const pod = this.logFilterState.selectedPod();
       const date = this.logFilterState.selectedTimeRange();
+      const customRange = this.logFilterState.customTimeRange();
  
       const filteredLogs = logs.filter((log) => {
         if (!log) return false;
 
         log.timeStamp = new Date(log.timeStamp);
+        const logTime = new Date(log.timeStamp);
+
+        // Check time range (custom takes priority)
+        let timeMatches = true;
+        if (customRange) {
+          timeMatches = logTime >= customRange.start && logTime <= customRange.end;
+        } else if (date) {
+          timeMatches = logTime > date;
+        }
 
         return (
           (!search || log.line.includes(search)) &&
           (!logLevel || logLevel.includes(log.logLevel)) &&
           (!pod || pod.includes(log.pod)) &&
-          (!date || new Date(log.timeStamp) > date)
+          timeMatches
         );
       }).map(z=>{
         return {
