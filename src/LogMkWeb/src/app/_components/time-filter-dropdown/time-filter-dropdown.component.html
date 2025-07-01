@@ -1,0 +1,54 @@
+<div class="time-filter-dropdown">
+  <div 
+    class="dropdown-trigger"
+    [class.focused]="isOpen()"
+    [class.has-custom-range]="hasCustomRange()"
+    (click)="toggle()"
+    #trigger
+  >
+    <div class="dropdown-value">
+      <span [class.placeholder]="!hasCustomRange() && !selectedFilter()">
+        {{ displayValue() }}
+      </span>
+    </div>
+    <lucide-icon 
+      name="chevron-down" 
+      size="16" 
+      class="dropdown-arrow"
+      [class.rotated]="isOpen()"
+    ></lucide-icon>
+  </div>
+  
+  @if (isOpen()) {
+    <div class="dropdown-panel" #dropdownPanel>
+      <div class="dropdown-items">
+        @for (filter of timeFilters(); track filter.value) {
+          <div 
+            class="dropdown-item"
+            [class.selected]="!hasCustomRange() && !customRangeSelected() && selectedFilter()?.value === filter.value"
+            (click)="selectFilter(filter)"
+          >
+            {{ filter.label }}
+          </div>
+        }
+        
+        <div class="dropdown-item custom-range-trigger" 
+             [class.selected]="customRangeSelected() || hasCustomRange()"
+             (click)="selectCustomRange()">
+          📅 Custom Date Range
+        </div>
+      </div>
+      
+      @if (showDateRangePicker()) {
+        <div class="custom-content">
+          <app-date-range-picker
+            [startDate]="logFilterState.customTimeRange()?.start || null"
+            [endDate]="logFilterState.customTimeRange()?.end || null"
+            (dateRangeChange)="onCustomDateRangeSelected($event)"
+            (cancel)="hideCustomPicker()"
+          ></app-date-range-picker>
+        </div>
+      }
+    </div>
+  }
+</div>

@@ -1,5 +1,10 @@
 /* Form Components - Reusable form styles */
 
+/* Global input dark theme */
+input {
+  color-scheme: dark;
+}
+
 .form-group {
   display: flex;
   flex-direction: column;
@@ -48,6 +53,7 @@
   transition: all 0.2s ease;
   width: 100%;
   box-sizing: border-box;
+  color-scheme: dark;
 }
 
 .form-control::placeholder {
@@ -199,6 +205,7 @@
   background-size: contain;
   border: 1px solid var(--border-color);
   appearance: none;
+  color-scheme: dark;
 }
 
 .form-check-input[type="checkbox"] {
@@ -255,6 +262,7 @@
   border-radius: 6px;
   transition: all 0.2s ease;
   appearance: none;
+  color-scheme: dark;
 }
 
 .form-select:focus {
@@ -292,6 +300,7 @@ textarea.form-control {
   padding: 0;
   background-color: transparent;
   appearance: none;
+  color-scheme: dark;
 }
 
 .form-range:focus {

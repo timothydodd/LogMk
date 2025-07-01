@@ -83,13 +83,14 @@ public class LogRepo
         dynamicParameters.AddIfNotNull("offset", offset);
         dynamicParameters.AddIfNotNull("pageSize", pageSize);
         dynamicParameters.AddIfNotNull("dateStart", dateStart?.Date);
-        dynamicParameters.AddIfNotNull("dateStartHour", dateStart?.Date.Hour);
-        dynamicParameters.AddIfNotNull("dateEnd", dateStart?.Date);
+        dynamicParameters.AddIfNotNull("dateStartHour", dateStart?.Hour);
+        dynamicParameters.AddIfNotNull("dateEnd", dateEnd?.Date);
+        dynamicParameters.AddIfNotNull("dateEndHour", dateEnd?.Hour);
 
         dynamicParameters.AddIfNotNull("search", search);
 
-        whereBuilder.AppendAnd(dateStart, "l.LogDate >= @dateStart AND l.LogHour >= @dateStartHour");
-        whereBuilder.AppendAnd(dateEnd, "l.LogDate <= @dateEnd");
+        whereBuilder.AppendAnd(dateStart, "l.LogDate >= @dateStart AND (l.LogDate != @dateStart || (l.LogHour >= @dateStartHour))");
+        whereBuilder.AppendAnd(dateEnd, "l.LogDate <= @dateEnd  AND (l.LogDate != @dateEnd || (l.LogHour < @dateEndHour)) ");
 
         var likeClause = new AndOrBuilder();
         likeClause.AppendOr(search, "l.Line LIKE  @search ");

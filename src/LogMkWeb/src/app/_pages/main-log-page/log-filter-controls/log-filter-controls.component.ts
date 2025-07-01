@@ -6,13 +6,14 @@ import { startOfToday, subDays, subHours, subMonths } from 'date-fns'; // Import
 import { LucideAngularModule } from 'lucide-angular';
 import { debounceTime } from 'rxjs';
 import { DropdownComponent } from '../../../_components/dropdown/dropdown.component';
+import { TimeFilterDropdownComponent, TimeFilter } from '../../../_components/time-filter-dropdown/time-filter-dropdown.component';
 import { LogApiService } from '../../../_services/log.api';
 import { LogFilterState } from '../_services/log-filter-state';
 
 @Component({
   selector: 'app-log-filter-controls',
   standalone: true,
-  imports: [FormsModule, DropdownComponent, LucideAngularModule],
+  imports: [FormsModule, DropdownComponent, TimeFilterDropdownComponent, LucideAngularModule],
   template: `
     <div>
       <lucide-icon name="search"></lucide-icon>
@@ -51,28 +52,12 @@ import { LogFilterState } from '../_services/log-filter-state';
     </div>
     <div>
       <lucide-icon name="clock"></lucide-icon>
-      @if (customTimeRangeDisplay()) {
-        <div class="d-flex align-items-center gap-2 form-control bg-primary text-white">
-          <span class="flex-grow-1 text-truncate" title="{{ customTimeRangeDisplay() }}">
-            📊 {{ customTimeRangeDisplay() }}
-          </span>
-          <button class="btn btn-sm btn-outline-light ms-auto" 
-                  (click)="clearCustomTimeRange()" 
-                  title="Clear chart selection">
-            ✕
-          </button>
-        </div>
-      } @else {
-        <app-dropdown
-          id="time-filter-select"
-          [items]="timeFilters"
-          [ngModel]="selectedTimeFilter()"
-          (ngModelChange)="selectedTimeFilter.set($event)"
-          bindLabel="label"
-          [bindValue]="null"
-          placeholder="Select time range"
-        ></app-dropdown>
-      }
+      <app-time-filter-dropdown
+        [timeFilters]="timeFilters"
+        [selectedFilter]="selectedTimeFilter()"
+        (filterChange)="selectedTimeFilter.set($event)"
+        placeholder="Select time range"
+      ></app-time-filter-dropdown>
     </div>
   `,
   styleUrl: './log-filter-controls.component.scss',
@@ -87,24 +72,6 @@ export class LogFilterControlsComponent {
   searchString = signal<string>('');
   selectedTimeFilter = signal<TimeFilter | null>(null);
 
-  customTimeRangeDisplay = computed(() => {
-    const customRange = this.logFilterState.customTimeRange();
-    if (!customRange) return null;
-    
-    const start = customRange.start.toLocaleString(undefined, { 
-      month: 'short', 
-      day: 'numeric', 
-      hour: '2-digit', 
-      minute: '2-digit' 
-    });
-    const end = customRange.end.toLocaleString(undefined, { 
-      month: 'short', 
-      day: 'numeric', 
-      hour: '2-digit', 
-      minute: '2-digit' 
-    });
-    return `${start} - ${end}`;
-  });
   timeFilters: TimeFilter[] = [
     { label: 'Any', value: null },
     { label: 'Last Hour', value: subHours(startOfToday(), 1) },
@@ -146,14 +113,6 @@ export class LogFilterControlsComponent {
     this.logService.getPods().pipe(takeUntilDestroyed()).subscribe((pods) => {
       this.pods.set(pods.map((p) => p.name));
     });
-  }
 
-  clearCustomTimeRange(): void {
-    this.logFilterState.customTimeRange.set(null);
   }
-}
-
-export interface TimeFilter {
-  label: string;
-  value: Date | null;
 }

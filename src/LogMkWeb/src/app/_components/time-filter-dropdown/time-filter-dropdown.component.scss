@@ -1,0 +1,158 @@
+@import '../../../variables.scss';
+
+:host {
+  display: block;
+  position: relative;
+  width: 100%;
+}
+
+.time-filter-dropdown {
+  position: relative;
+  width: 100%;
+}
+
+.dropdown-trigger {
+  @include form-control-base;
+  
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  cursor: pointer;
+  user-select: none;
+  
+  &.focused {
+    border-color: var(--primary);
+    box-shadow: 0 0 0 0.2rem var(--focus-ring);
+    background-color: var(--surface-variant);
+  }
+  
+  &.has-custom-range {
+    background-color: var(--surface-container);
+    border-color: var(--primary);
+  }
+}
+
+.dropdown-value {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  
+  .placeholder {
+    color: var(--on-surface-muted);
+  }
+}
+
+.dropdown-arrow {
+  flex-shrink: 0;
+  color: var(--on-surface-muted);
+  transition: transform 0.2s ease;
+  
+  &.rotated {
+    transform: rotate(180deg);
+  }
+  
+  .dropdown-trigger.focused & {
+    color: var(--primary);
+  }
+}
+
+.dropdown-panel {
+  @include dropdown-menu;
+  
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  width: max-content;
+  min-width: 100%;
+  max-width: 400px;
+  max-height: 500px;
+  overflow: visible;
+  z-index: 1000;
+}
+
+.dropdown-items {
+  max-height: 200px;
+  overflow-y: auto;
+  overflow-x: hidden;
+  
+  /* Custom scrollbar for dark theme */
+  &::-webkit-scrollbar {
+    width: 12px;
+    background: transparent;
+  }
+  
+  &::-webkit-scrollbar-track {
+    background: #2a2c3a;
+    border-radius: 6px;
+    margin: 4px 0;
+  }
+  
+  &::-webkit-scrollbar-thumb {
+    background: #6272a4;
+    border-radius: 6px;
+    border: 2px solid #2a2c3a;
+    min-height: 20px;
+    
+    &:hover {
+      background: #7a84b0;
+    }
+  }
+  
+  /* Firefox scrollbar */
+  scrollbar-width: thin;
+  scrollbar-color: #6272a4 #2a2c3a;
+}
+
+.dropdown-item {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 0.75rem;
+  color: var(--on-surface);
+  cursor: pointer;
+  transition: all 0.15s ease;
+  font-size: 1rem;
+  
+  &:hover {
+    background-color: var(--surface-container);
+  }
+  
+  &.selected {
+    background-color: var(--primary);
+    color: #1a1a1a;
+    font-weight: 600;
+    
+    &:hover {
+      background-color: color-mix(in srgb, var(--primary) 90%, white);
+      color: #1a1a1a;
+    }
+  }
+}
+
+.custom-content {
+  border-top: 1px solid var(--border-color);
+  margin-top: 0.25rem;
+  padding-top: 0.25rem;
+}
+
+.custom-range-trigger {
+  font-weight: 500;
+  color: var(--primary);
+  
+  &:hover {
+    background-color: var(--surface-container);
+  }
+  
+  &.selected {
+    background-color: var(--primary);
+    color: #1a1a1a;
+    font-weight: 600;
+    
+    &:hover {
+      background-color: color-mix(in srgb, var(--primary) 90%, white);
+      color: #1a1a1a;
+    }
+  }
+}
+

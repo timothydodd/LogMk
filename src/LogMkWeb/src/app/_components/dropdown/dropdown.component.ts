@@ -88,6 +88,7 @@ export interface DropdownItem {
               <div class="dropdown-item disabled">No options available</div>
             }
           </div>
+          <ng-content select="[slot=custom-content]"></ng-content>
         </div>
       }
     </div>

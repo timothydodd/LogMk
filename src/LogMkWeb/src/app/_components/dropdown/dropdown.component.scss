@@ -121,13 +121,13 @@
   width: max-content;
   min-width: 100%;
   max-width: 400px;
-  max-height: 240px;
-  overflow: hidden;
+  max-height: 500px;
+  overflow: visible;
   z-index: 1000;
 }
 
 .dropdown-items {
-  max-height: 240px;
+  max-height: 200px;
   overflow-y: auto;
   overflow-x: hidden;
   
@@ -255,4 +255,17 @@
       box-shadow: 0 0 0 0.2rem var(--danger-bg);
     }
   }
+}
+
+/* Custom content section */
+::ng-deep [slot="custom-content"] {
+  border-top: 1px solid var(--border-color);
+  margin-top: 0.25rem;
+  padding-top: 0.25rem;
+}
+
+.dropdown-panel [slot="custom-content"] {
+  border-top: 1px solid var(--border-color);
+  margin-top: 0.25rem;
+  padding-top: 0.25rem;
 }
