@@ -15,7 +15,8 @@ LogMk is a lightweight log monitoring solution for Kubernetes environments. It c
 - **JWT Authentication**: Secure access with token-based authentication and refresh tokens
 - **Docker Ready**: Containerized components for easy deployment
 
-![LogMk Dashboard](https://github.com/user-attachments/assets/b77821c6-9caf-4db9-b481-af058a6476fe)
+![image](https://github.com/user-attachments/assets/a7f87068-4019-456a-b438-410ef5aad22a)
+
 
 ## 🏗️ Architecture
 
