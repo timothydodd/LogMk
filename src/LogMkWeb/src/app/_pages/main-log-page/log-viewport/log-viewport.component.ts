@@ -294,12 +294,13 @@ export function getPodColor(podName: string): string {
     return podColorCache.get(podName)!;
   }
 
-  // Generate multiple hash values for better distribution
+  // Generate multiple hash values for better distribution with overflow protection
   let hash1 = 0;
   let hash2 = 0;
   for (let i = 0; i < podName.length; i++) {
-    hash1 = podName.charCodeAt(i) + ((hash1 << 5) - hash1);
-    hash2 = podName.charCodeAt(i) + ((hash2 << 3) - hash2) + i;
+    const char = podName.charCodeAt(i);
+    hash1 = (char + ((hash1 << 5) - hash1)) >>> 0; // Use unsigned right shift to keep 32-bit
+    hash2 = (char + ((hash2 << 3) - hash2) + i) >>> 0;
   }
 
   // Create distinct color palette with wider ranges and better separation
@@ -314,19 +315,23 @@ export function getPodColor(podName: string): string {
     { r: [180, 220], g: [140, 200], b: [50, 100] },  // Orange variations
     { r: [140, 200], g: [50, 100], b: [180, 220] },  // Purple variations
     { r: [50, 100], g: [180, 220], b: [140, 200] },  // Teal variations
-    { r: [255, 255], g: [160, 200], b: [160, 200] }, // Light corals
-    { r: [160, 200], g: [255, 255], b: [160, 200] }, // Light greens
-    { r: [160, 200], g: [160, 200], b: [255, 255] }  // Light blues
+    { r: [240, 255], g: [160, 200], b: [160, 200] }, // Light corals
+    { r: [160, 200], g: [240, 255], b: [160, 200] }, // Light greens
+    { r: [160, 200], g: [160, 200], b: [240, 255] }  // Light blues
   ];
 
   // Select color scheme based on first hash
-  const schemeIndex = Math.abs(hash1) % colorSchemes.length;
+  const schemeIndex = hash1 % colorSchemes.length;
   const scheme = colorSchemes[schemeIndex];
 
-  // Generate RGB values within the selected scheme's ranges
-  const r = scheme.r[0] + (Math.abs(hash1) % (scheme.r[1] - scheme.r[0]));
-  const g = scheme.g[0] + (Math.abs(hash2) % (scheme.g[1] - scheme.g[0]));
-  const b = scheme.b[0] + (Math.abs(hash1 ^ hash2) % (scheme.b[1] - scheme.b[0]));
+  // Generate RGB values within the selected scheme's ranges with safety checks
+  const rRange = Math.max(1, scheme.r[1] - scheme.r[0]);
+  const gRange = Math.max(1, scheme.g[1] - scheme.g[0]);
+  const bRange = Math.max(1, scheme.b[1] - scheme.b[0]);
+  
+  const r = scheme.r[0] + (hash1 % rRange);
+  const g = scheme.g[0] + (hash2 % gRange);
+  const b = scheme.b[0] + (Math.abs(hash1 ^ hash2) % bRange);
 
   // Ensure minimum contrast for readability
   let finalR = clamp(r);
