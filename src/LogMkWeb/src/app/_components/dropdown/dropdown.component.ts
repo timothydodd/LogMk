@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { Component, ElementRef, HostListener, viewChild, forwardRef, signal, inject, input, output, computed, effect } from '@angular/core';
+import { Component, computed, effect, ElementRef, forwardRef, HostListener, inject, input, output, signal, viewChild } from '@angular/core';
 import { ControlValueAccessor, NG_VALUE_ACCESSOR } from '@angular/forms';
 import { LucideAngularModule } from 'lucide-angular';
 

@@ -1,4 +1,5 @@
-﻿using LogMkApi.Common;
+﻿using System.Text;
+using LogMkApi.Common;
 using ServiceStack.Data;
 using ServiceStack.OrmLite.Dapper;
 using static ServiceStack.OrmLite.Dapper.SqlMapper;
@@ -115,6 +116,150 @@ ORDER BY
                 Counts = counts,
                 TimePeriod = isGreaterThan3Days ? TimePeriod.Day : TimePeriod.Hour
             };
+        }
+    }
+
+    public async Task<IEnumerable<dynamic>> GetDeploymentSummaries()
+    {
+        using (var db = _dbFactory.OpenDbConnection())
+        {
+            var query = @"
+                SELECT 
+                    Deployment,
+                    SUM(Count) as TotalCount,
+                    LogDate as Date,
+                    SUM(Count) as DailyCount
+                FROM LogSummary
+                WHERE LogDate >= DATE_SUB(CURDATE(), INTERVAL 7 DAY)
+                GROUP BY Deployment, LogDate
+                ORDER BY Deployment, LogDate DESC
+            ";
+
+            var results = await db.QueryAsync<dynamic>(query);
+            
+            // Group by deployment and format the response
+            var grouped = results.GroupBy(r => r.Deployment)
+                .Select(g => new
+                {
+                    deployment = g.Key,
+                    totalCount = g.Sum(x => (long)x.DailyCount),
+                    dailyCounts = g.Select(x => new 
+                    {
+                        date = ((DateTime)x.Date).ToString("yyyy-MM-dd"),
+                        count = (long)x.DailyCount
+                    }).Take(7).ToList()
+                });
+
+            return grouped;
+        }
+    }
+
+    public async Task<IEnumerable<dynamic>> GetPodSummaries()
+    {
+        using (var db = _dbFactory.OpenDbConnection())
+        {
+            var query = @"
+                SELECT 
+                    Pod,
+                    Deployment,
+                    SUM(Count) as TotalCount,
+                    LogDate as Date,
+                    SUM(Count) as DailyCount
+                FROM LogSummary
+                WHERE LogDate >= DATE_SUB(CURDATE(), INTERVAL 7 DAY)
+                GROUP BY Pod, Deployment, LogDate
+                ORDER BY Pod, LogDate DESC
+            ";
+
+            var results = await db.QueryAsync<dynamic>(query);
+            
+            // Group by pod and format the response
+            var grouped = results.GroupBy(r => r.Pod)
+                .Select(g => new
+                {
+                    pod = g.Key,
+                    deployment = g.First().Deployment,
+                    totalCount = g.Sum(x => (long)x.DailyCount),
+                    dailyCounts = g.Select(x => new 
+                    {
+                        date = ((DateTime)x.Date).ToString("yyyy-MM-dd"),
+                        count = (long)x.DailyCount
+                    }).Take(7).ToList()
+                });
+
+            return grouped;
+        }
+    }
+
+    public async Task PurgeByDeployment(string deployment, DateTime? startDate)
+    {
+        using (var db = _dbFactory.OpenDbConnection())
+        {
+            var query = new StringBuilder("DELETE FROM LogSummary WHERE Deployment = @deployment");
+            var parameters = new DynamicParameters();
+            parameters.Add("deployment", deployment);
+
+            if (startDate.HasValue)
+            {
+                query.Append(" AND LogDate >= @startDate");
+                parameters.Add("startDate", startDate.Value.Date);
+            }
+
+            await db.ExecuteAsync(query.ToString(), parameters);
+        }
+    }
+
+    public async Task PurgeHourlyByDeployment(string deployment, DateTime? startDate)
+    {
+        using (var db = _dbFactory.OpenDbConnection())
+        {
+            var query = new StringBuilder("DELETE FROM LogSummaryHour WHERE Deployment = @deployment");
+            var parameters = new DynamicParameters();
+            parameters.Add("deployment", deployment);
+
+            if (startDate.HasValue)
+            {
+                query.Append(" AND LogDate >= @startDate");
+                parameters.Add("startDate", startDate.Value.Date);
+            }
+
+            await db.ExecuteAsync(query.ToString(), parameters);
+        }
+    }
+
+    public async Task PurgeByPod(string pod, DateTime? startDate)
+    {
+        using (var db = _dbFactory.OpenDbConnection())
+        {
+            var query = new StringBuilder("DELETE FROM LogSummary WHERE Pod = @pod");
+            var parameters = new DynamicParameters();
+            parameters.Add("pod", pod);
+
+            if (startDate.HasValue)
+            {
+                query.Append(" AND LogDate >= @startDate");
+                parameters.Add("startDate", startDate.Value.Date);
+            }
+
+            await db.ExecuteAsync(query.ToString(), parameters);
+        }
+    }
+
+    public async Task PurgeHourlyByPod(string pod, DateTime? startDate)
+    {
+        using (var db = _dbFactory.OpenDbConnection())
+        {
+            var query = new StringBuilder("DELETE FROM LogSummaryHour WHERE Pod = @pod");
+            var parameters = new DynamicParameters();
+            parameters.Add("pod", pod);
+
+            if (startDate.HasValue)
+            {
+                query.Append(" AND LogDate >= @startDate");
+                parameters.Add("startDate", startDate.Value.Date);
+            }
+
+            await db.ExecuteAsync(query.ToString(), parameters);
         }
     }
 

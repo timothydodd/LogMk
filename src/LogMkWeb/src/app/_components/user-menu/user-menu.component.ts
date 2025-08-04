@@ -1,6 +1,7 @@
 
 import { ChangeDetectionStrategy, Component, inject, signal, TemplateRef, viewChild } from '@angular/core';
 
+import { Router } from '@angular/router';
 import { LucideAngularModule } from 'lucide-angular';
 import { take } from 'rxjs';
 import { AuthService, User } from '../../_services/auth-service';
@@ -40,7 +41,7 @@ import { UserSettingsComponent } from '../user-settings/user-settings.component'
             <div class="dropdown-divider"></div>
             
             <div class="dropdown-menu-items">
-              <button class="dropdown-item" (click)="settings.show(); isOpen.set(false)">
+              <button class="dropdown-item" (click)="navigateToSettings()">
                 <lucide-icon name="settings" size="16"></lucide-icon>
                 <span>Settings</span>
               </button>
@@ -53,7 +54,6 @@ import { UserSettingsComponent } from '../user-settings/user-settings.component'
         }
       </div>
 
-      <app-user-settings #settings></app-user-settings>
     }
   `,
   styleUrl: './user-menu.component.scss',
@@ -62,6 +62,7 @@ import { UserSettingsComponent } from '../user-settings/user-settings.component'
 export class UserMenuComponent {
   authService = inject(AuthService);
   modalService = inject(ModalService);
+  router = inject(Router);
   modalFooter = viewChild<TemplateRef<any>>('modalFooter');
   modalBody = viewChild<TemplateRef<any>>('modalBody');
   user = signal<User | null>(null);
@@ -75,6 +76,12 @@ export class UserMenuComponent {
         this.user.update(() => user);
       });
   }
+  
+  navigateToSettings() {
+    this.isOpen.set(false);
+    this.router.navigate(['/settings']);
+  }
+  
   logOut() {
     this.authService.logout();
   }

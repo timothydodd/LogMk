@@ -390,6 +390,112 @@ public class LogController : ControllerBase
         var entries = await _logRepo.GetPods();
         return entries;
     }
+
+    [HttpGet("deployment-summaries")]
+    public async Task<IActionResult> GetDeploymentSummaries()
+    {
+        try
+        {
+            var summaries = await _logSummaryRepo.GetDeploymentSummaries();
+            return Ok(summaries);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error getting deployment summaries");
+            return StatusCode(500, new { Error = "Failed to retrieve deployment summaries" });
+        }
+    }
+
+    [HttpGet("pod-summaries")]
+    public async Task<IActionResult> GetPodSummaries()
+    {
+        try
+        {
+            var summaries = await _logSummaryRepo.GetPodSummaries();
+            return Ok(summaries);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error getting pod summaries");
+            return StatusCode(500, new { Error = "Failed to retrieve pod summaries" });
+        }
+    }
+
+    [HttpPost("purge")]
+    public async Task<IActionResult> PurgeLogs([FromBody] PurgeLogsRequest request)
+    {
+        // Support both deployment and pod-based purging for backward compatibility
+        if (string.IsNullOrWhiteSpace(request?.Deployment) && string.IsNullOrWhiteSpace(request?.Pod))
+        {
+            return BadRequest(new { Error = "Either deployment name or pod name is required" });
+        }
+
+        try
+        {
+            var identifier = !string.IsNullOrWhiteSpace(request.Pod) ? request.Pod : request.Deployment;
+            var identifierType = !string.IsNullOrWhiteSpace(request.Pod) ? "pod" : "deployment";
+
+            _logger.LogInformation("Purging logs for {IdentifierType} {Identifier} with time range {TimeRange}", 
+                identifierType, identifier, request.TimeRange);
+
+            // Calculate the date filter based on time range
+            DateTime? startDate = null;
+            switch (request.TimeRange?.ToLower())
+            {
+                case "hour":
+                    startDate = DateTime.UtcNow.AddHours(-1);
+                    break;
+                case "day":
+                    startDate = DateTime.UtcNow.AddDays(-1);
+                    break;
+                case "week":
+                    startDate = DateTime.UtcNow.AddDays(-7);
+                    break;
+                case "month":
+                    startDate = DateTime.UtcNow.AddMonths(-1);
+                    break;
+                case "all":
+                default:
+                    startDate = null;
+                    break;
+            }
+
+            int deletedLogsCount;
+            
+            if (!string.IsNullOrWhiteSpace(request.Pod))
+            {
+                // Pod-based purging
+                deletedLogsCount = await _logRepo.PurgeLogsByPod(request.Pod, startDate);
+                await _logSummaryRepo.PurgeByPod(request.Pod, startDate);
+                await _logSummaryRepo.PurgeHourlyByPod(request.Pod, startDate);
+            }
+            else
+            {
+                // Deployment-based purging (backward compatibility)
+                deletedLogsCount = await _logRepo.PurgeLogsByDeployment(request.Deployment, startDate);
+                await _logSummaryRepo.PurgeByDeployment(request.Deployment, startDate);
+                await _logSummaryRepo.PurgeHourlyByDeployment(request.Deployment, startDate);
+            }
+
+            _logger.LogInformation("Successfully purged {Count} logs for {IdentifierType} {Identifier}", 
+                deletedLogsCount, identifierType, identifier);
+
+            return Ok(new 
+            { 
+                Success = true, 
+                DeletedCount = deletedLogsCount,
+                Deployment = request.Deployment,
+                Pod = request.Pod,
+                TimeRange = request.TimeRange
+            });
+        }
+        catch (Exception ex)
+        {
+            var identifier = !string.IsNullOrWhiteSpace(request?.Pod) ? request.Pod : request?.Deployment;
+            _logger.LogError(ex, "Error purging logs for {Identifier}", identifier);
+            return StatusCode(500, new { Error = "Failed to purge logs" });
+        }
+    }
 }
 
 
@@ -418,4 +524,11 @@ public class LogValidationResult
 {
     public bool IsValid { get; set; }
     public string[] Errors { get; set; } = Array.Empty<string>();
+}
+
+public class PurgeLogsRequest
+{
+    public string Deployment { get; set; } = string.Empty;
+    public string Pod { get; set; } = string.Empty;
+    public string TimeRange { get; set; } = "all";
 }

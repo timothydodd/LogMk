@@ -72,6 +72,7 @@
     --danger-bg: rgba(255, 85, 85, 0.15);
     --danger-border: rgba(255, 85, 85, 0.3);
     --danger-text: #ff5555;
+    --danger-rgb: 255, 85, 85;
     
     --warning-bg: rgba(241, 250, 140, 0.15);
     --warning-border: rgba(241, 250, 140, 0.3);
@@ -150,21 +151,6 @@ $warning-dark: $yellow-dark;
 $danger-dark: $red-dark;
 // scss-docs-end theme-color-dark-variables
 
-// Shiki
-// Only applied if using a defined Shiki theme
-
-$ng-select-input-text: #f8f8f2;
-$ng-select-highlight: #bd93f9;
-$ng-select-primary-text: #f8f8f2;
-$ng-select-disabled-text: #f9f9f9;
-$ng-select-border: #191A21;
-$ng-select-bg: #424450;
-$ng-select-selected: #343746;
-$ng-select-dropdown-optgroup-marked: $ng-select-input-text;
-
-//$ng-select-marked-text: $ng-select-primary-text;
-//$ng-select-dropdown-optgroup-text: $ng-select-primary-text;
-$ng-select-dropdown-option-text: $ng-select-primary-text;
 
 // Shared Component Mixins
 @mixin focus-ring($color: var(--primary)) {

@@ -141,5 +141,43 @@ public class LogRepo
         }
     }
 
+    public async Task<int> PurgeLogsByDeployment(string deployment, DateTime? startDate)
+    {
+        using (var db = _dbFactory.OpenDbConnection())
+        {
+            var query = new StringBuilder("DELETE FROM Log WHERE Deployment = @deployment");
+            var parameters = new DynamicParameters();
+            parameters.Add("deployment", deployment);
+
+            if (startDate.HasValue)
+            {
+                query.Append(" AND TimeStamp >= @startDate");
+                parameters.Add("startDate", startDate.Value);
+            }
+
+            var deletedCount = await db.ExecuteAsync(query.ToString(), parameters);
+            return deletedCount;
+        }
+    }
+
+    public async Task<int> PurgeLogsByPod(string pod, DateTime? startDate)
+    {
+        using (var db = _dbFactory.OpenDbConnection())
+        {
+            var query = new StringBuilder("DELETE FROM Log WHERE Pod = @pod");
+            var parameters = new DynamicParameters();
+            parameters.Add("pod", pod);
+
+            if (startDate.HasValue)
+            {
+                query.Append(" AND TimeStamp >= @startDate");
+                parameters.Add("startDate", startDate.Value);
+            }
+
+            var deletedCount = await db.ExecuteAsync(query.ToString(), parameters);
+            return deletedCount;
+        }
+    }
+
 
 }

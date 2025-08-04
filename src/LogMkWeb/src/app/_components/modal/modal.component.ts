@@ -28,11 +28,18 @@ import { ModalService } from '../../_services/modal.service';
           <div class="modal-body">
             @if (bodyTemplate()) {
               <ng-container *ngTemplateOutlet="bodyTemplate()!"> </ng-container>
+            } @else if (isConfirm()) {
+              <p>{{ message() }}</p>
             }
           </div>
           @if (footerTemplate()) {
             <div class="modal-footer">
               <ng-container *ngTemplateOutlet="footerTemplate()!"> </ng-container>
+            </div>
+          } @else if (isConfirm()) {
+            <div class="modal-footer">
+              <button type="button" class="btn btn-secondary" (click)="onCancel()">Cancel</button>
+              <button type="button" class="btn btn-danger" (click)="onConfirm()">Confirm</button>
             </div>
           }
         </div>
@@ -70,6 +77,10 @@ export class ModalComponent {
   headerTemplate = signal<TemplateRef<any> | null | undefined>(null);
   isOpen = signal(false);
   title = signal<string | null>(null);
+  message = signal<string | null>(null);
+  isConfirm = signal(false);
+  private confirmCallback?: () => void;
+  private cancelCallback?: () => void;
   constructor() {
     this.modalService.modalEvent.pipe(takeUntilDestroyed()).subscribe((x) => {
       if (x && x !== null) {
@@ -78,6 +89,10 @@ export class ModalComponent {
         this.footerTemplate.set(x.footerTemplate);
         this.headerTemplate.set(x.headerTemplate);
         this.title.set(x.title);
+        this.message.set(x.message || null);
+        this.isConfirm.set(x.isConfirm || false);
+        this.confirmCallback = x.onConfirm;
+        this.cancelCallback = x.onCancel;
         // Prevent background scrolling
         document.body.style.overflow = 'hidden';
       } else {
@@ -86,6 +101,10 @@ export class ModalComponent {
         this.footerTemplate.set(null);
         this.headerTemplate.set(null);
         this.title.set(null);
+        this.message.set(null);
+        this.isConfirm.set(false);
+        this.confirmCallback = undefined;
+        this.cancelCallback = undefined;
         // Restore background scrolling
         document.body.style.overflow = '';
       }
@@ -97,5 +116,17 @@ export class ModalComponent {
   }
   open() {
     this.isOpen.set(true);
+  }
+  
+  onConfirm() {
+    if (this.confirmCallback) {
+      this.confirmCallback();
+    }
+  }
+  
+  onCancel() {
+    if (this.cancelCallback) {
+      this.cancelCallback();
+    }
   }
 }

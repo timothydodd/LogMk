@@ -9,6 +9,26 @@ import { Log } from './signalr.service';
 export class LogApiService {
   httpClient = inject(HttpClient);
 
+  public getDeploymentSummaries() {
+    const url = `${environment.apiUrl}/api/log/deployment-summaries`;
+    return this.httpClient.get<any[]>(url);
+  }
+
+  public getPodSummaries() {
+    const url = `${environment.apiUrl}/api/log/pod-summaries`;
+    return this.httpClient.get<any[]>(url);
+  }
+
+  public purgeLogs(deployment: string, timeRange: string) {
+    const url = `${environment.apiUrl}/api/log/purge`;
+    return this.httpClient.post(url, { deployment, timeRange });
+  }
+
+  public purgeLogsByPod(pod: string, timeRange: string) {
+    const url = `${environment.apiUrl}/api/log/purge`;
+    return this.httpClient.post(url, { pod, timeRange });
+  }
+
   public getLogs(
     loglevel: string[] | null,
     podName: string[] | null,

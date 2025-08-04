@@ -1,0 +1,103 @@
+<div class="settings-page">
+  <div class="settings-header">
+    <h1>Settings</h1>
+    <button class="btn btn-secondary" (click)="navigateBack()">Back to Logs</button>
+  </div>
+
+  <div class="settings-content">
+    <div class="settings-layout">
+      @if (isLoading()) {
+        <div class="loading-container">
+          <div class="spinner-border" role="status">
+            <span class="visually-hidden">Loading...</span>
+          </div>
+        </div>
+      } @else {
+        <aside class="pods-sidebar">
+          <h2>Pods</h2>
+          <div class="pods-list">
+            @for (pod of pods(); track pod.pod) {
+              <button 
+                class="pod-item"
+                [class.active]="selectedPod() === pod.pod"
+                (click)="selectPod(pod.pod)"
+              >
+                <div class="pod-name">{{ pod.pod }}</div>
+                <div class="pod-deployment">{{ pod.deployment }}</div>
+                <div class="pod-count">{{ pod.totalCount.toLocaleString() }} logs</div>
+              </button>
+            }
+          </div>
+        </aside>
+
+        <section class="settings-main">
+          <h2>Log Purge Management</h2>
+          
+          @if (selectedPodSummary) {
+            <div class="pod-details">
+              <div class="pod-summary">
+                <h4>{{ selectedPodSummary.pod }}</h4>
+                <div class="pod-deployment-info">{{ selectedPodSummary.deployment }}</div>
+                <div class="summary-stats">
+                  <div class="stat-item">
+                    <span class="stat-label">Total Logs:</span>
+                    <span class="stat-value">{{ selectedPodSummary.totalCount.toLocaleString() }}</span>
+                  </div>
+                </div>
+                
+                @if (selectedPodSummary.dailyCounts.length > 0) {
+                  <div class="daily-breakdown">
+                    <h5>Recent Activity</h5>
+                    <div class="daily-counts">
+                      @for (day of selectedPodSummary.dailyCounts; track day.date) {
+                        <div class="day-count">
+                          <span class="date">{{ day.date }}</span>
+                          <span class="count">{{ day.count.toLocaleString() }} logs</span>
+                        </div>
+                      }
+                    </div>
+                  </div>
+                }
+              </div>
+
+              <div class="purge-controls">
+                <div class="purge-action-row">
+                  <div class="form-group time-range-group">
+                    <label>Time Range</label>
+                    <app-dropdown
+                      [options]="timeRangeOptions"
+                      [placeholder]="'Select time range'"
+                      [formControl]="timeRangeControl"
+                      (selectionChange)="onTimeRangeSelect($event)"
+                    ></app-dropdown>
+                  </div>
+
+                  <button 
+                    class="btn btn-danger purge-button" 
+                    (click)="confirmPurge()"
+                    [disabled]="!selectedPod() || isPurging()"
+                  >
+                    @if (isPurging()) {
+                      <span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+                      Purging...
+                    } @else {
+                      Purge Logs
+                    }
+                  </button>
+                </div>
+
+                <div class="purge-warning">
+                  <strong>Warning:</strong> Purging logs is a permanent action and cannot be undone. All log entries for the selected pod and time range will be deleted from the database.
+                </div>
+              </div>
+            </div>
+          } @else {
+            <div class="no-selection">
+              <p>Select a pod from the list to manage its logs.</p>
+            </div>
+          }
+        </section>
+      }
+    </div>
+  </div>
+</div>
