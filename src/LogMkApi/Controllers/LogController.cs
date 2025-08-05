@@ -22,14 +22,16 @@ public class LogController : ControllerBase
     private readonly ILogger<LogController> _logger;
     private readonly LogRepo _logRepo;
     private readonly LogSummaryRepo _logSummaryRepo;
+    private readonly WorkQueueRepo _workQueueRepo;
     private readonly LogApiMetrics _metrics;
     private readonly int LogMaxDaysOld = 30; // Maximum age of logs to accept
-    public LogController(ILogger<LogController> logger, LogRepo logRepo, LogHubService logHubService, LogSummaryRepo logSummaryRepo, LogApiMetrics metrics, IConfiguration configuration)
+    public LogController(ILogger<LogController> logger, LogRepo logRepo, LogHubService logHubService, LogSummaryRepo logSummaryRepo, WorkQueueRepo workQueueRepo, LogApiMetrics metrics, IConfiguration configuration)
     {
         _logger = logger;
         _logRepo = logRepo;
         _logHubService = logHubService;
         _logSummaryRepo = logSummaryRepo;
+        _workQueueRepo = workQueueRepo;
         _metrics = metrics;
         if (configuration != null)
         {
@@ -421,7 +423,135 @@ public class LogController : ControllerBase
         }
     }
 
+    [AllowAnonymous]
+    [HttpPost("single")]
+    public async Task<ActionResult<LogResponse>> CreateSingle(
+        [FromBody] SingleLogEntry logEntry,
+        CancellationToken cancellationToken = default)
+    {
+        if (logEntry == null)
+        {
+            return BadRequest(new { Error = "No log entry provided" });
+        }
+
+        if (!ModelState.IsValid)
+        {
+            var validationErrors = ModelState
+                .Where(x => x.Value?.Errors.Count > 0)
+                .ToDictionary(
+                    kvp => kvp.Key,
+                    kvp => kvp.Value?.Errors.Select(e => e.ErrorMessage).ToArray() ?? Array.Empty<string>()
+                );
+            return BadRequest(new { Error = "Validation failed", Errors = validationErrors });
+        }
+
+        var batchId = Guid.NewGuid().ToString("N")[..8];
+        var receivedAt = DateTimeOffset.UtcNow;
+
+        _logger.LogDebug("Processing single log entry for Pod: {Pod}, Deployment: {Deployment}", 
+            logEntry.Pod, logEntry.Deployment);
+
+        try
+        {
+            // Parse timestamp from line if not provided
+            var timestamp = logEntry.Timestamp ?? ParseTimestampFromLine(logEntry.Line) ?? receivedAt;
+            
+            // Parse log level from line if not provided
+            var logLevel = logEntry.LogLevel ?? ParseLogLevelFromLine(logEntry.Line) ?? LogMkCommon.LogLevel.Information;
+
+            // Validate timestamp
+            if (timestamp > DateTimeOffset.UtcNow.AddMinutes(5))
+            {
+                return BadRequest(new { Error = "Timestamp is too far in the future" });
+            }
+
+            if (timestamp < DateTimeOffset.UtcNow.AddDays(-LogMaxDaysOld))
+            {
+                return BadRequest(new { Error = $"Timestamp is too old (>{LogMaxDaysOld} days)" });
+            }
+
+            // Create log entity
+            var logEntity = new Log
+            {
+                Deployment = logEntry.Deployment,
+                Pod = logEntry.Pod,
+                Line = logEntry.Line,
+                LogLevel = logLevel.ToString(),
+                TimeStamp = timestamp.UtcDateTime,
+                LogDate = timestamp.UtcDateTime.Date,
+                LogHour = timestamp.UtcDateTime.Hour,
+                SequenceNumber = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds(), // Auto-generate sequence number
+                BatchId = batchId,
+                ReceivedAt = receivedAt.UtcDateTime
+            };
+
+            // Insert log
+            await _logRepo.InsertAsync(logEntity);
+            _metrics.IncrementLogsReceived(1);
+            _metrics.IncrementLogsProcessed(1);
+
+            _logger.LogDebug("Successfully inserted single log for Pod: {Pod}", logEntry.Pod);
+
+            // Send to real-time hub
+            _ = Task.Run(async () =>
+            {
+                try
+                {
+                    await _logHubService.SendLogs(new List<Log> { logEntity });
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning(ex, "Failed to send single log to hub");
+                }
+            }, cancellationToken);
+
+            var response = new LogResponse
+            {
+                BatchId = batchId,
+                ReceivedCount = 1,
+                ProcessedCount = 1,
+                SkippedCount = 0,
+                ReceivedAt = receivedAt,
+                Status = "Success"
+            };
+
+            return Ok(response);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error processing single log entry for Pod: {Pod}", logEntry.Pod);
+            _metrics.IncrementErrors("single_log_insert");
+
+            var response = new LogResponse
+            {
+                BatchId = batchId,
+                ReceivedCount = 1,
+                ProcessedCount = 0,
+                SkippedCount = 1,
+                ReceivedAt = receivedAt,
+                Status = "Failed",
+                InsertErrors = new List<string> { ex.Message }
+            };
+
+            return BadRequest(response);
+        }
+    }
+
+    private DateTimeOffset? ParseTimestampFromLine(string line)
+    {
+        return LogParser.ParseTimestamp(line);
+    }
+
+    private LogMkCommon.LogLevel? ParseLogLevelFromLine(string line)
+    {
+        if (string.IsNullOrWhiteSpace(line))
+            return null;
+
+        return LogParser.ParseLogLevel(line);
+    }
+
     [HttpPost("purge")]
+    [Obsolete("Use /api/workqueue/purge instead. This endpoint now queues the operation.")]
     public async Task<IActionResult> PurgeLogs([FromBody] PurgeLogsRequest request)
     {
         // Support both deployment and pod-based purging for backward compatibility
@@ -432,68 +562,45 @@ public class LogController : ControllerBase
 
         try
         {
-            var identifier = !string.IsNullOrWhiteSpace(request.Pod) ? request.Pod : request.Deployment;
-            var identifierType = !string.IsNullOrWhiteSpace(request.Pod) ? "pod" : "deployment";
-
-            _logger.LogInformation("Purging logs for {IdentifierType} {Identifier} with time range {TimeRange}", 
-                identifierType, identifier, request.TimeRange);
-
-            // Calculate the date filter based on time range
-            DateTime? startDate = null;
-            switch (request.TimeRange?.ToLower())
-            {
-                case "hour":
-                    startDate = DateTime.UtcNow.AddHours(-1);
-                    break;
-                case "day":
-                    startDate = DateTime.UtcNow.AddDays(-1);
-                    break;
-                case "week":
-                    startDate = DateTime.UtcNow.AddDays(-7);
-                    break;
-                case "month":
-                    startDate = DateTime.UtcNow.AddMonths(-1);
-                    break;
-                case "all":
-                default:
-                    startDate = null;
-                    break;
-            }
-
-            int deletedLogsCount;
+            var podName = !string.IsNullOrWhiteSpace(request.Pod) ? request.Pod : request.Deployment;
             
-            if (!string.IsNullOrWhiteSpace(request.Pod))
+            // Check if there's already a pending or active job for this pod
+            if (await _workQueueRepo.HasPendingOrActiveForPodAsync(podName))
             {
-                // Pod-based purging
-                deletedLogsCount = await _logRepo.PurgeLogsByPod(request.Pod, startDate);
-                await _logSummaryRepo.PurgeByPod(request.Pod, startDate);
-                await _logSummaryRepo.PurgeHourlyByPod(request.Pod, startDate);
-            }
-            else
-            {
-                // Deployment-based purging (backward compatibility)
-                deletedLogsCount = await _logRepo.PurgeLogsByDeployment(request.Deployment, startDate);
-                await _logSummaryRepo.PurgeByDeployment(request.Deployment, startDate);
-                await _logSummaryRepo.PurgeHourlyByDeployment(request.Deployment, startDate);
+                return Conflict(new { Error = "A purge operation is already pending or in progress for this pod" });
             }
 
-            _logger.LogInformation("Successfully purged {Count} logs for {IdentifierType} {Identifier}", 
-                deletedLogsCount, identifierType, identifier);
+            // Estimate records to be deleted
+            var estimatedRecords = await _workQueueRepo.EstimateRecordsAsync(podName, request.TimeRange);
 
-            return Ok(new 
-            { 
-                Success = true, 
-                DeletedCount = deletedLogsCount,
+            // Create work queue item
+            var item = new WorkQueue
+            {
+                Type = WorkQueueType.LogPurge,
+                PodName = podName,
                 Deployment = request.Deployment,
-                Pod = request.Pod,
-                TimeRange = request.TimeRange
+                TimeRange = request.TimeRange ?? "all",
+                EstimatedRecords = estimatedRecords,
+                CreatedBy = User.Identity?.Name
+            };
+
+            var created = await _workQueueRepo.CreateAsync(item);
+
+            _logger.LogInformation("Created work queue item {Id} for purging pod {PodName}", created.Id, podName);
+
+            return Ok(new
+            {
+                Id = created.Id,
+                Status = created.Status,
+                EstimatedRecords = estimatedRecords,
+                Message = $"Purge operation queued successfully. Estimated {estimatedRecords:N0} records to delete."
             });
         }
         catch (Exception ex)
         {
             var identifier = !string.IsNullOrWhiteSpace(request?.Pod) ? request.Pod : request?.Deployment;
-            _logger.LogError(ex, "Error purging logs for {Identifier}", identifier);
-            return StatusCode(500, new { Error = "Failed to purge logs" });
+            _logger.LogError(ex, "Error queueing purge for {Identifier}", identifier);
+            return StatusCode(500, new { Error = "Failed to queue purge operation" });
         }
     }
 }

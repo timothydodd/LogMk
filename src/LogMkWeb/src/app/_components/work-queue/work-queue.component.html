@@ -1,0 +1,106 @@
+<div class="work-queue-container">
+  <div class="d-flex justify-content-between align-items-center mb-4">
+    <h3>Work Queue</h3>
+    <button class="btn btn-sm btn-primary" (click)="refresh()" [disabled]="isLoading()">
+      <i class="lucide-icon" name="refresh-cw"></i> Refresh
+    </button>
+  </div>
+
+  @if (isLoading() && workQueueItems().length === 0) {
+    <div class="text-center py-5">
+      <div class="spinner-border text-primary" role="status">
+        <span class="visually-hidden">Loading...</span>
+      </div>
+    </div>
+  } @else if (workQueueItems().length === 0) {
+    <div class="alert alert-info">
+      <i class="lucide-icon" name="info"></i> No items in the work queue.
+    </div>
+  } @else {
+    <div class="table-responsive">
+      <table class="table table-hover">
+        <thead>
+          <tr>
+            <th>ID</th>
+            <th>Type</th>
+            <th>Pod</th>
+            <th>Status</th>
+            <th>Progress</th>
+            <th>Records</th>
+            <th>Created</th>
+            <th>Elapsed</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (item of workQueueItems(); track item.id) {
+            <tr>
+              <td>#{{ item.id }}</td>
+              <td>
+                <span class="badge bg-secondary">{{ item.type }}</span>
+              </td>
+              <td>{{ item.podName || '-' }}</td>
+              <td>
+                <span class="fw-bold" [ngClass]="getStatusClass(item.status)">
+                  {{ item.status }}
+                </span>
+              </td>
+              <td style="min-width: 150px;">
+                @if (item.status === 'IN_PROGRESS' || item.status === 'COMPLETED') {
+                  <div class="progress" style="height: 20px;">
+                    <div class="progress-bar" 
+                         [ngClass]="getProgressBarClass(item.status)"
+                         [style.width.%]="item.progress"
+                         role="progressbar">
+                      {{ item.progress }}%
+                    </div>
+                  </div>
+                  @if (item.estimatedTimeRemaining && item.status === 'IN_PROGRESS') {
+                    <small class="text-muted">
+                      ETA: {{ formatEstimatedTimeRemaining(item.estimatedTimeRemaining) }}
+                    </small>
+                  }
+                } @else {
+                  <span class="text-muted">-</span>
+                }
+              </td>
+              <td>
+                @if (item.recordsAffected !== null && item.recordsAffected !== undefined) {
+                  {{ item.recordsAffected | number }}
+                  @if (item.estimatedRecords) {
+                    / {{ item.estimatedRecords | number }}
+                  }
+                } @else if (item.estimatedRecords) {
+                  ~{{ item.estimatedRecords | number }}
+                } @else {
+                  -
+                }
+              </td>
+              <td>
+                <small>{{ item.createdAt | date:'short' }}</small>
+              </td>
+              <td>
+                {{ formatElapsedTime(item) }}
+              </td>
+              <td>
+                @if (item.status === 'PENDING') {
+                  <button class="btn btn-sm btn-danger" 
+                          (click)="cancelItem(item)"
+                          title="Cancel">
+                    <i class="lucide-icon" name="x"></i>
+                  </button>
+                } @else if (item.status === 'FAILED' && item.errorMessage) {
+                  <button class="btn btn-sm btn-warning" 
+                          [title]="item.errorMessage"
+                          data-bs-toggle="tooltip">
+                    <i class="lucide-icon" name="alert-triangle"></i>
+                  </button>
+                }
+              </td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+  }
+</div>

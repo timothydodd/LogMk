@@ -1,4 +1,4 @@
-import { Component, ElementRef, HostListener, viewChild, input, output, signal, computed, inject, afterNextRender } from '@angular/core';
+import { Component, ElementRef, HostListener, viewChild, input, output, signal, computed, inject, AfterRenderRef, afterNextRender, runInInjectionContext, Injector } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { LucideAngularModule } from 'lucide-angular';
 import { DateRangePickerComponent, DateRange } from '../date-range-picker/date-range-picker.component';
@@ -30,6 +30,7 @@ export class TimeFilterDropdownComponent {
   
   // Injected dependencies
   private elementRef = inject(ElementRef);
+  private injector = inject(Injector);
   logFilterState = inject(LogFilterState);
   
   // Component state
@@ -90,8 +91,10 @@ export class TimeFilterDropdownComponent {
     
     // Scroll selected item into view when opening
     if (this.isOpen()) {
-      afterNextRender(() => {
-        this.scrollSelectedIntoView();
+      runInInjectionContext(this.injector, () => {
+        afterNextRender(() => {
+          this.scrollSelectedIntoView();
+        });
       });
     }
   }

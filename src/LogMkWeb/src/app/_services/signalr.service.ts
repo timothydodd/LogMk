@@ -2,6 +2,7 @@ import { Injectable, OnDestroy } from '@angular/core';
 import * as signalR from '@microsoft/signalr';
 import { Subject } from 'rxjs';
 import { environment } from '../../environments/environment';
+import { WorkQueueProgressUpdate } from './work-queue.service';
 
 @Injectable({
   providedIn: 'root',
@@ -12,6 +13,7 @@ export class SignalRService implements OnDestroy {
   private currentToken?: string;
 
   public logsReceived = new Subject<Log[]>();
+  public workQueueProgress = new Subject<WorkQueueProgressUpdate>();
 
   public startConnection(token: string) {
     // Store token for reconnection scenarios
@@ -94,11 +96,21 @@ export class SignalRService implements OnDestroy {
         console.error('Error processing received logs:', error);
       }
     });
+
+    this.hubConnection?.on('WorkQueueProgress', (data) => {
+      try {
+        const update = <WorkQueueProgressUpdate>data;
+        this.workQueueProgress.next(update);
+      } catch (error) {
+        console.error('Error processing work queue progress:', error);
+      }
+    });
   }
 
   ngOnDestroy(): void {
     this.disconnect();
     this.logsReceived.complete();
+    this.workQueueProgress.complete();
   }
 }
 

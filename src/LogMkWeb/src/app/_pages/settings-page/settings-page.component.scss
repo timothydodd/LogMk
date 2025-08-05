@@ -109,6 +109,22 @@
     font-size: 0.75rem;
     color: var(--on-surface-variant);
   }
+  
+  .pod-status {
+    font-size: 0.75rem;
+    font-weight: 500;
+    margin-top: 0.25rem;
+  }
+  
+  &.disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+    
+    &:hover {
+      background: transparent;
+      border-color: transparent;
+    }
+  }
 }
 
 .settings-main {
@@ -309,4 +325,11 @@
       width: 100%;
     }
   }
+}
+
+.work-queue-section {
+  background: var(--surface);
+  border-radius: 0.5rem;
+  padding: 1.5rem;
+  margin: 2rem;
 }

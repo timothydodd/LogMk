@@ -83,6 +83,7 @@ public class Program
         builder.Services.AddHostedService<BackgroundWorkerService>();
         builder.Services.AddHostedService<LogSummaryDailyBackgroundService>();
         builder.Services.AddHostedService<LogSummaryHourlyBackgroundService>();
+        builder.Services.AddHostedService<WorkQueueProcessorService>();
         builder.Services.AddControllers();
         builder.Services.AddSignalR();
         builder.Services.AddMemoryCache();
@@ -99,6 +100,7 @@ public class Program
         builder.Services.AddTransient<IDbConnection>(sp => sp.GetRequiredService<IDbConnectionFactory>().OpenDbConnection());
         builder.Services.AddScoped<LogRepo>();
         builder.Services.AddScoped<LogSummaryRepo>();
+        builder.Services.AddScoped<WorkQueueRepo>();
         builder.Services.AddScoped<LogHubService>();
         builder.Services.AddScoped<DatabaseInitializer>();
         builder.Services.AddSingleton<LogApiMetrics>();

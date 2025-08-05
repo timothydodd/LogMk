@@ -33,8 +33,7 @@ public class LogWatcher : BackgroundService
     private readonly SemaphoreSlim _fileSemaphore = new(Environment.ProcessorCount);
 
     // Static readonly for better performance
-    private static readonly string RemoveANSIEscapePattern = @"\x1B\[[0-9;]*[A-Za-z]";
-    private static readonly Regex RemoveANSIEscapeRegex = new(RemoveANSIEscapePattern, RegexOptions.Compiled);
+    // Moved to LogParser class in LogMkCommon
 
     // Retry configuration
     private const int MaxRetryAttempts = 3;
@@ -439,7 +438,7 @@ public class LogWatcher : BackgroundService
     private LogLine? ProcessLogLine(string line, PodInfo info, PodSettings podSettings, DeploymentSettings deploymentSettings, ref bool foundRecent)
     {
         // Remove ANSI escape sequences
-        var cleanLine = RemoveANSIEscapeRegex.Replace(line, string.Empty);
+        var cleanLine = LogParser.RemoveANSIEscapeSequences(line);
 
         // Parse container format (timestamp stdout/stderr message)
         var processedLine = ParseContainerLogFormat(line, cleanLine);
@@ -472,25 +471,7 @@ public class LogWatcher : BackgroundService
 
     private string ParseContainerLogFormat(string originalLine, string cleanLine)
     {
-        var firstSpace = originalLine.IndexOf(' ');
-        if (firstSpace <= 0)
-            return cleanLine;
-
-        var secondSpace = originalLine.IndexOf(' ', firstSpace + 1);
-        if (secondSpace <= 0)
-            return cleanLine;
-
-        var thirdSpace = originalLine.IndexOf(' ', secondSpace + 1);
-        if (thirdSpace <= 0)
-            return cleanLine;
-
-        var outType = originalLine.Substring(firstSpace + 1, secondSpace - firstSpace - 1);
-        if (outType == "stdout" || outType == "stderr")
-        {
-            return cleanLine.Substring(thirdSpace + 1 - (originalLine.Length - cleanLine.Length));
-        }
-
-        return cleanLine;
+        return LogParser.ParseContainerLogFormat(originalLine, cleanLine);
     }
 
     private LogLevel GetLogLevelCached(string logLine)
@@ -519,28 +500,9 @@ public class LogWatcher : BackgroundService
         if (string.IsNullOrEmpty(logLine))
             return LogLevel.Any;
 
-        var lowerLogLine = logLine.ToLowerInvariant();
-
-        var errorIndex = FindFirst(lowerLogLine, "error", "err");
-        var warningIndex = FindFirst(lowerLogLine, "warning", "warn", "wrn");
-        var infoIndex = FindFirst(lowerLogLine, "information", "info", "inf");
-        var debugIndex = FindFirst(lowerLogLine, "debug", "dbg");
-
-        var firstIndex = MinNonNegative(errorIndex, warningIndex, infoIndex, debugIndex);
-
-        if (firstIndex < 0)
-            return LogLevel.Any; // No recognizable log level found
-        if (firstIndex == errorIndex)
-            return LogLevel.Error;
-        if (firstIndex == warningIndex)
-            return LogLevel.Warning;
-        if (firstIndex == infoIndex)
-            return LogLevel.Information;
-        if (firstIndex == debugIndex)
-            return LogLevel.Debug;
-
-
-        return LogLevel.Trace; // Default to Trace if no specific level found
+        var parsedLevel = LogParser.ParseLogLevel(logLine);
+        // Return Any if it's Information (default) to maintain existing behavior
+        return parsedLevel == LogLevel.Information ? LogLevel.Any : parsedLevel;
     }
 
     private LogLine ParseLogLine(string originalLine, string cleanLine, string podName, string deploymentName, LogLevel logLevel)
@@ -559,57 +521,12 @@ public class LogWatcher : BackgroundService
 
     private DateTimeOffset? ParseTimestamp(string line)
     {
-        var firstSpace = line.IndexOf(' ');
-        if (firstSpace < 0)
-            return null;
-
-        var timestampStr = line.Substring(0, firstSpace);
-
-        try
-        {
-            timestampStr = TruncateFractionalSeconds(timestampStr, 7);
-
-            if (DateTimeOffset.TryParseExact(timestampStr, "yyyy-MM-ddTHH:mm:ss.fffffffZ",
-                CultureInfo.InvariantCulture, DateTimeStyles.None, out var timestamp))
-            {
-                return timestamp;
-            }
-        }
-        catch (Exception ex)
-        {
-            _logger.LogDebug(ex, "Failed to parse timestamp: {Timestamp}", timestampStr);
-        }
-
-        return null;
+        return LogParser.ParseTimestamp(line);
     }
 
-    private static string TruncateFractionalSeconds(string timestamp, int maxFractionalDigits)
-    {
-        var dotIndex = timestamp.IndexOf('.');
-        if (dotIndex == -1)
-            return timestamp;
+    // TruncateFractionalSeconds moved to LogParser class
 
-        var endIndex = dotIndex + maxFractionalDigits + 1;
-        if (endIndex >= timestamp.Length - 1)
-            return timestamp;
-
-        return timestamp.Substring(0, endIndex) + "Z";
-    }
-
-    private static int FindFirst(string line, params string[] keywords)
-    {
-        return keywords
-            .Select(keyword => line.IndexOf(keyword, StringComparison.Ordinal))
-            .Where(index => index >= 0)
-            .DefaultIfEmpty(-1)
-            .Min();
-    }
-
-    private static int MinNonNegative(params int[] values)
-    {
-        var validValues = values.Where(v => v >= 0);
-        return validValues.Any() ? validValues.Min() : -1;
-    }
+    // Helper methods moved to LogParser class
     
     private bool IsLineContinuation(string line, PodInfo info, DateTimeOffset lastTimestamp)
     {
@@ -617,7 +534,7 @@ public class LogWatcher : BackgroundService
             return false;
             
         // Parse container format to get the actual log content
-        var cleanLine = RemoveANSIEscapeRegex.Replace(line, string.Empty);
+        var cleanLine = LogParser.RemoveANSIEscapeSequences(line);
         var processedLine = ParseContainerLogFormat(line, cleanLine);
         
         // Check if line has a timestamp at the beginning

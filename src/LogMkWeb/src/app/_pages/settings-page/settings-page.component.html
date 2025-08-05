@@ -20,11 +20,16 @@
               <button 
                 class="pod-item"
                 [class.active]="selectedPod() === pod.pod"
+                [class.disabled]="isPodDisabled(pod.pod)"
                 (click)="selectPod(pod.pod)"
+                [disabled]="isPodDisabled(pod.pod)"
               >
                 <div class="pod-name">{{ pod.pod }}</div>
                 <div class="pod-deployment">{{ pod.deployment }}</div>
                 <div class="pod-count">{{ pod.totalCount.toLocaleString() }} logs</div>
+                @if (isPodDisabled(pod.pod)) {
+                  <div class="pod-status text-warning">Operation in progress</div>
+                }
               </button>
             }
           </div>
@@ -75,11 +80,13 @@
                   <button 
                     class="btn btn-danger purge-button" 
                     (click)="confirmPurge()"
-                    [disabled]="!selectedPod() || isPurging()"
+                    [disabled]="!selectedPod() || isPurging() || isPodDisabled(selectedPod())"
                   >
                     @if (isPurging()) {
                       <span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
-                      Purging...
+                      Queueing...
+                    } @else if (isPodDisabled(selectedPod())) {
+                      Operation In Progress
                     } @else {
                       Purge Logs
                     }
@@ -98,6 +105,11 @@
           }
         </section>
       }
+    </div>
+
+    <!-- Work Queue Section -->
+    <div class="work-queue-section mt-5" id="queue">
+      <app-work-queue></app-work-queue>
     </div>
   </div>
 </div>

@@ -6,6 +6,8 @@ import { firstValueFrom } from 'rxjs';
 import { DropdownComponent } from '../../_components/dropdown/dropdown.component';
 import { ModalService } from '../../_services/modal.service';
 import { LogApiService } from '../../_services/log.api';
+import { WorkQueueService } from '../../_services/work-queue.service';
+import { WorkQueueComponent } from '../../_components/work-queue/work-queue.component';
 
 interface PodSummary {
   pod: string;
@@ -22,7 +24,7 @@ interface TimeRange {
 @Component({
   selector: 'app-settings-page',
   standalone: true,
-  imports: [FormsModule, ReactiveFormsModule, DropdownComponent],
+  imports: [FormsModule, ReactiveFormsModule, DropdownComponent, WorkQueueComponent],
   templateUrl: './settings-page.component.html',
   styleUrl: './settings-page.component.scss'
 })
@@ -31,12 +33,14 @@ export class SettingsPageComponent implements OnInit {
   private modalService = inject(ModalService);
   private toastr = inject(ToastrService);
   private router = inject(Router);
+  private workQueueService = inject(WorkQueueService);
 
   pods = signal<PodSummary[]>([]);
   selectedPod = signal<string>('');
   selectedTimeRange = signal<string>('all');
   isLoading = signal(false);
   isPurging = signal(false);
+  podHasPendingOperations = signal<{ [key: string]: boolean }>({});
   
   podControl = new FormControl('');
   timeRangeControl = new FormControl('all');
@@ -51,10 +55,14 @@ export class SettingsPageComponent implements OnInit {
 
   async ngOnInit() {
     await this.loadPodSummaries();
+    await this.checkPendingOperations();
     
     // Subscribe to form control changes
     this.podControl.valueChanges.subscribe(value => {
-      if (value) this.selectedPod.set(value);
+      if (value) {
+        this.selectedPod.set(value);
+        this.checkPodPendingOperations(value);
+      }
     });
     
     this.timeRangeControl.valueChanges.subscribe(value => {
@@ -137,18 +145,60 @@ export class SettingsPageComponent implements OnInit {
       const pod = this.selectedPod();
       const timeRange = this.selectedTimeRange();
       
-      await firstValueFrom(this.logApiService.purgeLogsByPod(pod, timeRange));
+      // Use work queue service instead of direct purge
+      const result = await firstValueFrom(this.workQueueService.queuePurge({
+        type: 'LOG_PURGE',
+        podName: pod,
+        timeRange: timeRange
+      }));
       
-      this.toastr.success(`Successfully purged logs for pod "${pod}"`);
+      this.toastr.success(`Purge operation queued successfully. Estimated ${result.estimatedRecords?.toLocaleString() || 0} records to delete.`);
       
-      // Reload the pod summaries
-      await this.loadPodSummaries();
-    } catch (error) {
-      this.toastr.error('Failed to purge logs');
-      console.error('Error purging logs:', error);
+      // Update pending operations status
+      this.podHasPendingOperations.update(current => ({
+        ...current,
+        [pod]: true
+      }));
+      
+      // Navigate to work queue view
+      this.router.navigate(['/settings'], { fragment: 'queue' });
+    } catch (error: any) {
+      if (error.status === 409) {
+        this.toastr.error('A purge operation is already pending or in progress for this pod');
+      } else {
+        this.toastr.error('Failed to queue purge operation');
+      }
+      console.error('Error queueing purge:', error);
     } finally {
       this.isPurging.set(false);
     }
+  }
+
+  async checkPendingOperations() {
+    try {
+      const pods = this.pods();
+      for (const pod of pods) {
+        await this.checkPodPendingOperations(pod.pod);
+      }
+    } catch (error) {
+      console.error('Error checking pending operations:', error);
+    }
+  }
+
+  async checkPodPendingOperations(podName: string) {
+    try {
+      const result = await firstValueFrom(this.workQueueService.getByPod(podName));
+      this.podHasPendingOperations.update(current => ({
+        ...current,
+        [podName]: result.hasPendingOrActive
+      }));
+    } catch (error) {
+      console.error(`Error checking pending operations for pod ${podName}:`, error);
+    }
+  }
+
+  isPodDisabled(podName: string): boolean {
+    return this.podHasPendingOperations()[podName] || false;
   }
 
   navigateBack() {
