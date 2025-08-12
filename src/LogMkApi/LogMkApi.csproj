@@ -14,7 +14,7 @@
 
   <ItemGroup>
 
-    <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="9.0.7" />
+    <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="9.0.8" />
     <PackageReference Include="Microsoft.Extensions.Diagnostics.HealthChecks" Version="9.0.7" />
     <PackageReference Include="MySql.Data" Version="9.4.0" />
     <PackageReference Include="ServiceStack.OrmLite.MySql" Version="8.8.0" />
