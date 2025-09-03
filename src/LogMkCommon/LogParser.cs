@@ -1,4 +1,4 @@
-using System.Globalization;
+﻿using System.Globalization;
 using System.Text.RegularExpressions;
 
 namespace LogMkCommon;
@@ -55,10 +55,10 @@ public static class LogParser
 
         // Remove ANSI escape sequences first
         var cleanLine = RemoveANSIEscapeRegex.Replace(line, string.Empty);
-        
+
         // Parse container format to get actual log content
         var processedLine = ParseContainerLogFormat(line, cleanLine);
-        
+
         return GetLogLevel(processedLine);
     }
 
@@ -70,13 +70,13 @@ public static class LogParser
         var upperLine = logLine.ToUpperInvariant();
 
         // Check for common log level patterns with boundaries
-        if (ContainsLogLevel(upperLine, "[ERROR]", "ERROR:", " ERR ", "ERROR "))
+        if (ContainsLogLevel(upperLine, "[ERROR]", "ERROR:", " ERR ", "ERROR ", "FAIL:"))
             return LogLevel.Error;
-        if (ContainsLogLevel(upperLine, "[WARN]", "[WARNING]", "WARNING:", " WARN ", " WRN "))
+        if (ContainsLogLevel(upperLine, "[WARN]", "[WARNING]", "WARNING:", " WARN ", " WRN ", "WARN:"))
             return LogLevel.Warning;
-        if (ContainsLogLevel(upperLine, "[INFO]", "[INFORMATION]", "INFORMATION:", " INFO ", " INF "))
+        if (ContainsLogLevel(upperLine, "[INFO]", "[INFORMATION]", "INFORMATION:", " INFO ", " INF ", "INFO:"))
             return LogLevel.Information;
-        if (ContainsLogLevel(upperLine, "[DEBUG]", "DEBUG:", " DBG ", " DEBUG "))
+        if (ContainsLogLevel(upperLine, "[DEBUG]", "DEBUG:", " DBG ", "DBUG:", " DEBUG "))
             return LogLevel.Debug;
         if (ContainsLogLevel(upperLine, "[TRACE]", "TRACE:", " TRC ", " TRACE "))
             return LogLevel.Trace;
@@ -122,7 +122,7 @@ public static class LogParser
             // Calculate the position adjustment due to ANSI escape sequences removal
             var lengthDiff = originalLine.Length - cleanLine.Length;
             var adjustedPosition = thirdSpace + 1 - lengthDiff;
-            
+
             if (adjustedPosition >= 0 && adjustedPosition < cleanLine.Length)
             {
                 return cleanLine.Substring(adjustedPosition);
