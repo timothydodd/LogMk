@@ -33,6 +33,8 @@ public class Program
                 // Register services
                 services.AddSingleton<BatchingService>();
                 services.AddSingleton<HttpLogger>();
+                services.AddSingleton<SettingsService>();
+                services.AddMemoryCache(); // Required for SettingsService caching
 
                 // Configure HttpClient with typed client
                 services.AddHttpClient<LogApiClient>((serviceProvider, client) =>

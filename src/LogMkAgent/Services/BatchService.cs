@@ -1,6 +1,7 @@
 ﻿using System.Collections.Concurrent;
 using LogMkCommon;
 using Microsoft.Extensions.Options;
+using LogMkAgent.Services;
 
 namespace LogMkAgent.Services;
 
@@ -10,6 +11,7 @@ public class BatchingService : IDisposable
     private readonly LogApiClient _httpClient;
     private readonly ILogger<BatchingService> _logger;
     private readonly BatchingOptions _options;
+    private readonly SettingsService _settingsService;
     private readonly Timer _timer;
     private readonly SemaphoreSlim _sendSemaphore = new(1, 1);
     private readonly CancellationTokenSource _cancellationTokenSource = new();
@@ -29,6 +31,7 @@ public class BatchingService : IDisposable
     private long _totalItemsProcessed;
     private long _totalBatchesSent;
     private long _totalFailures;
+    private long _totalValidationFailures;
     private DateTime _lastSuccessfulSend = DateTime.UtcNow;
 
     private volatile bool _disposed;
@@ -36,11 +39,13 @@ public class BatchingService : IDisposable
     public BatchingService(
         IOptions<BatchingOptions> batchingOptions,
         LogApiClient client,
-        ILogger<BatchingService> logger)
+        ILogger<BatchingService> logger,
+        SettingsService settingsService)
     {
         _httpClient = client ?? throw new ArgumentNullException(nameof(client));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         _options = batchingOptions?.Value ?? throw new ArgumentNullException(nameof(batchingOptions));
+        _settingsService = settingsService ?? throw new ArgumentNullException(nameof(settingsService));
 
         ValidateOptions();
 
@@ -172,7 +177,21 @@ public class BatchingService : IDisposable
         if (currentBatch.Count == 0)
             return;
 
-        var success = await SendBatchWithRetryAsync(currentBatch, 1).ConfigureAwait(false);
+        // Pre-validate the batch before sending
+        var validatedBatch = await ValidateBatchAsync(currentBatch).ConfigureAwait(false);
+        if (validatedBatch.Count == 0)
+        {
+            _logger.LogWarning("Entire batch of {Count} logs failed validation, skipping send", currentBatch.Count);
+            return;
+        }
+
+        if (validatedBatch.Count < currentBatch.Count)
+        {
+            _logger.LogInformation("Pre-validation filtered {Filtered} invalid logs from batch of {Total}. Sending {Valid} valid logs.",
+                currentBatch.Count - validatedBatch.Count, currentBatch.Count, validatedBatch.Count);
+        }
+
+        var success = await SendBatchWithRetryAsync(validatedBatch, 1).ConfigureAwait(false);
 
         if (!success)
         {
@@ -201,6 +220,44 @@ public class BatchingService : IDisposable
         }
 
         return batch;
+    }
+
+    private async Task<List<LogLine>> ValidateBatchAsync(List<LogLine> batch)
+    {
+        try
+        {
+            var validator = await _settingsService.GetValidatorAsync().ConfigureAwait(false);
+            if (validator == null)
+            {
+                _logger.LogWarning("Failed to get validator from settings service, sending batch without pre-validation");
+                return batch;
+            }
+
+            var validationResult = validator.ValidateBatch(batch);
+            
+            if (validationResult.InvalidCount > 0)
+            {
+                Interlocked.Add(ref _totalValidationFailures, validationResult.InvalidCount);
+                
+                // Log the first few validation errors for diagnostics
+                var errorSummary = validationResult.ValidationResults
+                    .SelectMany(r => r.Errors)
+                    .GroupBy(error => error)
+                    .ToDictionary(g => g.Key, g => g.Count());
+
+                _logger.LogWarning("Pre-validation failed for {InvalidCount}/{TotalCount} logs. " +
+                    "Error breakdown: {ErrorSummary}",
+                    validationResult.InvalidCount, validationResult.TotalCount,
+                    string.Join(", ", errorSummary.Select(kvp => $"{kvp.Key}: {kvp.Value}")));
+            }
+
+            return validationResult.ValidLogs;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error during batch validation, sending batch without pre-validation");
+            return batch;
+        }
     }
 
     private async Task<bool> SendBatchWithRetryAsync(List<LogLine> batch, int attemptNumber)
@@ -306,6 +363,7 @@ public class BatchingService : IDisposable
                 TotalItemsProcessed = _totalItemsProcessed,
                 TotalBatchesSent = _totalBatchesSent,
                 TotalFailures = _totalFailures,
+                TotalValidationFailures = _totalValidationFailures,
                 PendingRetries = _retryQueue.Count,
                 LastSuccessfulSend = _lastSuccessfulSend
             };
@@ -363,6 +421,7 @@ public class BatchingServiceStats
     public long TotalItemsProcessed { get; set; }
     public long TotalBatchesSent { get; set; }
     public long TotalFailures { get; set; }
+    public long TotalValidationFailures { get; set; }
     public int PendingRetries { get; set; }
     public DateTime LastSuccessfulSend { get; set; }
 }

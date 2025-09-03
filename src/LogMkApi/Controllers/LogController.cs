@@ -179,8 +179,17 @@ public class LogController : ControllerBase
         // Log validation errors for monitoring
         if (errors.Any())
         {
-            _logger.LogWarning("Batch {BatchId}: {ErrorCount} validation errors, {SkippedCount} logs skipped",
-                batchId, errors.Count, skippedCount);
+            // Group errors by type for better insights
+            var errorSummary = errors
+                .SelectMany(e => e.Errors)
+                .GroupBy(error => error)
+                .ToDictionary(g => g.Key, g => g.Count());
+
+            _logger.LogWarning("Batch {BatchId}: {ErrorCount} validation errors, {SkippedCount} logs skipped. " +
+                "Error breakdown: {ErrorSummary}", 
+                batchId, errors.Count, skippedCount, 
+                string.Join(", ", errorSummary.Select(kvp => $"{kvp.Key}: {kvp.Value}")));
+            
             _metrics.IncrementErrors("validation", skippedCount);
         }
 
@@ -385,6 +394,29 @@ public class LogController : ControllerBase
     {
         var entries = await _logRepo.GetLatestEntryTimes();
         return entries;
+    }
+
+    [AllowAnonymous]
+    [HttpGet("settings")]
+    public IActionResult GetValidationSettings()
+    {
+        var settings = new LogMkCommon.ValidationSettings
+        {
+            MaxDaysOld = LogMaxDaysOld,
+            MaxFutureMinutes = 5,
+            MaxLineLength = 10000,
+            MaxDeploymentNameLength = 100,
+            MaxPodNameLength = 100,
+            DeploymentNamePattern = @"^[a-zA-Z0-9\-._]+$",
+            PodNamePattern = @"^[a-zA-Z0-9\-._]+$",
+            AllowEmptyLogLevel = false,
+            MaxBatchSize = 1000,
+            Version = "1.0",
+            LastUpdated = DateTime.UtcNow
+        };
+
+        _logger.LogDebug("Validation settings requested by agent");
+        return Ok(settings);
     }
     [HttpGet("pods")]
     public async Task<IEnumerable<Pod>> GetPods()
