@@ -25,6 +25,17 @@ public class Program
     public static void Main(string[] args)
     {
         var builder = WebApplication.CreateBuilder(args);
+        
+        // Configure cleaner logging format
+        builder.Logging.ClearProviders();
+        builder.Logging.AddSimpleConsole(options =>
+        {
+            options.SingleLine = true;
+            options.TimestampFormat = "yyyy-MM-dd HH:mm:ss ";
+            options.UseUtcTimestamp = true;
+            options.IncludeScopes = false;
+        });
+        
         builder.Services.AddRequestDecompression();
         builder.Services.AddResponseCompression(options =>
         {

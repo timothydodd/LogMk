@@ -35,7 +35,7 @@ namespace LogSummaryService
                 var nextRun = CalculateNextRunTime(now);
                 var delay = nextRun - now;
 
-                _logger.LogInformation($"Next log summary update scheduled for {nextRun:yyyy-MM-dd HH:mm:ss}");
+                _logger.LogInformation("Next log summary update scheduled for {NextRun}", nextRun.ToString("yyyy-MM-dd HH:mm:ss"));
 
                 // Wait until the next hour
                 await Task.Delay(delay, stoppingToken);

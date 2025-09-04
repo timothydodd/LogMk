@@ -50,11 +50,13 @@ public class Program
                 // Configure logging
                 services.AddLogging(logging =>
                 {
+                    logging.ClearProviders();
                     logging.AddSimpleConsole(options =>
                     {
                         options.SingleLine = true;
-                        options.IncludeScopes = true;
-                        options.TimestampFormat = "HH:mm:ss ";
+                        options.IncludeScopes = false;
+                        options.TimestampFormat = "yyyy-MM-dd HH:mm:ss ";
+                        options.UseUtcTimestamp = true;
                     });
                 });
 
