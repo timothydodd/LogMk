@@ -489,7 +489,7 @@ public class LogController : ControllerBase
             var timestamp = logEntry.Timestamp ?? ParseTimestampFromLine(logEntry.Line) ?? receivedAt;
             
             // Parse log level from line if not provided
-            var logLevel = logEntry.LogLevel ?? ParseLogLevelFromLine(logEntry.Line) ?? LogMkCommon.LogLevel.Information;
+            var logLevel = logEntry.LogLevel ?? ParseLogLevelFromLine(logEntry.Line) ?? LogMkCommon.LogLevel.Any;
 
             // Validate timestamp
             if (timestamp > DateTimeOffset.UtcNow.AddMinutes(5))

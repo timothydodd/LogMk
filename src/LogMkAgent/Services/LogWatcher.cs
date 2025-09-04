@@ -501,8 +501,8 @@ public class LogWatcher : BackgroundService
             return LogLevel.Any;
 
         var parsedLevel = LogParser.ParseLogLevel(logLine);
-        // Return Any if it's Information (default) to maintain existing behavior
-        return parsedLevel == LogLevel.Information ? LogLevel.Any : parsedLevel;
+        // Parser now returns Any for undetected levels, Information only for explicit INFO logs
+        return parsedLevel;
     }
 
     private LogLine ParseLogLine(string originalLine, string cleanLine, string podName, string deploymentName, LogLevel logLevel)

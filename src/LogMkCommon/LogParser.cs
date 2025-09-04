@@ -65,7 +65,7 @@ public static class LogParser
     public static LogLevel ParseLogLevel(string line)
     {
         if (string.IsNullOrWhiteSpace(line))
-            return LogLevel.Information;
+            return LogLevel.Any;
 
         // Remove ANSI escape sequences first
         var cleanLine = RemoveANSIEscapeRegex.Replace(line, string.Empty);
@@ -76,51 +76,56 @@ public static class LogParser
         return GetLogLevel(processedLine);
     }
 
+    // Compiled regex patterns for efficient log level detection
+    private static readonly Regex ErrorPattern = new(@"\b(ERROR|ERR|FAIL)\b|ERROR:|FAIL:|\[ERROR\]", 
+        RegexOptions.Compiled | RegexOptions.IgnoreCase);
+    private static readonly Regex WarningPattern = new(@"\b(WARN|WARNING|WRN)\b|WARN:|WARNING:|\[WARN\]|\[WARNING\]", 
+        RegexOptions.Compiled | RegexOptions.IgnoreCase);
+    private static readonly Regex InfoPattern = new(@"\b(INFO|INFORMATION|INF)\b|INFO:|INFORMATION:|\[INFO\]|\[INFORMATION\]", 
+        RegexOptions.Compiled | RegexOptions.IgnoreCase);
+    private static readonly Regex DebugPattern = new(@"\b(DEBUG|DBG|DBUG)\b|DEBUG:|DBUG:|\[DEBUG\]", 
+        RegexOptions.Compiled | RegexOptions.IgnoreCase);
+    private static readonly Regex TracePattern = new(@"\b(TRACE|TRC)\b|TRACE:|\[TRACE\]", 
+        RegexOptions.Compiled | RegexOptions.IgnoreCase);
+
     private static LogLevel GetLogLevel(string logLine)
     {
         if (string.IsNullOrEmpty(logLine))
-            return LogLevel.Information;
+            return LogLevel.Any;
 
-        // Check if line is JSON and try to parse level from it
-        if (logLine.TrimStart().StartsWith('{') && logLine.TrimEnd().EndsWith('}'))
+        // Quick check for JSON (avoid trim operations unless needed)
+        int firstNonWhitespace = 0;
+        while (firstNonWhitespace < logLine.Length && char.IsWhiteSpace(logLine[firstNonWhitespace]))
+            firstNonWhitespace++;
+        
+        if (firstNonWhitespace < logLine.Length && logLine[firstNonWhitespace] == '{')
         {
-            var jsonLevel = ParseJsonLogLevel(logLine);
-            if (jsonLevel != LogLevel.Information) // If we found a specific level in JSON
-                return jsonLevel;
+            int lastNonWhitespace = logLine.Length - 1;
+            while (lastNonWhitespace >= 0 && char.IsWhiteSpace(logLine[lastNonWhitespace]))
+                lastNonWhitespace--;
+            
+            if (lastNonWhitespace >= 0 && logLine[lastNonWhitespace] == '}')
+            {
+                var jsonLevel = ParseJsonLogLevel(logLine);
+                if (jsonLevel != LogLevel.Any)
+                    return jsonLevel;
+            }
         }
 
-        var upperLine = logLine.ToUpperInvariant();
-
-        // Check for common log level patterns with boundaries
-        if (ContainsLogLevel(upperLine, "[ERROR]", "ERROR:", " ERR ", "ERROR ", "FAIL:"))
-            return LogLevel.Error;
-        if (ContainsLogLevel(upperLine, "[WARN]", "[WARNING]", "WARNING:", " WARN ", " WRN ", "WARN:"))
-            return LogLevel.Warning;
-        if (ContainsLogLevel(upperLine, "[INFO]", "[INFORMATION]", "INFORMATION:", " INFO ", " INF ", "INFO:"))
+        // Use compiled regex patterns for efficient matching
+        // Check in order of frequency (errors and warnings are typically less common)
+        if (InfoPattern.IsMatch(logLine))
             return LogLevel.Information;
-        if (ContainsLogLevel(upperLine, "[DEBUG]", "DEBUG:", " DBG ", "DBUG:", " DEBUG "))
+        if (ErrorPattern.IsMatch(logLine))
+            return LogLevel.Error;
+        if (WarningPattern.IsMatch(logLine))
+            return LogLevel.Warning;
+        if (DebugPattern.IsMatch(logLine))
             return LogLevel.Debug;
-        if (ContainsLogLevel(upperLine, "[TRACE]", "TRACE:", " TRC ", " TRACE "))
+        if (TracePattern.IsMatch(logLine))
             return LogLevel.Trace;
 
-        // Check for log level at the beginning of the line
-        if (upperLine.StartsWith("ERROR") || upperLine.StartsWith("ERR"))
-            return LogLevel.Error;
-        if (upperLine.StartsWith("WARN") || upperLine.StartsWith("WARNING"))
-            return LogLevel.Warning;
-        if (upperLine.StartsWith("INFO") || upperLine.StartsWith("INFORMATION"))
-            return LogLevel.Information;
-        if (upperLine.StartsWith("DEBUG") || upperLine.StartsWith("DBG"))
-            return LogLevel.Debug;
-        if (upperLine.StartsWith("TRACE") || upperLine.StartsWith("TRC"))
-            return LogLevel.Trace;
-
-        return LogLevel.Information; // Default
-    }
-
-    private static bool ContainsLogLevel(string upperLine, params string[] patterns)
-    {
-        return patterns.Any(pattern => upperLine.Contains(pattern));
+        return LogLevel.Any; // Default when no specific level detected
     }
 
     public static string ParseContainerLogFormat(string originalLine, string cleanLine)
@@ -283,7 +288,7 @@ public static class LogParser
                             "INFO" or "INFORMATION" => LogLevel.Information,
                             "DEBUG" or "DBG" => LogLevel.Debug,
                             "TRACE" or "TRC" or "VERBOSE" => LogLevel.Trace,
-                            _ => LogLevel.Information
+                            _ => LogLevel.Any
                         };
                     }
                 }
@@ -294,6 +299,6 @@ public static class LogParser
             // Not valid JSON or parsing error, ignore
         }
         
-        return LogLevel.Information;
+        return LogLevel.Any;
     }
 }
