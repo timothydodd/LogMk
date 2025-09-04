@@ -7,6 +7,7 @@ namespace LogMkAgent;
 [JsonSerializable(typeof(List<LogLine>))]
 [JsonSerializable(typeof(IEnumerable<LatestDeploymentEntry>))]
 [JsonSerializable(typeof(IEnumerable<LogLine>))]
+[JsonSerializable(typeof(ValidationSettings))]
 public partial class ApiJsonSerializerContext : JsonSerializerContext
 {
 }
