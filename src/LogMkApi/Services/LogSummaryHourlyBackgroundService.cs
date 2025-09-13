@@ -1,13 +1,13 @@
-﻿using ServiceStack.Data;
-using ServiceStack.OrmLite;
+﻿using Dapper;
+using RoboDodd.OrmLite;
 namespace LogSummaryService
 {
     public class LogSummaryHourlyBackgroundService : BackgroundService
     {
         private readonly ILogger<LogSummaryHourlyBackgroundService> _logger;
-        private readonly IDbConnectionFactory _dbFactory;
+        private readonly DbConnectionFactory _dbFactory;
 
-        public LogSummaryHourlyBackgroundService(IDbConnectionFactory dbFactory,
+        public LogSummaryHourlyBackgroundService(DbConnectionFactory dbFactory,
             ILogger<LogSummaryHourlyBackgroundService> logger)
         {
             _dbFactory = dbFactory;
@@ -56,7 +56,7 @@ namespace LogSummaryService
 
         private async Task UpdateCurrentHourSummaryAsync()
         {
-            using (var connection = _dbFactory.OpenDbConnection())
+            using (var connection = _dbFactory.CreateConnection())
             {
                 var date = DateTime.UtcNow.Date;
                 var hour = DateTime.UtcNow.Hour - 1;
@@ -64,10 +64,10 @@ namespace LogSummaryService
                 _logger.LogInformation($"Updating log summary for hour {hour} on {date:yyyy-MM-dd}");
                 try
                 {
-                    var rowsDeleted = await connection.ExecuteNonQueryAsync(@"
+                    var rowsDeleted = await connection.ExecuteAsync(@"
                         DELETE FROM LogSummaryHour WHERE LogDate = @date AND LogHour = @hour", new { date, hour });
                     _logger.LogInformation($"Deleted {rowsDeleted} rows from summary.");
-                    var rowsInserted = await connection.ExecuteNonQueryAsync(@"          
+                    var rowsInserted = await connection.ExecuteAsync(@"          
                     INSERT INTO LogSummaryHour (Deployment, Pod, LogLevel, LogDate, LogHour, Count, LastUpdated)
                     SELECT 
                         Deployment,

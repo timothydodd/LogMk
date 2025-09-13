@@ -5,9 +5,8 @@ using LogMkApi.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
-using ServiceStack.Data;
-using ServiceStack.OrmLite;
-using ServiceStack.OrmLite.Dapper;
+using RoboDodd.OrmLite;
+using Dapper;
 
 namespace LogMkApi.Controllers;
 [Authorize]
@@ -15,13 +14,13 @@ namespace LogMkApi.Controllers;
 [Route("api/auth")]
 public class AuthController : Controller
 {
-    private readonly IDbConnectionFactory _dbFactory;
+    private readonly DbConnectionFactory _dbFactory;
     private readonly AuthService _authService;
     private readonly PasswordService _passwordService;
     private readonly RefreshTokenService _refreshTokenService;
     private readonly IConfiguration _configuration;
 
-    public AuthController(IDbConnectionFactory dbFactory, AuthService authService, PasswordService passwordService, RefreshTokenService refreshTokenService, IConfiguration configuration)
+    public AuthController(DbConnectionFactory dbFactory, AuthService authService, PasswordService passwordService, RefreshTokenService refreshTokenService, IConfiguration configuration)
     {
         _dbFactory = dbFactory;
         _authService = authService;
@@ -41,7 +40,7 @@ public class AuthController : Controller
         
         try
         {
-            using (var db = _dbFactory.OpenDbConnection())
+            using (var db = _dbFactory.CreateConnection())
             {
                 // In a real-world scenario, you would retrieve the user from a database
                 var user = (await db.QueryAsync<User>("SELECT * FROM User WHERE UserName = @UserName", new { UserName = request.UserName })).FirstOrDefault();
@@ -76,7 +75,7 @@ public class AuthController : Controller
         {
             return Unauthorized();
         }
-        using (var db = _dbFactory.OpenDbConnection())
+        using (var db = _dbFactory.CreateConnection())
         {
             var user = (await db.QueryAsync<User>("SELECT * FROM User WHERE UserName = @UserName", new { UserName = userName })).FirstOrDefault();
             if (user == null)
@@ -106,7 +105,7 @@ public class AuthController : Controller
         
         try
         {
-            using (var db = _dbFactory.OpenDbConnection())
+            using (var db = _dbFactory.CreateConnection())
             {
                 var user = (await db.QueryAsync<User>("SELECT * FROM User WHERE UserName = @UserName", new { UserName = userName })).FirstOrDefault();
                 if (user == null)
@@ -150,7 +149,7 @@ public class AuthController : Controller
             return Unauthorized(new { Error = "Invalid refresh token" });
         }
 
-        using var db = _dbFactory.OpenDbConnection();
+        using var db = _dbFactory.CreateConnection();
         var user = (await db.SelectAsync<User>(u => u.Id == userId.Value)).FirstOrDefault();
         if (user == null)
         {

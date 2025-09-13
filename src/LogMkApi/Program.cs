@@ -13,10 +13,7 @@ using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.AspNetCore.ResponseCompression;
 using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
-using ServiceStack;
-using ServiceStack.Data;
-using ServiceStack.OrmLite;
-using ServiceStack.OrmLite.Dapper;
+using RoboDodd.OrmLite;
 
 namespace LogMkApi;
 
@@ -105,10 +102,10 @@ public class Program
         {
             throw new InvalidOperationException("Connection string not found");
         }
-        var dbFactory = new OrmLiteConnectionFactory(connectionString, MySqlDialect.Provider);
+        var dbFactory = new DbConnectionFactory(connectionString, DatabaseProvider.MySql);
 
-        builder.Services.AddSingleton<IDbConnectionFactory>(dbFactory);
-        builder.Services.AddTransient<IDbConnection>(sp => sp.GetRequiredService<IDbConnectionFactory>().OpenDbConnection());
+        builder.Services.AddSingleton<DbConnectionFactory>(dbFactory);
+        builder.Services.AddTransient<IDbConnection>(sp => sp.GetRequiredService<DbConnectionFactory>().CreateConnection());
         builder.Services.AddScoped<LogRepo>();
         builder.Services.AddScoped<LogSummaryRepo>();
         builder.Services.AddScoped<WorkQueueRepo>();
@@ -197,7 +194,7 @@ public class Program
             });
         }
         HealthCheck.AddHealthChecks(builder.Services, dbFactory);
-        SqlMapper.AddTypeHandler(new DateTimeHandler());
+        SqlMapper.AddTypeHandler<DateTime>(new DateTimeHandler());
 
         var app = builder.Build();
 

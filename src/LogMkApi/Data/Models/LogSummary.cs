@@ -1,4 +1,5 @@
-﻿using ServiceStack.DataAnnotations;
+﻿using RoboDodd.OrmLite;
+using System.ComponentModel.DataAnnotations;
 
 namespace LogMkApi.Data.Models;
 

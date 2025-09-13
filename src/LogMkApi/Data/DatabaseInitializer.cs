@@ -1,16 +1,15 @@
 ﻿using LogMkApi.Data.Models;
 using LogMkApi.Services;
-using ServiceStack.Data;
-using ServiceStack.OrmLite;
+using RoboDodd.OrmLite;
 
 namespace LogMkApi.Data;
 
 public class DatabaseInitializer
 {
-    private readonly IDbConnectionFactory _dbFactory;
+    private readonly DbConnectionFactory _dbFactory;
     private readonly PasswordService _passwordService;
 
-    public DatabaseInitializer(IDbConnectionFactory dbFactory, PasswordService passwordService)
+    public DatabaseInitializer(DbConnectionFactory dbFactory, PasswordService passwordService)
     {
         _dbFactory = dbFactory;
         _passwordService = passwordService;
@@ -18,7 +17,7 @@ public class DatabaseInitializer
 
     public void CreateTable()
     {
-        using (var db = _dbFactory.OpenDbConnection())
+        using (var db = _dbFactory.CreateConnection())
         {
             db.CreateTableIfNotExists<Log>();
             db.CreateTableIfNotExists<LogSummary>();

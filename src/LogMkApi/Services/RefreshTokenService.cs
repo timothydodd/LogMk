@@ -1,16 +1,15 @@
 using System.Security.Cryptography;
 using LogMkApi.Data.Models;
-using ServiceStack.Data;
-using ServiceStack.OrmLite;
+using RoboDodd.OrmLite;
 
 namespace LogMkApi.Services;
 
 public class RefreshTokenService
 {
-    private readonly IDbConnectionFactory _dbFactory;
+    private readonly DbConnectionFactory _dbFactory;
     private readonly IConfiguration _configuration;
 
-    public RefreshTokenService(IDbConnectionFactory dbFactory, IConfiguration configuration)
+    public RefreshTokenService(DbConnectionFactory dbFactory, IConfiguration configuration)
     {
         _dbFactory = dbFactory;
         _configuration = configuration;
@@ -30,7 +29,7 @@ public class RefreshTokenService
             CreatedDate = DateTime.UtcNow
         };
 
-        using var db = _dbFactory.OpenDbConnection();
+        using var db = _dbFactory.CreateConnection();
         refreshToken.Id = (int)await db.InsertAsync(refreshToken, selectIdentity: true);
 
         return refreshToken;
@@ -38,7 +37,7 @@ public class RefreshTokenService
 
     public async Task<RefreshToken?> GetRefreshTokenAsync(string token)
     {
-        using var db = _dbFactory.OpenDbConnection();
+        using var db = _dbFactory.CreateConnection();
         return (await db.SelectAsync<RefreshToken>(x => x.Token == token && !x.IsRevoked)).FirstOrDefault();
     }
 
@@ -50,7 +49,7 @@ public class RefreshTokenService
 
     public async Task RevokeRefreshTokenAsync(string token)
     {
-        using var db = _dbFactory.OpenDbConnection();
+        using var db = _dbFactory.CreateConnection();
         var refreshToken = (await db.SelectAsync<RefreshToken>(x => x.Token == token)).FirstOrDefault();
         if (refreshToken != null)
         {
@@ -61,7 +60,7 @@ public class RefreshTokenService
 
     public async Task RevokeAllUserRefreshTokensAsync(Guid userId)
     {
-        using var db = _dbFactory.OpenDbConnection();
+        using var db = _dbFactory.CreateConnection();
         var tokens = await db.SelectAsync<RefreshToken>(x => x.UserId == userId && !x.IsRevoked);
         foreach (var token in tokens)
         {
@@ -81,7 +80,7 @@ public class RefreshTokenService
 
     public async Task CleanupExpiredTokensAsync()
     {
-        using var db = _dbFactory.OpenDbConnection();
+        using var db = _dbFactory.CreateConnection();
         await db.DeleteAsync<RefreshToken>(x => x.ExpiryDate < DateTime.UtcNow);
     }
 

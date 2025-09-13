@@ -1,8 +1,8 @@
 ﻿using System.Text;
 using LogMkApi.Common;
-using ServiceStack.Data;
-using ServiceStack.OrmLite.Dapper;
-using static ServiceStack.OrmLite.Dapper.SqlMapper;
+using RoboDodd.OrmLite;
+using Dapper;
+using static Dapper.SqlMapper;
 
 namespace LogMkApi.Data;
 
@@ -11,8 +11,8 @@ public class LogSummaryRepo
 {
 
     public static readonly char[] CharactersToRemoveForNumberTest = { '#', ' ' };
-    private readonly IDbConnectionFactory _dbFactory;
-    public LogSummaryRepo(IDbConnectionFactory dbFactory)
+    private readonly DbConnectionFactory _dbFactory;
+    public LogSummaryRepo(DbConnectionFactory dbFactory)
     {
         _dbFactory = dbFactory;
     }
@@ -99,7 +99,7 @@ ORDER BY
             "
             ;
         }
-        using (var db = _dbFactory.OpenDbConnection())
+        using (var db = _dbFactory.CreateConnection())
         {
             var counts = new Dictionary<DateTime, Dictionary<string, int>>();
             var result = await db.QueryAsync<LogLevelStat>(query, dynamicParameters);
@@ -121,7 +121,7 @@ ORDER BY
 
     public async Task<IEnumerable<dynamic>> GetDeploymentSummaries()
     {
-        using (var db = _dbFactory.OpenDbConnection())
+        using (var db = _dbFactory.CreateConnection())
         {
             var query = @"
                 SELECT 
@@ -156,7 +156,7 @@ ORDER BY
 
     public async Task<IEnumerable<dynamic>> GetPodSummaries()
     {
-        using (var db = _dbFactory.OpenDbConnection())
+        using (var db = _dbFactory.CreateConnection())
         {
             var query = @"
                 SELECT 
@@ -193,7 +193,7 @@ ORDER BY
 
     public async Task PurgeByDeployment(string deployment, DateTime? startDate)
     {
-        using (var db = _dbFactory.OpenDbConnection())
+        using (var db = _dbFactory.CreateConnection())
         {
             var query = new StringBuilder("DELETE FROM LogSummary WHERE Deployment = @deployment");
             var parameters = new DynamicParameters();
@@ -211,7 +211,7 @@ ORDER BY
 
     public async Task PurgeHourlyByDeployment(string deployment, DateTime? startDate)
     {
-        using (var db = _dbFactory.OpenDbConnection())
+        using (var db = _dbFactory.CreateConnection())
         {
             var query = new StringBuilder("DELETE FROM LogSummaryHour WHERE Deployment = @deployment");
             var parameters = new DynamicParameters();
@@ -229,7 +229,7 @@ ORDER BY
 
     public async Task PurgeByPod(string pod, DateTime? startDate)
     {
-        using (var db = _dbFactory.OpenDbConnection())
+        using (var db = _dbFactory.CreateConnection())
         {
             var query = new StringBuilder("DELETE FROM LogSummary WHERE Pod = @pod");
             var parameters = new DynamicParameters();
@@ -247,7 +247,7 @@ ORDER BY
 
     public async Task PurgeHourlyByPod(string pod, DateTime? startDate)
     {
-        using (var db = _dbFactory.OpenDbConnection())
+        using (var db = _dbFactory.CreateConnection())
         {
             var query = new StringBuilder("DELETE FROM LogSummaryHour WHERE Pod = @pod");
             var parameters = new DynamicParameters();

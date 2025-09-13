@@ -17,6 +17,10 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "solution-files", "solution-
 		..\README.md = ..\README.md
 	EndProjectSection
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "RoboDodd.OrmLite", "RoboDodd.OrmLite\src\RoboDodd.OrmLite\RoboDodd.OrmLite.csproj", "{E1D76D8A-E66B-4AF8-867E-ED2254DE9E25}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "RoboDodd.OrmLite.Tests", "RoboDodd.OrmLite\src\RoboDodd.OrmLite.Tests\RoboDodd.OrmLite.Tests.csproj", "{AFB4864F-80DD-A42F-380E-A952B4744741}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -41,6 +45,14 @@ Global
 		{DB0AC211-D6C7-442B-9F6F-C87CB78BE305}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{DB0AC211-D6C7-442B-9F6F-C87CB78BE305}.Release|Any CPU.Build.0 = Release|Any CPU
 		{DB0AC211-D6C7-442B-9F6F-C87CB78BE305}.Release|Any CPU.Deploy.0 = Release|Any CPU
+		{E1D76D8A-E66B-4AF8-867E-ED2254DE9E25}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{E1D76D8A-E66B-4AF8-867E-ED2254DE9E25}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{E1D76D8A-E66B-4AF8-867E-ED2254DE9E25}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{E1D76D8A-E66B-4AF8-867E-ED2254DE9E25}.Release|Any CPU.Build.0 = Release|Any CPU
+		{AFB4864F-80DD-A42F-380E-A952B4744741}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{AFB4864F-80DD-A42F-380E-A952B4744741}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{AFB4864F-80DD-A42F-380E-A952B4744741}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{AFB4864F-80DD-A42F-380E-A952B4744741}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

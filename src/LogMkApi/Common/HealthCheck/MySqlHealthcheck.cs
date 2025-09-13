@@ -3,15 +3,15 @@
 using System.Diagnostics;
 using System.Threading;
 using System.Threading.Tasks;
+using Dapper;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
-using ServiceStack.Data;
-using ServiceStack.OrmLite;
+using RoboDodd.OrmLite;
 
 public class MySqlHealthCheck : IHealthCheck
 {
-    private readonly IDbConnectionFactory _dbFactory;
+    private readonly DbConnectionFactory _dbFactory;
     private readonly string _table;
-    public MySqlHealthCheck(IDbConnectionFactory dbFactory, string table)
+    public MySqlHealthCheck(DbConnectionFactory dbFactory, string table)
     {
         _dbFactory = dbFactory;
         _table = table;
@@ -25,12 +25,12 @@ public class MySqlHealthCheck : IHealthCheck
 
         try
         {
-            using var connection = await _dbFactory.OpenDbConnectionAsync();
+            using var connection = _dbFactory.CreateConnection();
             using var command = connection.CreateCommand();
 
 
-            command.CommandText = $"SELECT * FROM {_table} limit 1";
-            await command.ExecNonQueryAsync();
+
+            await connection.ExecuteAsync($"SELECT * FROM {_table} limit 1");
 
             stopwatch.Stop();
 

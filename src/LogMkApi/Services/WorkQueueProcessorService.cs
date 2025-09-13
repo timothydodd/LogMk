@@ -1,12 +1,11 @@
 ﻿using System.Text;
-using System.Data.Common;
+using Dapper;
 using LogMkApi.Data;
 using LogMkApi.Data.Models;
 using LogMkApi.Hubs;
 using LogMkCommon;
 using Microsoft.AspNetCore.SignalR;
-using ServiceStack.Data;
-using ServiceStack.OrmLite;
+using RoboDodd.OrmLite;
 
 namespace LogMkApi.Services;
 
@@ -87,7 +86,7 @@ public class WorkQueueProcessorService : BackgroundService
 
     private async Task ProcessLogPurge(IServiceScope scope, WorkQueue item, IHubContext<LogHub> hubContext, CancellationToken cancellationToken)
     {
-        var dbFactory = scope.ServiceProvider.GetRequiredService<IDbConnectionFactory>();
+        var dbFactory = scope.ServiceProvider.GetRequiredService<DbConnectionFactory>();
         var workQueueRepo = scope.ServiceProvider.GetRequiredService<WorkQueueRepo>();
         var logRepo = scope.ServiceProvider.GetRequiredService<LogRepo>();
         var logSummaryRepo = scope.ServiceProvider.GetRequiredService<LogSummaryRepo>();
@@ -123,7 +122,7 @@ public class WorkQueueProcessorService : BackgroundService
         }
 
         // Perform batch deletion  
-        using var db = dbFactory.OpenDbConnection();
+        using var db = dbFactory.CreateConnection();
 
         const int batchSize = 10000;
         var totalDeleted = 0;
@@ -143,10 +142,11 @@ public class WorkQueueProcessorService : BackgroundService
                 // Use OrmLite's ExecuteNonQueryAsync with parameters
                 // Note: OrmLite doesn't easily support per-command timeouts, 
                 // but batching in small chunks should prevent most timeout issues
-                var deletedCount = await db.ExecuteNonQueryAsync(query.ToString(), new { 
-                    pod = item.PodName, 
-                    startDate = startDate 
-                }, cancellationToken);
+                var deletedCount = await db.ExecuteAsync(query.ToString(), new
+                {
+                    pod = item.PodName,
+                    startDate = startDate
+                });
 
                 if (deletedCount == 0)
                     break;
@@ -154,7 +154,7 @@ public class WorkQueueProcessorService : BackgroundService
                 totalDeleted += deletedCount;
 
                 // Update progress
-                var progress = estimatedRecords > 0 
+                var progress = estimatedRecords > 0
                     ? Math.Min(100, (int)((double)totalDeleted / estimatedRecords * 100))
                     : 50; // If we can't estimate, just show 50% progress
 

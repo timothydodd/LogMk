@@ -1,18 +1,16 @@
-﻿using LogMkApi.Data.Models;
+﻿using Dapper;
+using LogMkApi.Data.Models;
 using LogMkCommon;
-using ServiceStack.Data;
-using ServiceStack.OrmLite;
-using ServiceStack.OrmLite.Dapper;
-using System.Linq;
+using RoboDodd.OrmLite;
 
 namespace LogMkApi.Data;
 
 public class WorkQueueRepo
 {
-    private readonly IDbConnectionFactory _dbFactory;
+    private readonly DbConnectionFactory _dbFactory;
     private readonly ILogger<WorkQueueRepo> _logger;
 
-    public WorkQueueRepo(IDbConnectionFactory dbFactory, ILogger<WorkQueueRepo> logger)
+    public WorkQueueRepo(DbConnectionFactory dbFactory, ILogger<WorkQueueRepo> logger)
     {
         _dbFactory = dbFactory;
         _logger = logger;
@@ -20,23 +18,23 @@ public class WorkQueueRepo
 
     public async Task<WorkQueue> CreateAsync(WorkQueue item)
     {
-        using var db = _dbFactory.OpenDbConnection();
+        using var db = _dbFactory.CreateConnection();
         item.CreatedAt = DateTime.UtcNow;
         item.Status = WorkQueueStatus.Pending;
-        await db.InsertAsync(item);
-        item.Id = (int)db.LastInsertId();
+        var id = await db.InsertAsync(item, selectIdentity: true);
+        item.Id = (int)id;
         return item;
     }
 
     public async Task<WorkQueue?> GetByIdAsync(int id)
     {
-        using var db = _dbFactory.OpenDbConnection();
+        using var db = _dbFactory.CreateConnection();
         return await db.SingleByIdAsync<WorkQueue>(id);
     }
 
     public async Task<List<WorkQueue>> GetAllAsync(int? limit = null)
     {
-        using var db = _dbFactory.OpenDbConnection();
+        using var db = _dbFactory.CreateConnection();
         var query = db.From<WorkQueue>()
             .OrderByDescending(x => x.CreatedAt);
 
@@ -48,7 +46,7 @@ public class WorkQueueRepo
 
     public async Task<List<WorkQueue>> GetActiveAsync()
     {
-        using var db = _dbFactory.OpenDbConnection();
+        using var db = _dbFactory.CreateConnection();
         return await db.SelectAsync<WorkQueue>(x =>
             x.Status == WorkQueueStatus.Pending ||
             x.Status == WorkQueueStatus.InProgress);
@@ -56,7 +54,7 @@ public class WorkQueueRepo
 
     public async Task<WorkQueue?> GetNextPendingAsync()
     {
-        using var db = _dbFactory.OpenDbConnection();
+        using var db = _dbFactory.CreateConnection();
         var query = db.From<WorkQueue>()
             .Where(x => x.Status == WorkQueueStatus.Pending)
             .OrderBy(x => x.CreatedAt)
@@ -68,7 +66,7 @@ public class WorkQueueRepo
 
     public async Task<bool> HasPendingOrActiveForPodAsync(string podName)
     {
-        using var db = _dbFactory.OpenDbConnection();
+        using var db = _dbFactory.CreateConnection();
         return await db.ExistsAsync<WorkQueue>(x =>
             x.PodName == podName &&
             (x.Status == WorkQueueStatus.Pending || x.Status == WorkQueueStatus.InProgress));
@@ -76,14 +74,14 @@ public class WorkQueueRepo
 
     public async Task<List<WorkQueue>> GetByPodAsync(string podName)
     {
-        using var db = _dbFactory.OpenDbConnection();
+        using var db = _dbFactory.CreateConnection();
         return await db.SelectAsync<WorkQueue>(x => x.PodName == podName);
     }
 
     public async Task UpdateStatusAsync(int id, string status, DateTime? startedAt = null, DateTime? completedAt = null)
     {
-        using var db = _dbFactory.OpenDbConnection();
-        
+        using var db = _dbFactory.CreateConnection();
+
         if (startedAt.HasValue && completedAt.HasValue)
         {
             await db.UpdateOnlyAsync(() => new WorkQueue
@@ -120,8 +118,8 @@ public class WorkQueueRepo
 
     public async Task UpdateProgressAsync(int id, int progress, int? recordsAffected = null)
     {
-        using var db = _dbFactory.OpenDbConnection();
-        
+        using var db = _dbFactory.CreateConnection();
+
         if (recordsAffected.HasValue)
         {
             await db.UpdateOnlyAsync(() => new WorkQueue
@@ -141,7 +139,7 @@ public class WorkQueueRepo
 
     public async Task UpdateErrorAsync(int id, string errorMessage)
     {
-        using var db = _dbFactory.OpenDbConnection();
+        using var db = _dbFactory.CreateConnection();
         await db.UpdateOnlyAsync(() => new WorkQueue
         {
             Status = WorkQueueStatus.Failed,
@@ -152,7 +150,7 @@ public class WorkQueueRepo
 
     public async Task<bool> CancelAsync(int id)
     {
-        using var db = _dbFactory.OpenDbConnection();
+        using var db = _dbFactory.CreateConnection();
         var rowsAffected = await db.UpdateOnlyAsync(() => new WorkQueue
         {
             Status = WorkQueueStatus.Cancelled,
@@ -164,7 +162,7 @@ public class WorkQueueRepo
 
     public async Task<WorkQueueStatusResponse> GetStatusSummaryAsync()
     {
-        using var db = _dbFactory.OpenDbConnection();
+        using var db = _dbFactory.CreateConnection();
         var query = @"
             SELECT 
                 COUNT(CASE WHEN Status = @pending THEN 1 END) as PendingCount,
@@ -190,7 +188,7 @@ public class WorkQueueRepo
 
     public async Task<int> EstimateRecordsAsync(string podName, string? timeRange)
     {
-        using var db = _dbFactory.OpenDbConnection();
+        using var db = _dbFactory.CreateConnection();
 
         DateTime? startDate = null;
         switch (timeRange?.ToLower())

@@ -1,12 +1,12 @@
-﻿using ServiceStack.DataAnnotations;
+﻿using RoboDodd.OrmLite;
+using System.ComponentModel.DataAnnotations;
 
 namespace LogMkApi.Data.Models;
 
 public class User
 {
     [PrimaryKey]
-    [AutoId]
-    public Guid Id { get; set; }
+    public Guid Id { get; set; } = Guid.NewGuid();
     [Index]
     public required string UserName { get; set; }
     [StringLength(255)]

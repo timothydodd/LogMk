@@ -1,4 +1,6 @@
-﻿using ServiceStack.DataAnnotations;
+﻿using RoboDodd.OrmLite;
+using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations.Schema;
 
 namespace LogMkApi.Data.Models;
 
@@ -13,7 +15,7 @@ public class RefreshToken
     public required string Token { get; set; }
 
     [Required]
-    [ForeignKey(typeof(User), OnDelete = "CASCADE")]
+    [RoboDodd.OrmLite.ForeignKey(typeof(User), OnDelete = "CASCADE")]
     public required Guid UserId { get; set; }
 
     public DateTime ExpiryDate { get; set; }

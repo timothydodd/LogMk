@@ -1,17 +1,17 @@
-﻿using ServiceStack.Data;
-using ServiceStack.OrmLite;
+﻿using Dapper;
+using RoboDodd.OrmLite;
 
 namespace LogSummaryService
 {
     public class LogSummaryDailyBackgroundService : BackgroundService
     {
         private readonly ILogger<LogSummaryDailyBackgroundService> _logger;
-        private readonly IDbConnectionFactory _dbFactory;
+        private readonly DbConnectionFactory _dbFactory;
 
 
         private readonly TimeSpan _executionTime;
 
-        public LogSummaryDailyBackgroundService(IDbConnectionFactory dbFactory,
+        public LogSummaryDailyBackgroundService(DbConnectionFactory dbFactory,
             ILogger<LogSummaryDailyBackgroundService> logger)
         {
             _dbFactory = dbFactory;
@@ -71,21 +71,20 @@ namespace LogSummaryService
             return todayExecutionTime;
         }
 
+        // ... rest of your code ...
+
         private async Task UpdateYesterdaysSummaryAsync()
         {
-            using (var connection = _dbFactory.OpenDbConnection())
+            using (var connection = _dbFactory.CreateConnection())
             {
                 var yesterday = DateTime.UtcNow.AddDays(-1).Date;
                 _logger.LogInformation($"Updating log summary for {yesterday:yyyy-MM-dd}");
 
                 // delete records from LogSummaryHourly where LogDate is > 4 days from now
-                //await connection.ExecuteNonQueryAsync(@"
-                //    DELETE FROM LogSummaryHour WHERE LogDate < @date", new { date = yesterday.AddDays(-4) });
+                // await connection.ExecuteAsync(@"
+                //     DELETE FROM LogSummaryHour WHERE LogDate < @date", new { date = yesterday.AddDays(-4) });
 
-
-
-
-                await connection.ExecuteNonQueryAsync(@"
+                await connection.ExecuteAsync(@"
                       INSERT INTO LogSummary (Deployment, Pod, LogLevel, LogDate, Count, LastUpdated)
                         SELECT 
                             Deployment,
@@ -100,9 +99,7 @@ namespace LogSummaryService
                             LogDate = @yesterday
                         GROUP BY 
                             Deployment, Pod, LogLevel, LogDate", new { yesterday });
-
             }
-
         }
     }
 }

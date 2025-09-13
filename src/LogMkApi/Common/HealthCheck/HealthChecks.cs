@@ -1,7 +1,7 @@
 ﻿using System.Text.Json;
 using LogMkApi.HealthChecks;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
-using ServiceStack.Data;
+using RoboDodd.OrmLite;
 
 namespace LogMkApi.Common.HealthCheck;
 
@@ -11,7 +11,7 @@ public static class HealthCheck
     {
         WriteIndented = true
     };
-    public static void AddHealthChecks(IServiceCollection services, IDbConnectionFactory dbFactory)
+    public static void AddHealthChecks(IServiceCollection services, DbConnectionFactory dbFactory)
     {
         _ = services.AddHealthChecks().AddCheck("database", new MySqlHealthCheck(dbFactory, "Log"))
               .AddCheck<LoggingMetricsHealthCheck>(
@@ -45,7 +45,7 @@ public static class HealthCheck
 }
 public static class HealthCheckExtensions
 {
-    public static IHealthChecksBuilder AddLogMkHealthChecks(this IHealthChecksBuilder builder, string name, IDbConnectionFactory dbFactory)
+    public static IHealthChecksBuilder AddLogMkHealthChecks(this IHealthChecksBuilder builder, string name, DbConnectionFactory dbFactory)
     {
         return builder.AddCheck(name, new MySqlHealthCheck(dbFactory, "Log"))
             .AddCheck<LoggingMetricsHealthCheck>(

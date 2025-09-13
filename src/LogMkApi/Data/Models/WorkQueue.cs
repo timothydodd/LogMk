@@ -1,9 +1,11 @@
-using ServiceStack.DataAnnotations;
+using RoboDodd.OrmLite;
+using System.ComponentModel.DataAnnotations;
 
 namespace LogMkApi.Data.Models;
 
 public class WorkQueue
 {
+    [PrimaryKey]
     [AutoIncrement]
     public int Id { get; set; }
     

@@ -2,10 +2,9 @@
 using LogMkApi.Common;
 using LogMkApi.Data.Models;
 using LogMkCommon;
-using ServiceStack.Data;
-using ServiceStack.OrmLite;
-using ServiceStack.OrmLite.Dapper;
-using static ServiceStack.OrmLite.Dapper.SqlMapper;
+using RoboDodd.OrmLite;
+using Dapper;
+using static Dapper.SqlMapper;
 
 namespace LogMkApi.Data;
 
@@ -14,15 +13,15 @@ public class LogRepo
 {
 
     public static readonly char[] CharactersToRemoveForNumberTest = { '#', ' ' };
-    private readonly IDbConnectionFactory _dbFactory;
-    public LogRepo(IDbConnectionFactory dbFactory)
+    private readonly DbConnectionFactory _dbFactory;
+    public LogRepo(DbConnectionFactory dbFactory)
     {
         _dbFactory = dbFactory;
     }
 
     public async Task InsertAllAsync(IEnumerable<Log> logs)
     {
-        using (var db = _dbFactory.OpenDbConnection())
+        using (var db = _dbFactory.CreateConnection())
         {
             await db.InsertAllAsync(logs);
         }
@@ -30,7 +29,7 @@ public class LogRepo
     }
     public async Task InsertAsync(Log log)
     {
-        using (var db = _dbFactory.OpenDbConnection())
+        using (var db = _dbFactory.CreateConnection())
         {
             await db.InsertAsync(log);
         }
@@ -38,7 +37,7 @@ public class LogRepo
     }
     public async Task<IEnumerable<Pod>> GetPods()
     {
-        using (var db = _dbFactory.OpenDbConnection())
+        using (var db = _dbFactory.CreateConnection())
         {
             var query = @"SELECT DISTINCT Pod as Name FROM Log";
             return await db.QueryAsync<Pod>(query);
@@ -105,7 +104,7 @@ public class LogRepo
 
 
 
-        using (var db = _dbFactory.OpenDbConnection())
+        using (var db = _dbFactory.CreateConnection())
         {
             var query = new StringBuilder(queryBase);
             query.Append(whereBuilder);
@@ -130,7 +129,7 @@ public class LogRepo
     }
     public async Task<IEnumerable<LatestDeploymentEntry>> GetLatestEntryTimes()
     {
-        using (var db = _dbFactory.OpenDbConnection())
+        using (var db = _dbFactory.CreateConnection())
         {
             var query = @"
     SELECT Deployment, Pod, MAX(TimeStamp) AS TimeStamp
@@ -143,7 +142,7 @@ public class LogRepo
 
     public async Task<int> PurgeLogsByDeployment(string deployment, DateTime? startDate)
     {
-        using (var db = _dbFactory.OpenDbConnection())
+        using (var db = _dbFactory.CreateConnection())
         {
             var query = new StringBuilder("DELETE FROM Log WHERE Deployment = @deployment");
             var parameters = new DynamicParameters();
@@ -162,7 +161,7 @@ public class LogRepo
 
     public async Task<int> PurgeLogsByPod(string pod, DateTime? startDate)
     {
-        using (var db = _dbFactory.OpenDbConnection())
+        using (var db = _dbFactory.CreateConnection())
         {
             var query = new StringBuilder("DELETE FROM Log WHERE Pod = @pod");
             var parameters = new DynamicParameters();
