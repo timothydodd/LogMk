@@ -248,6 +248,7 @@ export class LogFilterControlsComponent {
   // In production, this would come from your actual log data source
   private generateMockExportLogs() {
     const mockLogs = [];
+    const deployments = ['production', 'staging', 'development'];
     const pods = ['web-app-123', 'api-server-456', 'database-789'];
     const levels = ['Information', 'Warning', 'Error', 'Debug'];
     const messages = [
@@ -263,7 +264,8 @@ export class LogFilterControlsComponent {
       const timestamp = new Date(Date.now() - Math.random() * 86400000 * 7); // Last 7 days
       mockLogs.push({
         id: i + 1,
-        timeStamp: timestamp.toISOString(),
+        deployment: deployments[Math.floor(Math.random() * deployments.length)],
+        timeStamp: timestamp, // Keep as Date object
         pod: pods[Math.floor(Math.random() * pods.length)],
         logLevel: levels[Math.floor(Math.random() * levels.length)],
         line: `${messages[Math.floor(Math.random() * messages.length)]} - ID: ${i + 1}`,
