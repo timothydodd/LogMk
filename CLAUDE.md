@@ -405,3 +405,148 @@ Use provided mixins for consistent styling:
 - Ensure proper contrast ratios with accessibility tools
 
 This styling system ensures a consistent, maintainable, and accessible dark theme throughout the LogMk application while supporting full-width layouts optimized for log monitoring workflows.
+
+## Advanced Features & Services
+
+### **Real-time Log Processing**
+The application implements comprehensive real-time log processing with multiple enhancement layers:
+
+**Core Services:**
+- `SignalrService` - Real-time WebSocket connection for live log streaming
+- `LogApiService` - RESTful API integration for historical log retrieval
+- `LogFilterState` - Centralized filter state management with signals
+- `ViewModeService` - User preference management for display density
+- `TimestampService` - Flexible timestamp formatting (relative/absolute)
+
+### **Enhanced Log Display System**
+
+**Syntax Highlighting (HighlightLogPipe):**
+```typescript
+// Comprehensive content highlighting includes:
+- JSON syntax (keys, strings, numbers, booleans, null)
+- Network content (URLs, IP addresses, HTTP methods/status codes)
+- Stack traces (class names, methods, line numbers)
+- Technical identifiers (UUIDs, file paths, email addresses)
+- Search term highlighting with dynamic backgrounds
+- SQL keywords and exception types
+```
+
+**View Mode System:**
+```typescript
+// Dual density modes for user preference
+- Compact Mode: 12px font, 2px padding, dense layout for maximum information
+- Expanded Mode: 14px font, 8px padding, spacious layout for readability
+- Persistent localStorage preference
+- Real-time switching with smooth CSS transitions
+```
+
+### **Advanced Filtering & Search**
+
+**Multi-dimensional Filtering:**
+- Log level filtering with multi-select dropdown
+- Pod-based filtering with search and select-all
+- Time range filtering (predefined + custom ranges)
+- Full-text search with real-time highlighting
+- Interactive chart-based time selection (drag to select)
+
+**Filter Presets System:**
+```typescript
+// FilterPresetsService features:
+- Save current filter combinations with custom names
+- localStorage persistence across sessions
+- Full CRUD operations (create, read, update, delete)
+- One-click preset application
+- Export-friendly filter state management
+```
+
+### **User Experience Enhancements**
+
+**Context Menu System:**
+- Right-click actions on individual log entries
+- Dynamic action generation based on log content
+- Smart positioning to stay within viewport bounds
+- Integrated filtering (show only/hide specific levels/pods)
+- Copy and detail actions
+
+**Modal System Architecture:**
+```typescript
+// Template-based modal system:
+- ModalService with signal-based state management
+- Support for custom headers, bodies, and footers
+- Multiple size variants (small, medium, large, extra-large)
+- Smooth animations and keyboard accessibility
+- Used by: Log Details, Filter Presets, and future modals
+```
+
+**Keyboard Shortcuts:**
+- `Ctrl/Cmd+F` - Focus search input
+- `Ctrl/Cmd+Shift+C` - Clear all filters
+- `E` - Show only errors
+- `W` - Show only warnings
+- Arrow keys - Navigate log entries
+- Enter - Open log details
+
+### **Export & Data Management**
+
+**Export System (ExportService):**
+```typescript
+// Multi-format export with intelligent naming:
+- CSV format for spreadsheet analysis
+- JSON format with metadata inclusion
+- Smart filename generation based on active filters
+- Respects current filter state
+- Date range and count metadata
+```
+
+**Memory Management:**
+- Virtual scrolling with configurable buffer amounts
+- Automatic log rotation (5000+ entries)
+- Efficient DOM recycling for performance
+- Parent scroll element detection for smooth scrolling
+
+### **Component Architecture Patterns**
+
+**Modern Angular Patterns (17+):**
+```typescript
+// Signal-based architecture throughout:
+- input<T>() for component inputs
+- output<T>() for component outputs
+- viewChild<T>() for element/component references
+- inject() for dependency injection
+- computed() for derived state
+- New @if/@for control flow syntax
+```
+
+**State Management:**
+```typescript
+// Centralized state with signals:
+- LogFilterState - All filter-related state
+- ViewModeService - Display preferences
+- TimestampService - Time format preferences
+- FilterPresetsService - Saved filter combinations
+- ModalService - Global modal state
+```
+
+### **Performance Optimizations**
+
+**Virtual Scrolling:**
+- `@iharbeck/ngx-virtual-scroller` for large datasets
+- Configurable buffer amounts and throttling
+- Parent scroll element integration
+- Unequal children size support for dynamic content
+
+**Efficient Rendering:**
+```typescript
+// Optimized rendering patterns:
+- OnPush change detection strategy
+- TrackBy functions for *ngFor loops
+- Computed signals for expensive operations
+- Debounced search input (300ms)
+- Lazy loading with pagination
+```
+
+**CSS Performance:**
+- CSS custom properties for runtime theming
+- Efficient selectors with minimal specificity
+- CSS containment for large lists
+- Hardware-accelerated animations

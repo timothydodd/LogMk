@@ -26,6 +26,110 @@
   transition: all 0.2s ease;
   position: relative;
 
+  // Compact view mode - denser layout
+  &.compact {
+    padding: 2px 8px;
+    margin-bottom: 1px;
+    font-size: 12px;
+    gap: 8px;
+    line-height: 1.2;
+
+    .time {
+      min-width: 55px;
+      font-size: 10px;
+    }
+
+    .pod {
+      min-width: 60px;
+      font-size: 11px;
+      max-width: 80px;
+    }
+
+    .type {
+      min-width: 30px;
+      font-size: 10px;
+      padding: 1px 3px;
+    }
+
+    .line {
+      font-size: 11px;
+      line-height: 1.3;
+    }
+
+    .copy-btn {
+      width: 16px;
+      height: 16px;
+
+      lucide-icon {
+        width: 10px;
+        height: 10px;
+      }
+    }
+
+    @media (max-width: 992px) {
+      font-size: 11px;
+      gap: 6px;
+      padding: 2px 6px;
+    }
+
+    @media (max-width: 576px) {
+      padding: 6px;
+      font-size: 10px;
+    }
+  }
+
+  // Expanded view mode - more spacious layout
+  &.expanded {
+    padding: 8px 16px;
+    margin-bottom: 4px;
+    font-size: 14px;
+    gap: 16px;
+    line-height: 1.4;
+
+    .time {
+      min-width: 85px;
+      font-size: 12px;
+    }
+
+    .pod {
+      min-width: 80px;
+      font-size: 13px;
+      max-width: 120px;
+    }
+
+    .type {
+      min-width: 50px;
+      font-size: 11px;
+      padding: 3px 6px;
+    }
+
+    .line {
+      font-size: 13px;
+      line-height: 1.5;
+    }
+
+    .copy-btn {
+      width: 20px;
+      height: 20px;
+
+      lucide-icon {
+        width: 12px;
+        height: 12px;
+      }
+    }
+
+    @media (max-width: 992px) {
+      font-size: 13px;
+      gap: 12px;
+      padding: 6px 12px;
+    }
+
+    @media (max-width: 576px) {
+      padding: 10px;
+      font-size: 12px;
+    }
+  }
+
   // Tablet layout
   @media (max-width: 992px) {
     font-size: 12px;
@@ -66,6 +170,21 @@
     background: rgba(80, 250, 123, 0.1);
     border-left-color: var(--success);
     animation: copyPulse 0.3s ease-out;
+  }
+
+  &.selected {
+    background: rgba(189, 147, 249, 0.2);
+    border-left-color: var(--primary);
+    cursor: pointer;
+
+    .copy-btn {
+      opacity: 1;
+    }
+  }
+
+  &.selected.copied {
+    background: rgba(80, 250, 123, 0.2);
+    border-left-color: var(--success);
   }
   .line {
     color: #e0e0e0;

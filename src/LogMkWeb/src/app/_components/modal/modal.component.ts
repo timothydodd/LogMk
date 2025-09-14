@@ -3,7 +3,7 @@ import { CommonModule } from '@angular/common';
 import { ChangeDetectionStrategy, Component, inject, signal, TemplateRef } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { LucideAngularModule } from 'lucide-angular';
-import { ModalService } from '../../_services/modal.service';
+import { ModalService, ModalSize } from '../../_services/modal.service';
 
 @Component({
   selector: 'app-modal',
@@ -12,7 +12,7 @@ import { ModalService } from '../../_services/modal.service';
     @if (isOpen()) {
       <div class="backdrop" [@fadeInOut]></div>
       <div class="modal-container">
-        <div class="modal" [@fadeInOut]>
+        <div class="modal" [class]="'modal-' + modalSize()" [@fadeInOut]>
           <div class="modal-header">
             @if (headerTemplate()) {
               <ng-container *ngTemplateOutlet="headerTemplate()!"></ng-container>
@@ -79,6 +79,7 @@ export class ModalComponent {
   title = signal<string | null>(null);
   message = signal<string | null>(null);
   isConfirm = signal(false);
+  modalSize = signal<ModalSize>('medium');
   private confirmCallback?: () => void;
   private cancelCallback?: () => void;
   constructor() {
@@ -91,6 +92,7 @@ export class ModalComponent {
         this.title.set(x.title);
         this.message.set(x.message || null);
         this.isConfirm.set(x.isConfirm || false);
+        this.modalSize.set(x.size || 'medium');
         this.confirmCallback = x.onConfirm;
         this.cancelCallback = x.onCancel;
         // Prevent background scrolling
@@ -103,6 +105,7 @@ export class ModalComponent {
         this.title.set(null);
         this.message.set(null);
         this.isConfirm.set(false);
+        this.modalSize.set('medium');
         this.confirmCallback = undefined;
         this.cancelCallback = undefined;
         // Restore background scrolling

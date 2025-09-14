@@ -1,0 +1,83 @@
+.context-menu {
+  position: fixed;
+  z-index: 10000;
+  background: var(--surface-container);
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4), 0 2px 8px rgba(0, 0, 0, 0.2);
+  min-width: 200px;
+  max-width: 300px;
+  padding: 4px 0;
+  user-select: none;
+  backdrop-filter: blur(8px);
+  animation: contextMenuFadeIn 0.15s ease-out;
+
+  .menu-item {
+    width: 100%;
+    background: none;
+    border: none;
+    text-align: left;
+    padding: 8px 16px;
+    color: var(--on-surface);
+    font-size: 0.9rem;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    transition: background-color 0.15s ease, color 0.15s ease;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+
+    &:hover {
+      background: var(--surface-variant);
+      color: var(--on-surface);
+    }
+
+    &:active {
+      background: var(--surface-container-high);
+    }
+
+    lucide-icon {
+      flex-shrink: 0;
+      color: var(--on-surface-variant);
+    }
+
+    &:hover lucide-icon {
+      color: var(--on-surface);
+    }
+  }
+
+  .menu-divider {
+    height: 1px;
+    background: var(--border-color);
+    margin: 4px 0;
+  }
+}
+
+@keyframes contextMenuFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(-4px) scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+// Mobile adjustments
+@media (max-width: 576px) {
+  .context-menu {
+    min-width: 180px;
+    font-size: 0.85rem;
+
+    .menu-item {
+      padding: 10px 14px;
+
+      lucide-icon {
+        size: 16px;
+      }
+    }
+  }
+}

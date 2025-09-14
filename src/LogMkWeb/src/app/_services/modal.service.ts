@@ -11,12 +11,13 @@ export class ModalService {
   private confirmResolve?: (value: boolean) => void;
 
   constructor() {}
-  open(title: string, body?: TemplateRef<any>, footer?: TemplateRef<any>, header?: TemplateRef<any>) {
+  open(title: string, body?: TemplateRef<any>, footer?: TemplateRef<any>, header?: TemplateRef<any>, size: ModalSize = 'medium') {
     this.modalEvent.next({
       title,
       bodyTemplate: body,
       footerTemplate: footer,
       headerTemplate: header,
+      size: size,
     });
   }
   close() {
@@ -49,6 +50,8 @@ export class ModalService {
   }
 }
 
+export type ModalSize = 'small' | 'medium' | 'large' | 'extra-large';
+
 export interface ModalData {
   title: string;
   bodyTemplate?: TemplateRef<any>;
@@ -58,4 +61,5 @@ export interface ModalData {
   isConfirm?: boolean;
   onConfirm?: () => void;
   onCancel?: () => void;
+  size?: ModalSize;
 }

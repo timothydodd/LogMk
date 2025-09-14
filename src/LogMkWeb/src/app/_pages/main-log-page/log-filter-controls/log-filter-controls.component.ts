@@ -1,5 +1,5 @@
 
-import { ChangeDetectionStrategy, Component, computed, ElementRef, HostListener, inject, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, ElementRef, HostListener, inject, signal, viewChild } from '@angular/core';
 import { takeUntilDestroyed, toObservable } from '@angular/core/rxjs-interop';
 import { FormsModule } from '@angular/forms';
 import { startOfToday, subDays, subHours, subMonths } from 'date-fns'; // Import date-fns for date manipulations
@@ -7,107 +7,157 @@ import { LucideAngularModule } from 'lucide-angular';
 import { ToastrService } from 'ngx-toastr';
 import { debounceTime } from 'rxjs';
 import { DropdownComponent } from '../../../_components/dropdown/dropdown.component';
+import { FilterPresetsModalComponent } from '../../../_components/filter-presets-modal/filter-presets-modal.component';
 import { TimeFilterDropdownComponent, TimeFilter } from '../../../_components/time-filter-dropdown/time-filter-dropdown.component';
 import { ExportService } from '../../../_services/export.service';
+import { FilterPresetsService } from '../../../_services/filter-presets.service';
 import { LogApiService } from '../../../_services/log.api';
+import { TimestampService } from '../../../_services/timestamp.service';
+import { ViewModeService } from '../../../_services/view-mode.service';
 import { LogFilterState } from '../_services/log-filter-state';
 
 @Component({
   selector: 'app-log-filter-controls',
   standalone: true,
-  imports: [FormsModule, DropdownComponent, TimeFilterDropdownComponent, LucideAngularModule],
+  imports: [FormsModule, DropdownComponent, TimeFilterDropdownComponent, LucideAngularModule, FilterPresetsModalComponent],
   template: `
-    <div class="clear-filters-wrapper">
-      <button
-        class="btn btn-secondary clear-filters-btn"
-        (click)="clearAllFilters()"
-        [disabled]="!hasActiveFilters()"
-        title="Clear all filters"
-      >
-        <lucide-icon name="filter-x" size="16"></lucide-icon>
-        Clear
-      </button>
-    </div>
-    <div>
-      <lucide-icon name="search"></lucide-icon>
-      <input
-        class="form-control"
-        id="search"
-        type="text"
-        placeholder="Search"
-        [ngModel]="searchString()"
-        (ngModelChange)="searchString.set($event)"
-      />
-    </div>
-    <div>
-      <lucide-icon name="gauge"></lucide-icon>
-      <app-dropdown
-        id="log-level-select"
-        [items]="logLevels"
-        [multiple]="true"
-        [searchable]="true"
-        [showSelectAll]="true"
-        searchPlaceholder="Search log levels..."
-        selectAllLabel="Select All Levels"
-        placeholder="Select log levels"
-        [maxTagsDisplay]="2"
-        [ngModel]="logFilterState.selectedLogLevel()"
-        (ngModelChange)="logFilterState.selectedLogLevel.set($event)"
-      ></app-dropdown>
-    </div>
-    <div>
-      <lucide-icon name="box"></lucide-icon>
-      <app-dropdown
-        id="pod-select"
-        [items]="pods()"
-        [multiple]="true"
-        [searchable]="true"
-        [showSelectAll]="true"
-        searchPlaceholder="Search pods..."
-        selectAllLabel="Select All Pods"
-        placeholder="Select pods"
-        [showCount]="true"
-        [ngModel]="logFilterState.selectedPod()"
-        (ngModelChange)="logFilterState.selectedPod.set($event)"
-      ></app-dropdown>
-    </div>
-    <div>
-      <lucide-icon name="clock"></lucide-icon>
-      <app-time-filter-dropdown
-        [timeFilters]="timeFilters"
-        [selectedFilter]="selectedTimeFilter()"
-        (filterChange)="selectedTimeFilter.set($event)"
-        placeholder="Select time range"
-      ></app-time-filter-dropdown>
-    </div>
-    <div class="export-controls">
-      <div class="dropdown-container export-dropdown">
+    <div class="compact-toolbar">
+      <!-- Search Input -->
+      <div class="filter-item search-wrapper">
+        <lucide-icon name="search" size="14" class="input-icon"></lucide-icon>
+        <input
+          class="search-input"
+          id="search"
+          type="text"
+          placeholder="Search logs..."
+          [ngModel]="searchString()"
+          (ngModelChange)="searchString.set($event)"
+        />
+      </div>
+
+      <!-- Log Levels Filter -->
+      <div class="filter-item">
+        <app-dropdown
+          id="log-level-select"
+          [items]="logLevels"
+          [multiple]="true"
+          [searchable]="true"
+          [showSelectAll]="true"
+          searchPlaceholder="Search levels..."
+          selectAllLabel="All Levels"
+          placeholder="Log Levels"
+          [maxTagsDisplay]="1"
+          [showCount]="true"
+          [minWidth]="140"
+          size="compact"
+          [ngModel]="logFilterState.selectedLogLevel()"
+          (ngModelChange)="logFilterState.selectedLogLevel.set($event)"
+        ></app-dropdown>
+      </div>
+
+      <!-- Pods Filter -->
+      <div class="filter-item">
+        <app-dropdown
+          id="pod-select"
+          [items]="pods()"
+          [multiple]="true"
+          [searchable]="true"
+          [showSelectAll]="true"
+          searchPlaceholder="Search pods..."
+          selectAllLabel="All Pods"
+          placeholder="Pods"
+          [showCount]="true"
+          [minWidth]="120"
+          size="compact"
+          [ngModel]="logFilterState.selectedPod()"
+          (ngModelChange)="logFilterState.selectedPod.set($event)"
+        ></app-dropdown>
+      </div>
+
+      <!-- Time Range Filter -->
+      <div class="filter-item">
+        <app-time-filter-dropdown
+          [timeFilters]="timeFilters"
+          [selectedFilter]="selectedTimeFilter()"
+          (filterChange)="selectedTimeFilter.set($event)"
+          placeholder="Time Range"
+        ></app-time-filter-dropdown>
+      </div>
+
+      <!-- Actions Menu -->
+      <div class="actions-menu">
         <button
-          class="btn btn-outline export-btn"
-          [class.disabled]="!hasLogsToExport()"
-          [disabled]="!hasLogsToExport()"
-          (click)="toggleExportDropdown()"
-          #exportTrigger
+          class="actions-btn"
+          (click)="toggleActionsMenu()"
+          [title]="'Actions menu'"
+          [class.active]="showActionsMenu()"
         >
-          <lucide-icon name="download" size="16"></lucide-icon>
-          Export
-          <lucide-icon name="chevron-down" size="14" [class.rotated]="showExportDropdown()"></lucide-icon>
+          <lucide-icon name="more-vertical" size="16"></lucide-icon>
         </button>
 
-        @if (showExportDropdown()) {
-          <div class="export-dropdown-panel">
-            <div class="export-option" (click)="exportLogs('csv')">
-              <div class="export-option-title">CSV Format</div>
-              <div class="export-option-desc">Spreadsheet-friendly format</div>
+        @if (showActionsMenu()) {
+          <div class="actions-dropdown">
+            <!-- Clear Filters -->
+            <button
+              class="action-item"
+              (click)="clearAllFilters()"
+              [disabled]="!hasActiveFilters()"
+            >
+              <lucide-icon name="filter-x" size="14"></lucide-icon>
+              Clear Filters
+            </button>
+
+            <!-- Timestamp Format Toggle -->
+            <button
+              class="action-item"
+              (click)="toggleTimestampFormat()"
+            >
+              <lucide-icon name="clock" size="14"></lucide-icon>
+              {{ timestampService.timestampFormat() === 'relative' ? 'Show Absolute Time' : 'Show Relative Time' }}
+            </button>
+
+            <!-- View Mode Toggle -->
+            <button
+              class="action-item"
+              (click)="toggleViewMode()"
+            >
+              <lucide-icon name="{{ viewModeService.isCompact() ? 'maximize-2' : 'minimize-2' }}" size="14"></lucide-icon>
+              {{ viewModeService.isCompact() ? 'Expanded View' : 'Compact View' }}
+            </button>
+
+            <!-- Filter Presets -->
+            <button
+              class="action-item"
+              (click)="openPresetsModal()"
+            >
+              <lucide-icon name="bookmark" size="14"></lucide-icon>
+              Filter Presets
+            </button>
+
+            <!-- Export Submenu -->
+            <div class="action-item submenu-trigger" (click)="toggleExportSubmenu()">
+              <lucide-icon name="download" size="14"></lucide-icon>
+              Export Logs
+              <lucide-icon name="chevron-down" size="12" [class.rotated]="showExportSubmenu()"></lucide-icon>
             </div>
-            <div class="export-option" (click)="exportLogs('json')">
-              <div class="export-option-title">JSON Format</div>
-              <div class="export-option-desc">Structured data with metadata</div>
-            </div>
+
+            @if (showExportSubmenu()) {
+              <div class="submenu">
+                <button class="submenu-item" (click)="exportLogs('csv')">
+                  CSV Format
+                </button>
+                <button class="submenu-item" (click)="exportLogs('json')">
+                  JSON Format
+                </button>
+              </div>
+            }
           </div>
         }
       </div>
     </div>
+
+    <!-- Filter Presets Modal -->
+    <app-filter-presets-modal #presetsModal></app-filter-presets-modal>
   `,
   styleUrl: './log-filter-controls.component.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -118,12 +168,18 @@ export class LogFilterControlsComponent {
   exportService = inject(ExportService);
   toastr = inject(ToastrService);
   elementRef = inject(ElementRef);
+  timestampService = inject(TimestampService);
+  presetsService = inject(FilterPresetsService);
+  viewModeService = inject(ViewModeService);
+
+  presetsModal = viewChild<FilterPresetsModalComponent>('presetsModal');
 
   logLevels = ['Debug', 'Information', 'Warning', 'Error'];
   pods = signal<string[]>([]);
   searchString = signal<string>('');
   selectedTimeFilter = signal<TimeFilter | null>(null);
-  showExportDropdown = signal<boolean>(false);
+  showActionsMenu = signal<boolean>(false);
+  showExportSubmenu = signal<boolean>(false);
 
   hasActiveFilters = computed(() => {
     return (
@@ -186,6 +242,10 @@ export class LogFilterControlsComponent {
   }
 
   clearAllFilters(): void {
+    // Close menus
+    this.showActionsMenu.set(false);
+    this.showExportSubmenu.set(false);
+
     // Clear all filter states
     this.logFilterState.selectedLogLevel.set([]);
     this.logFilterState.selectedPod.set([]);
@@ -196,19 +256,51 @@ export class LogFilterControlsComponent {
     this.selectedTimeFilter.set(this.timeFilters[0]); // Reset to 'Any'
   }
 
-  toggleExportDropdown(): void {
-    this.showExportDropdown.set(!this.showExportDropdown());
+  toggleActionsMenu(): void {
+    this.showActionsMenu.set(!this.showActionsMenu());
+    // Close export submenu when actions menu is toggled
+    if (!this.showActionsMenu()) {
+      this.showExportSubmenu.set(false);
+    }
+  }
+
+  toggleExportSubmenu(): void {
+    this.showExportSubmenu.set(!this.showExportSubmenu());
+  }
+
+  toggleTimestampFormat(): void {
+    this.showActionsMenu.set(false);
+    this.timestampService.toggleFormat();
+  }
+
+  toggleViewMode(): void {
+    this.showActionsMenu.set(false);
+    this.viewModeService.toggleViewMode();
+  }
+
+  openPresetsModal(): void {
+    this.showActionsMenu.set(false);
+    this.showExportSubmenu.set(false);
+
+    const modal = this.presetsModal();
+    if (modal) {
+      modal.open();
+    }
   }
 
   @HostListener('document:click', ['$event'])
   onDocumentClick(event: Event) {
-    if (!this.elementRef.nativeElement.contains(event.target) && this.showExportDropdown()) {
-      this.showExportDropdown.set(false);
+    if (!this.elementRef.nativeElement.contains(event.target)) {
+      if (this.showActionsMenu()) {
+        this.showActionsMenu.set(false);
+        this.showExportSubmenu.set(false);
+      }
     }
   }
 
   exportLogs(format: 'csv' | 'json'): void {
-    this.showExportDropdown.set(false);
+    this.showActionsMenu.set(false);
+    this.showExportSubmenu.set(false);
 
     // Get current filter state
     const filters = {

@@ -1,7 +1,8 @@
 import { CommonModule } from '@angular/common';
 import { Component, inject, signal, TemplateRef } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
-import { RouterOutlet } from '@angular/router';
+import { Router, RouterOutlet } from '@angular/router';
+import { ErrorCountBadgeComponent } from './_components/error-count-badge/error-count-badge.component';
 import { ModalComponent } from './_components/modal/modal.component';
 import { UserMenuComponent } from './_components/user-menu/user-menu.component';
 import { AuthService } from './_services/auth-service';
@@ -10,13 +11,14 @@ import { ToolbarService } from './_services/toolbar.service';
 @Component({
   selector: 'app-root',
   standalone: true,
-  imports: [RouterOutlet, UserMenuComponent, CommonModule, ModalComponent],
+  imports: [RouterOutlet, UserMenuComponent, CommonModule, ModalComponent, ErrorCountBadgeComponent],
   templateUrl: './app.component.html',
   styleUrl: './app.component.scss',
 })
 export class AppComponent {
   title = 'LogMkWeb';
   private authService = inject(AuthService);
+  private router = inject(Router);
   signalRService = inject(SignalRService);
   loggedIn = signal(false);
   templateRef = signal<TemplateRef<any> | null>(null);
@@ -37,5 +39,19 @@ export class AppComponent {
     this.toolbarService.toolbarContent$.pipe(takeUntilDestroyed()).subscribe((content) => {
       this.templateRef.set(content);
     });
+  }
+
+  onErrorBadgeClick() {
+    // Navigate to main page if needed
+    if (this.router.url !== '/') {
+      this.router.navigate(['/']);
+    }
+
+    // Emit event to filter state - we'll need to create a service for this
+    // For now, just navigate to main page where error filtering can be handled
+    const filterErrorsEvent = new CustomEvent('filterErrors', {
+      detail: { logLevels: ['Error'] }
+    });
+    window.dispatchEvent(filterErrorsEvent);
   }
 }

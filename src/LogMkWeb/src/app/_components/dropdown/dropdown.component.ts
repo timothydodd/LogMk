@@ -20,7 +20,7 @@ export interface DropdownItem {
   standalone: true,
   imports: [CommonModule, LucideAngularModule, FormsModule],
   template: `
-    <div class="dropdown-container" [class.disabled]="disabled()" [class.multiple]="multiple()">
+    <div class="dropdown-container" [class.disabled]="disabled()" [class.multiple]="multiple()" [class.dropdown-sm]="size() === 'sm'" [class.compact]="size() === 'compact'" [class.dropdown-lg]="size() === 'lg'">
       <div
         class="dropdown-trigger"
         [class.focused]="isOpen()"
@@ -150,6 +150,7 @@ export class DropdownComponent implements ControlValueAccessor {
   searchPlaceholder = input<string>('Search...');
   showSelectAll = input<boolean>(false); // Show select all option for multi-select
   selectAllLabel = input<string>('Select All');
+  size = input<'sm' | 'compact' | 'lg' | undefined>(undefined); // Size variant
   
   // Modern signal-based outputs
   selectionChange = output<any>();

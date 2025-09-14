@@ -1,227 +1,252 @@
-:host {
-  display: grid;
-  grid-template-columns: auto 1fr 1fr 1fr 1fr auto;
-  gap: 5px;
+.compact-toolbar {
+  display: flex;
   align-items: center;
+  gap: 8px;
+  padding: 6px 8px;
+  background: var(--surface);
+  min-height: 40px;
+}
 
-  >div {
-    display: flex;
-    align-items: center;
-    gap: 5px;
-    flex-grow: 1;
-  }
+.filter-item {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex-shrink: 0;
 
-  .clear-filters-wrapper {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-  }
-
-  .clear-filters-btn {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    padding: 8px 12px;
-    font-size: 0.875rem;
-    font-weight: 500;
-    white-space: nowrap;
-    background: var(--surface-container);
-    color: var(--on-surface);
-    border: 1px solid var(--border-color);
-    border-radius: 4px;
-    cursor: pointer;
-    transition: all 0.2s ease;
-
-    &:hover:not(:disabled) {
-      background: var(--danger);
-      color: var(--on-primary);
-      border-color: var(--danger);
-      transform: translateY(-1px);
-      box-shadow: 0 2px 8px rgba(255, 85, 85, 0.3);
-    }
-
-    &:active:not(:disabled) {
-      transform: translateY(0);
-    }
-
-    &:disabled {
-      opacity: 0.5;
-      cursor: not-allowed;
-    }
-
-    lucide-icon {
-      flex-shrink: 0;
-    }
-  }
-
-  .export-controls {
+  &.search-wrapper {
+    flex: 1;
     position: relative;
+    min-width: 200px;
+
+    .input-icon {
+      position: absolute;
+      left: 8px;
+      color: var(--on-surface-variant);
+      pointer-events: none;
+      z-index: 1;
+    }
+
+    .search-input {
+      width: 100%;
+      padding: 6px 8px 6px 28px;
+      font-size: 0.875rem;
+      background: var(--input-bg);
+      color: var(--on-surface);
+      border: 1px solid var(--border-color);
+      border-radius: 4px;
+      transition: all 0.2s ease;
+
+      &:focus {
+        outline: none;
+        border-color: var(--primary);
+        box-shadow: 0 0 0 2px var(--focus-ring);
+      }
+
+      &::placeholder {
+        color: var(--on-surface-muted);
+      }
+    }
   }
 
-  .export-dropdown {
-    position: relative;
+  app-dropdown,
+  app-time-filter-dropdown {
+    min-width: 120px;
+
+    // Make time-filter-dropdown compact to match search box height
+    ::ng-deep .dropdown-trigger {
+      padding: 6px 8px;
+      height: 32px;
+      font-size: 0.875rem;
+    }
+  }
+}
+
+.actions-menu {
+  position: relative;
+  margin-left: auto;
+  flex-shrink: 0;
+}
+
+.actions-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  background: var(--surface-container);
+  color: var(--on-surface);
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+
+  &:hover {
+    background: var(--surface-container-high);
+    color: var(--primary);
+    border-color: var(--primary);
   }
 
-  .export-btn {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    padding: 8px 12px;
-    font-size: 0.875rem;
-    font-weight: 500;
-    white-space: nowrap;
+  &.active {
+    background: var(--primary);
+    color: var(--on-primary);
+    border-color: var(--primary);
+  }
+}
+
+.actions-dropdown {
+  position: absolute;
+  top: calc(100% + 4px);
+  right: 0;
+  background: var(--surface);
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  z-index: 1000;
+  min-width: 200px;
+  overflow: hidden;
+}
+
+.action-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 16px;
+  font-size: 0.875rem;
+  color: var(--on-surface);
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+  width: 100%;
+  text-align: left;
+
+  &:hover:not(:disabled) {
     background: var(--surface-container);
-    color: var(--on-surface);
-    border: 1px solid var(--border-color);
-    border-radius: 4px;
-    cursor: pointer;
-    transition: all 0.2s ease;
+  }
 
-    &:hover:not(:disabled) {
-      background: var(--primary);
-      color: var(--on-primary);
-      border-color: var(--primary);
-      transform: translateY(-1px);
-      box-shadow: 0 2px 8px rgba(189, 147, 249, 0.3);
-    }
+  &:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
 
-    &:active:not(:disabled) {
-      transform: translateY(0);
-    }
+  lucide-icon {
+    flex-shrink: 0;
+    color: var(--on-surface-variant);
+  }
 
-    &:disabled {
-      opacity: 0.5;
-      cursor: not-allowed;
-    }
+  &.submenu-trigger {
+    justify-content: space-between;
 
-    lucide-icon {
-      flex-shrink: 0;
+    lucide-icon:last-child {
+      transition: transform 0.2s ease;
 
       &.rotated {
         transform: rotate(180deg);
       }
     }
   }
+}
 
-  .export-dropdown-panel {
-    position: absolute;
-    top: calc(100% + 4px);
-    right: 0;
-    background: var(--surface);
-    border: 1px solid var(--border-color);
-    border-radius: 6px;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
-    z-index: 1000;
-    min-width: 200px;
-    overflow: hidden;
+.submenu {
+  border-top: 1px solid var(--border-color);
+  background: var(--surface-variant);
+}
+
+.submenu-item {
+  display: block;
+  padding: 10px 24px;
+  font-size: 0.8125rem;
+  color: var(--on-surface);
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+  width: 100%;
+  text-align: left;
+
+  &:hover {
+    background: var(--surface-container);
   }
 
-  .export-option {
-    padding: 12px 16px;
-    cursor: pointer;
-    transition: background-color 0.2s ease;
+  &:not(:last-child) {
     border-bottom: 1px solid var(--border-color);
-
-    &:last-child {
-      border-bottom: none;
-    }
-
-    &:hover {
-      background: var(--surface-container);
-    }
-
-    .export-option-title {
-      font-weight: 600;
-      color: var(--on-surface);
-      margin-bottom: 2px;
-    }
-
-    .export-option-desc {
-      font-size: 0.75rem;
-      color: var(--on-surface-variant);
-    }
-  }
-
-  // Tablet layout
-  @media (max-width: 992px) {
-    grid-template-columns: auto 1fr auto;
-    grid-template-rows: auto auto;
-
-    .clear-filters-wrapper {
-      grid-column: 1;
-      grid-row: 1;
-    }
-
-    .export-controls {
-      grid-column: 3;
-      grid-row: 1;
-    }
-
-    >div:nth-child(2) { // Search
-      grid-column: 2 / 3;
-      grid-row: 1;
-    }
-
-    >div:nth-child(3) { // Log level
-      grid-column: 1 / 2;
-      grid-row: 2;
-    }
-
-    >div:nth-child(4) { // Pod select
-      grid-column: 2 / 3;
-      grid-row: 2;
-    }
-
-    >div:nth-child(5) { // Time filter
-      grid-column: 3 / 4;
-      grid-row: 2;
-    }
-  }
-
-  // Mobile layout
-  @media (max-width: 576px) {
-    grid-template-columns: 1fr;
-    gap: 8px;
-
-    .clear-filters-wrapper {
-      order: -1;
-      margin-bottom: 0.5rem;
-
-      .clear-filters-btn {
-        width: 100%;
-        justify-content: center;
-      }
-    }
-
-    .export-controls {
-      order: -2; // Put export before clear button
-      margin-bottom: 0.5rem;
-
-      .export-btn {
-        width: 100%;
-        justify-content: center;
-      }
-
-      .export-dropdown-panel {
-        right: 0;
-        left: 0;
-        min-width: 100%;
-      }
-    }
-
-    >div {
-      width: 100%;
-
-      lucide-icon {
-        display: none; // Hide icons on mobile to save space
-      }
-
-      input,
-      app-dropdown,
-      app-time-filter-dropdown {
-        width: 100%;
-      }
-    }
   }
 }
 
+// Responsive adjustments
+@media (max-width: 992px) {
+  .compact-toolbar {
+    flex-wrap: wrap;
+    gap: 6px;
+    padding: 8px;
+  }
+
+  .filter-item {
+    &.search-wrapper {
+      order: 1;
+      flex: 1 1 100%;
+      min-width: unset;
+      margin-bottom: 4px;
+    }
+
+    app-dropdown,
+    app-time-filter-dropdown {
+      min-width: 110px;
+    }
+  }
+
+  .actions-menu {
+    order: 5;
+    margin-left: 0;
+  }
+}
+
+@media (max-width: 576px) {
+  .compact-toolbar {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 8px;
+    padding: 8px;
+  }
+
+  .filter-item {
+    order: unset;
+
+    &.search-wrapper {
+      margin-bottom: 0;
+
+      .search-input {
+        padding: 8px 12px 8px 32px;
+      }
+    }
+
+    app-dropdown,
+    app-time-filter-dropdown {
+      min-width: unset;
+      width: 100%;
+    }
+  }
+
+  .actions-menu {
+    order: unset;
+    align-self: stretch;
+
+    .actions-btn {
+      width: 100%;
+      height: 40px;
+      border-radius: 6px;
+    }
+
+    .actions-dropdown {
+      right: 0;
+      left: 0;
+      min-width: 100%;
+    }
+  }
+
+  .action-item {
+    padding: 14px 16px;
+    font-size: 0.9375rem;
+  }
+}

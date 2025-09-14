@@ -1,0 +1,87 @@
+.error-badge {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 10px;
+  background: var(--danger);
+  color: var(--on-primary);
+  border: none;
+  border-radius: 16px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  box-shadow: 0 2px 4px rgba(255, 85, 85, 0.3);
+  position: relative;
+  overflow: hidden;
+
+  &:hover {
+    background: var(--danger);
+    opacity: 0.9;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 8px rgba(255, 85, 85, 0.4);
+  }
+
+  &:active {
+    transform: translateY(0);
+    box-shadow: 0 2px 4px rgba(255, 85, 85, 0.3);
+  }
+
+  lucide-icon {
+    flex-shrink: 0;
+    filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.3));
+  }
+
+  .count {
+    font-weight: 700;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+    line-height: 1;
+  }
+
+  // Pulsing animation for new errors
+  &.pulsing {
+    animation: errorPulse 1.5s ease-in-out infinite;
+  }
+
+  // Pulse effect on hover
+  &::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(255, 255, 255, 0.2);
+    opacity: 0;
+    border-radius: 16px;
+    transition: opacity 0.3s ease;
+  }
+
+  &:hover::after {
+    opacity: 1;
+  }
+}
+
+@keyframes errorPulse {
+  0%, 100% {
+    transform: scale(1);
+    box-shadow: 0 2px 4px rgba(255, 85, 85, 0.3);
+  }
+  50% {
+    transform: scale(1.05);
+    box-shadow: 0 4px 12px rgba(255, 85, 85, 0.6);
+  }
+}
+
+// Mobile adjustments
+@media (max-width: 576px) {
+  .error-badge {
+    padding: 5px 8px;
+    font-size: 0.8rem;
+    gap: 4px;
+
+    lucide-icon {
+      size: 14px;
+    }
+  }
+}

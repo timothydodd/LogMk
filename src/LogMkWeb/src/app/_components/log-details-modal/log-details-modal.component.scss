@@ -1,0 +1,175 @@
+// Log details content styles (now used within large global modal)
+.log-details-content {
+
+  .log-metadata {
+    margin-bottom: 2rem;
+
+    .metadata-row {
+      display: flex;
+      align-items: center;
+      margin-bottom: 0.75rem;
+      font-family: "JetBrains Mono", "Fira Code", "Consolas", monospace;
+
+      .label {
+        font-weight: 600;
+        color: var(--on-surface-variant);
+        min-width: 100px;
+        font-size: 0.875rem;
+      }
+
+      .value {
+        color: var(--on-surface);
+        font-size: 0.875rem;
+
+        &.pod-name {
+          font-weight: 600;
+          text-shadow: 0 0 3px currentColor;
+        }
+
+        &.log-level {
+          padding: 2px 8px;
+          border-radius: 4px;
+          font-weight: 700;
+          text-transform: uppercase;
+          font-size: 0.75rem;
+          letter-spacing: 0.5px;
+
+          &.information {
+            color: #00eaff;
+            background: rgba(0, 234, 255, 0.15);
+            border: 1px solid rgba(0, 234, 255, 0.3);
+          }
+
+          &.warning {
+            color: #f1fa8c;
+            background: rgba(241, 250, 140, 0.15);
+            border: 1px solid rgba(241, 250, 140, 0.3);
+          }
+
+          &.error {
+            color: #ff5555;
+            background: rgba(255, 85, 85, 0.15);
+            border: 1px solid rgba(255, 85, 85, 0.3);
+          }
+
+          &.debug {
+            color: #6272a4;
+            background: rgba(98, 114, 164, 0.15);
+            border: 1px solid rgba(98, 114, 164, 0.3);
+          }
+        }
+      }
+    }
+  }
+
+  .log-content-section {
+    .section-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 1rem;
+
+      h4 {
+        margin: 0;
+        color: var(--on-surface);
+        font-size: 1rem;
+        font-weight: 600;
+      }
+
+      .copy-btn {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        padding: 0.5rem 1rem;
+        background: var(--surface-container);
+        color: var(--on-surface);
+        border: 1px solid var(--border-color);
+        border-radius: 4px;
+        cursor: pointer;
+        font-size: 0.875rem;
+        font-weight: 500;
+        transition: all 0.2s ease;
+
+        &:hover {
+          background: var(--surface-container-high);
+          color: var(--primary);
+          border-color: var(--primary);
+        }
+
+        lucide-icon {
+          flex-shrink: 0;
+        }
+      }
+    }
+
+    .log-content {
+      background: var(--surface-container);
+      border: 1px solid var(--border-color);
+      border-radius: 6px;
+      overflow: hidden;
+
+      .json-content,
+      .text-content {
+        margin: 0;
+        padding: 1rem;
+        background: transparent;
+        color: var(--on-surface);
+        font-family: "JetBrains Mono", "Fira Code", "Consolas", monospace;
+        font-size: 0.875rem;
+        line-height: 1.5;
+        white-space: pre-wrap;
+        word-wrap: break-word;
+        overflow-x: auto;
+
+        // Custom scrollbar for code blocks
+        &::-webkit-scrollbar {
+          height: 8px;
+        }
+
+        &::-webkit-scrollbar-track {
+          background: var(--surface-variant);
+          border-radius: 4px;
+        }
+
+        &::-webkit-scrollbar-thumb {
+          background: var(--border-color);
+          border-radius: 4px;
+
+          &:hover {
+            background: var(--on-surface-variant);
+          }
+        }
+      }
+
+      .json-content {
+        color: #f8f8f2;
+
+        // Basic JSON syntax highlighting
+        .string { color: #f1fa8c; }
+        .number { color: #bd93f9; }
+        .boolean { color: #ff79c6; }
+        .null { color: #6272a4; }
+        .key { color: #50fa7b; }
+      }
+    }
+  }
+
+  // Mobile responsive adjustments
+  @media (max-width: 576px) {
+    .log-metadata .metadata-row {
+      flex-direction: column;
+      align-items: flex-start;
+
+      .label {
+        margin-bottom: 0.25rem;
+        min-width: unset;
+      }
+    }
+
+    .log-content-section .section-header {
+      flex-direction: column;
+      align-items: stretch;
+      gap: 1rem;
+    }
+  }
+}

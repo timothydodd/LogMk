@@ -1,18 +1,22 @@
 import { CommonModule } from '@angular/common';
-import { afterNextRender, ChangeDetectionStrategy, Component, DestroyRef, ElementRef, inject, signal, viewChild } from '@angular/core';
+import { afterNextRender, ChangeDetectionStrategy, Component, DestroyRef, ElementRef, inject, signal, viewChild, HostListener } from '@angular/core';
 import { takeUntilDestroyed, toObservable } from '@angular/core/rxjs-interop';
 import { VirtualScrollerComponent, VirtualScrollerModule } from '@iharbeck/ngx-virtual-scroller';
 import { LucideAngularModule } from 'lucide-angular';
 import { ToastrService } from 'ngx-toastr';
 import { combineLatest, Subject, switchMap, tap } from 'rxjs';
+import { ContextMenuComponent } from '../../../_components/context-menu/context-menu.component';
+import { LogDetailsModalComponent } from '../../../_components/log-details-modal/log-details-modal.component';
+import { TimestampFormatPipe } from '../../../_pipes/timestamp-format.pipe';
 import { LogApiService } from '../../../_services/log.api';
+import { ViewModeService } from '../../../_services/view-mode.service';
 import { Log, SignalRService } from '../../../_services/signalr.service';
 import { HighlightLogPipe, LogLevelPipe } from '../_services/highlight.directive';
 import { LogFilterState } from '../_services/log-filter-state';
 @Component({
   selector: 'app-log-viewport',
   standalone: true,
-  imports: [CommonModule, VirtualScrollerModule, HighlightLogPipe, LogLevelPipe, LucideAngularModule],
+  imports: [CommonModule, VirtualScrollerModule, HighlightLogPipe, LogLevelPipe, LucideAngularModule, TimestampFormatPipe, LogDetailsModalComponent, ContextMenuComponent],
   template: `
     @if(parentScrollElement(); as parentScrollElement) {
     <virtual-scroller 
@@ -26,15 +30,23 @@ import { LogFilterState } from '../_services/log-filter-state';
       [parentScroll]="parentScrollElement"
       class="virtual-scroll-container">
       
-      @for (log of scrollViewport.viewPortItems; track log.id) {
-        <div class="log-item" [class.copied]="copiedLogId() === log.id">
-          <div class="time">{{ log.timeStamp | date: 'short' }}</div>
+      @for (log of scrollViewport.viewPortItems; track log.id; let i = $index) {
+        <div class="log-item"
+             [class.copied]="copiedLogId() === log.id"
+             [class.selected]="selectedLogId() === log.id.toString()"
+             [class.compact]="viewModeService.isCompact()"
+             [class.expanded]="viewModeService.isExpanded()"
+             (click)="selectedLogId.set(log.id.toString())"
+             (dblclick)="openLogModal(log)"
+             (contextmenu)="showContextMenu($event, log)"
+             title="Double-click to view full log details">
+          <div class="time">{{ log.timeStamp | timestampFormat }}</div>
           <div class="pod" [ngStyle]="{'color':log.podColor}">{{ log.pod }}</div>
           <div class="type" [ngClass]="log.logLevel | LogLevelPipe">{{ log.logLevel | LogLevelPipe }}</div>
-          <div class="line flexible-wrap" [innerHTML]="log.view | highlightLog" [title]="log.line"></div>
+          <div class="line flexible-wrap" [innerHTML]="log.view | highlightLog:logFilterState.searchString()" [title]="log.line"></div>
           <button
             class="copy-btn"
-            (click)="copyLog(log)"
+            (click)="copyLog(log); $event.stopPropagation()"
             [title]="'Copy log to clipboard'"
           >
             @if (copiedLogId() === log.id) {
@@ -55,6 +67,16 @@ import { LogFilterState } from '../_services/log-filter-state';
       }
     </virtual-scroller>
     }
+
+    <!-- Log Details Modal -->
+    <app-log-details-modal #logDetailsModal></app-log-details-modal>
+
+    <!-- Context Menu -->
+    <app-context-menu
+      #contextMenu
+      (actionSelected)="onContextMenuAction($event)"
+      (menuClosed)="onContextMenuClosed()"
+    ></app-context-menu>
   `,
   styleUrl: './log-viewport.component.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -65,14 +87,18 @@ export class LogViewportComponent {
   signalRService = inject(SignalRService);
   logs = signal<Log[]>([]);
   logFilterState = inject(LogFilterState);
+  viewModeService = inject(ViewModeService);
   page = 1;
   ignoreScroll = true;
   $loadMoreTrigger = new Subject<void>();
   viewPort = viewChild<VirtualScrollerComponent>('scrollViewport');
+  contextMenu = viewChild<ContextMenuComponent>('contextMenu');
+  logDetailsModal = viewChild<LogDetailsModalComponent>('logDetailsModal');
   private elementRef = inject(ElementRef);
   private toastr = inject(ToastrService);
   copiedLogId = signal<string | null>(null);
-  
+  selectedLogId = signal<string | null>(null);
+
   // Memory management
   private readonly MAX_LOGS_IN_MEMORY = 5000; // Limit logs to prevent memory leaks
   
@@ -313,6 +339,140 @@ export class LogViewportComponent {
         });
       }
       document.body.removeChild(textArea);
+    }
+  }
+
+  @HostListener('keydown', ['$event'])
+  onKeyDown(event: KeyboardEvent) {
+    // Only handle arrow keys and only when not in input fields
+    if (event.target instanceof HTMLInputElement || event.target instanceof HTMLTextAreaElement) {
+      return;
+    }
+
+    const logs = this.logs();
+    const currentLogId = this.selectedLogId();
+
+    switch (event.key) {
+      case 'ArrowDown':
+        event.preventDefault();
+        if (logs.length > 0) {
+          let currentIndex = logs.findIndex(log => log.id.toString() === currentLogId);
+          if (currentIndex === -1) currentIndex = -1; // Start from beginning if no selection
+          const newIndex = currentIndex < logs.length - 1 ? currentIndex + 1 : logs.length - 1;
+          this.selectedLogId.set(logs[newIndex].id.toString());
+          this.scrollToSelectedLog(newIndex);
+        }
+        break;
+
+      case 'ArrowUp':
+        event.preventDefault();
+        if (logs.length > 0) {
+          let currentIndex = logs.findIndex(log => log.id.toString() === currentLogId);
+          if (currentIndex === -1) currentIndex = 1; // Start from end if no selection
+          const newIndex = currentIndex > 0 ? currentIndex - 1 : 0;
+          this.selectedLogId.set(logs[newIndex].id.toString());
+          this.scrollToSelectedLog(newIndex);
+        }
+        break;
+
+      case 'Enter':
+        event.preventDefault();
+        if (currentLogId) {
+          const selectedLog = logs.find(log => log.id.toString() === currentLogId);
+          if (selectedLog) {
+            this.copyLog(selectedLog);
+          }
+        }
+        break;
+
+      case 'Space':
+        event.preventDefault();
+        if (currentLogId) {
+          const selectedLog = logs.find(log => log.id.toString() === currentLogId);
+          if (selectedLog) {
+            this.openLogModal(selectedLog);
+          }
+        }
+        break;
+    }
+  }
+
+  // Context menu methods
+  showContextMenu(event: MouseEvent, log: Log) {
+    const menu = this.contextMenu();
+    if (menu) {
+      menu.show(event, log);
+    }
+  }
+
+  onContextMenuAction(event: { action: string; log: Log }) {
+    const { action, log } = event;
+
+    switch (action) {
+      case 'copy':
+        this.copyLog(log);
+        break;
+
+      case 'details':
+        this.openLogModal(log);
+        break;
+
+      case 'filter-level':
+        // Filter by this log level only
+        this.logFilterState.selectedLogLevel.set([log.logLevel]);
+        this.toastr.info(`Filtered to show only "${log.logLevel}" logs`, 'Filter Applied');
+        break;
+
+      case 'filter-pod':
+        // Filter by this pod only
+        this.logFilterState.selectedPod.set([log.pod]);
+        this.toastr.info(`Filtered to show only "${log.pod}" pod`, 'Filter Applied');
+        break;
+
+      case 'hide-level':
+        // Hide this log level
+        const currentLevels = this.logFilterState.selectedLogLevel() || ['Debug', 'Information', 'Warning', 'Error'];
+        const filteredLevels = currentLevels.filter(level => level !== log.logLevel);
+        this.logFilterState.selectedLogLevel.set(filteredLevels);
+        this.toastr.info(`Hidden "${log.logLevel}" logs`, 'Filter Applied');
+        break;
+
+      case 'hide-pod':
+        // Hide this pod
+        const currentPods = this.logFilterState.selectedPod();
+        if (currentPods && currentPods.length > 0) {
+          const filteredPods = currentPods.filter(pod => pod !== log.pod);
+          this.logFilterState.selectedPod.set(filteredPods.length > 0 ? filteredPods : null);
+          this.toastr.info(`Hidden "${log.pod}" pod`, 'Filter Applied');
+        }
+        break;
+    }
+  }
+
+  onContextMenuClosed() {
+    // Clean up or handle menu close if needed
+  }
+
+  @HostListener('document:click', ['$event'])
+  onDocumentClick(event: Event) {
+    // Close context menu when clicking outside
+    const menu = this.contextMenu();
+    if (menu) {
+      menu.hide();
+    }
+  }
+
+  private scrollToSelectedLog(index: number) {
+    const viewport = this.viewPort();
+    if (viewport) {
+      viewport.scrollToIndex(index, true);
+    }
+  }
+
+  openLogModal(log: Log): void {
+    const modal = this.logDetailsModal();
+    if (modal) {
+      modal.open(log);
     }
   }
 

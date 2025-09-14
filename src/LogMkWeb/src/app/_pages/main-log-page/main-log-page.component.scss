@@ -2,13 +2,13 @@
   display: flex;
   flex-direction: column;
   flex-grow: 1;
-  padding: 0 2rem;
-  
+  padding: 0 1rem;
+
   app-log-stats,
   app-log-filter-controls {
     flex-shrink: 1;
   }
-  
+
   app-log-viewport {
     flex-grow: 1;
     width: 100%;
@@ -17,12 +17,12 @@
 
 @media (max-width: 768px) {
   :host {
-    padding: 0 1rem;
+    padding: 0 0.5rem;
   }
 }
 
 @media (max-width: 480px) {
   :host {
-    padding: 0 0.5rem;
+    padding: 0 0.25rem;
   }
 }

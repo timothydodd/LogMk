@@ -7,13 +7,32 @@ LogMk is a lightweight log monitoring solution for Kubernetes environments. It c
 
 ## ✨ Features
 
-- **Real-time Log Streaming**: View logs in real-time with SignalR WebSocket integration
-- **Centralized Storage**: All logs stored in MySQL with configurable retention policies
-- **Advanced Filtering**: Filter by namespace, pod, container, log level, and time ranges
-- **Modern Web Interface**: Angular 20 SPA with dark theme and responsive design
-- **Kubernetes Native**: DaemonSet deployment for automatic log collection across all nodes
-- **JWT Authentication**: Secure access with token-based authentication and refresh tokens
-- **Docker Ready**: Containerized components for easy deployment
+### **Core Functionality**
+- **Real-time Log Streaming**: Live log monitoring with SignalR WebSocket integration
+- **Centralized Storage**: MySQL database with configurable retention policies (default 30 days)
+- **Advanced Filtering**: Multi-dimensional filtering by pod, log level, time ranges, and full-text search
+- **Interactive Chart Selection**: Click and drag on charts to select custom time ranges
+- **Export Capabilities**: Export filtered logs to CSV or JSON with intelligent naming
+
+### **User Experience**
+- **Modern Dark Theme**: Dracula-inspired color scheme optimized for extended viewing
+- **Mobile Responsive**: Full mobile and tablet support with adaptive layouts
+- **Keyboard Shortcuts**: Power user navigation (Ctrl+F for search, E for errors, W for warnings)
+- **Context Menus**: Right-click actions for filtering and copying log entries
+- **View Modes**: Toggle between compact (dense) and expanded (spacious) layouts
+
+### **Advanced Features**
+- **Syntax Highlighting**: Comprehensive highlighting for JSON, URLs, IPs, stack traces, HTTP codes
+- **Filter Presets**: Save and manage filter combinations for quick reuse
+- **Copy Functionality**: One-click log copying with visual feedback
+- **Error Count Badge**: Real-time error counter in navigation with click-to-filter
+- **Timestamp Formats**: Toggle between relative ("5 min ago") and absolute timestamps
+
+### **Performance & Accessibility**
+- **Virtual Scrolling**: Handle thousands of logs with smooth performance
+- **Memory Management**: Automatic cleanup and efficient DOM recycling
+- **WCAG Compliance**: Accessible design with proper contrast ratios and keyboard navigation
+- **Progressive Enhancement**: Graceful degradation for older browsers
 
 ![image](https://github.com/user-attachments/assets/a7f87068-4019-456a-b438-410ef5aad22a)
 
@@ -35,10 +54,18 @@ LogMk consists of three main components:
 - **Features**: JWT authentication, automatic schema migration, log retention management
 
 ### 3. **LogMkWeb** (Web Interface)
-- **Purpose**: User interface for log viewing and filtering
-- **Technology**: Angular 20 with TypeScript and Bootstrap 5
-- **Function**: Real-time log visualization with advanced filtering capabilities
-- **Features**: Dark theme, responsive design, SignalR integration, date range picker
+- **Purpose**: Advanced user interface for log monitoring and analysis
+- **Technology**: Angular 20 with TypeScript, modern signal-based architecture
+- **Function**: Real-time log visualization with comprehensive filtering and analysis tools
+- **Features**:
+  - Dracula dark theme with comprehensive syntax highlighting
+  - Mobile-responsive design with adaptive layouts
+  - Real-time SignalR integration with error count badges
+  - Advanced filtering with presets and interactive chart selection
+  - Export capabilities (CSV/JSON) with intelligent naming
+  - Keyboard shortcuts and accessibility features
+  - Context menus and copy functionality
+  - Compact/expanded view modes for user preference
 
 ## 🚀 Quick Start
 
@@ -120,16 +147,36 @@ kubectl apply -f k8s/
 
 ## 🎯 Usage
 
+### **Getting Started**
 1. **Access the Web Interface**: Navigate to `http://localhost:6200` (development) or your deployed URL
 2. **Authentication**: Log in with your configured credentials
 3. **Real-time Monitoring**: Logs stream automatically via SignalR connection
-4. **Filtering**: Use the sidebar filters to narrow down logs by:
-   - Namespace
-   - Pod name
-   - Container
-   - Log level
-   - Time range
-5. **Search**: Use the search bar for full-text log content searching
+
+### **Advanced Filtering**
+- **Multi-select Dropdowns**: Filter by log levels and pods with search and select-all options
+- **Time Range Selection**: Use predefined ranges or select custom ranges by dragging on charts
+- **Full-text Search**: Search log content with real-time highlighting of matching terms
+- **Filter Presets**: Save frequently used filter combinations for quick access
+
+### **Keyboard Shortcuts**
+- `Ctrl/Cmd+F` - Focus search input
+- `Ctrl/Cmd+Shift+C` - Clear all active filters
+- `E` - Show only error logs
+- `W` - Show only warning logs
+- Arrow keys - Navigate through log entries
+- Enter - Open detailed log view
+
+### **Context Actions**
+- **Right-click any log entry** for context menu with:
+  - Filter by specific pod or log level
+  - Hide logs from specific sources
+  - Copy log content
+  - View detailed log information
+
+### **View Customization**
+- **View Modes**: Toggle between compact (dense) and expanded (spacious) layouts
+- **Timestamp Formats**: Switch between relative ("5 min ago") and absolute timestamps
+- **Export Options**: Download filtered logs as CSV or JSON with metadata
 
 ## 📋 Configuration
 
@@ -193,12 +240,32 @@ dotnet run --project src/LogMkAgent
 
 ## 📝 Tech Stack
 
-- **Backend**: .NET 9, C#, ServiceStack.OrmLite, SignalR
-- **Frontend**: Angular 20, TypeScript, Bootstrap 5, ng2-charts
-- **Database**: MySQL 8.0+
-- **Authentication**: JWT with refresh tokens
-- **Real-time**: SignalR WebSockets
-- **Infrastructure**: Docker, Kubernetes, GitHub Actions
+### **Backend**
+- **.NET 9**: Modern C# with high-performance runtime
+- **ServiceStack.OrmLite**: Lightweight ORM for MySQL integration
+- **SignalR**: Real-time WebSocket communication
+- **JWT Authentication**: Secure token-based auth with refresh tokens
+
+### **Frontend**
+- **Angular 20**: Latest Angular with signal-based architecture
+- **TypeScript**: Type-safe development with modern ES features
+- **CSS Variables**: Dynamic theming with Dracula color scheme
+- **Virtual Scrolling**: High-performance rendering for large datasets
+- **PWA Ready**: Progressive Web App capabilities
+
+### **Libraries & Tools**
+- **Lucide Angular**: Modern icon library with 1000+ icons
+- **ng2-charts**: Chart.js integration for interactive visualizations
+- **ngx-toastr**: Toast notifications for user feedback
+- **date-fns**: Comprehensive date manipulation utilities
+- **@iharbeck/ngx-virtual-scroller**: Optimized virtual scrolling
+
+### **Development & Deployment**
+- **Angular CLI**: Modern build system with Vite bundler
+- **ESLint & Prettier**: Code quality and formatting
+- **Docker Multi-stage**: Optimized container builds
+- **Kubernetes**: Cloud-native deployment with DaemonSets
+- **GitHub Actions**: CI/CD pipeline automation
 
 ## 🤝 Contributing
 

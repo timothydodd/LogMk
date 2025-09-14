@@ -46,3 +46,173 @@ html {
 val-errors {
     color: var(--red);
 }
+
+// Syntax Highlighting Styles
+.search-highlight {
+    background: rgba(255, 255, 0, 0.3);
+    color: #000;
+    padding: 1px 2px;
+    border-radius: 2px;
+    font-weight: 600;
+}
+
+// URL highlighting
+.url {
+    color: #8be9fd;
+    text-decoration: underline;
+    font-weight: 500;
+}
+
+// IP address highlighting
+.ip-address {
+    color: #ffb86c;
+    font-weight: 500;
+    font-family: 'JetBrains Mono', 'Fira Code', 'Consolas', monospace;
+}
+
+// File path highlighting
+.file-path {
+    color: #50fa7b;
+    font-style: italic;
+}
+
+// JSON syntax highlighting
+.json-key {
+    color: #50fa7b;
+    font-weight: 600;
+}
+
+.json-string {
+    color: #f1fa8c;
+}
+
+.json-number {
+    color: #bd93f9;
+    font-weight: 500;
+}
+
+.json-boolean {
+    color: #ff79c6;
+    font-weight: 600;
+}
+
+.json-null {
+    color: #6272a4;
+    font-style: italic;
+}
+
+// Stack trace highlighting
+.stack-class {
+    color: #8be9fd;
+    font-weight: 500;
+}
+
+.stack-method {
+    color: #50fa7b;
+    font-weight: 600;
+}
+
+.stack-line {
+    color: #ffb86c;
+    font-weight: 500;
+}
+
+// HTTP method highlighting
+.http-method {
+    color: #bd93f9;
+    font-weight: 700;
+    text-transform: uppercase;
+    padding: 2px 4px;
+    border-radius: 3px;
+    background: rgba(189, 147, 249, 0.1);
+}
+
+// HTTP status code highlighting
+.http-success {
+    color: #50fa7b;
+    font-weight: 700;
+    background: rgba(80, 250, 123, 0.1);
+    padding: 2px 4px;
+    border-radius: 3px;
+}
+
+.http-client-error {
+    color: #ffb86c;
+    font-weight: 700;
+    background: rgba(255, 184, 108, 0.1);
+    padding: 2px 4px;
+    border-radius: 3px;
+}
+
+.http-server-error {
+    color: #ff5555;
+    font-weight: 700;
+    background: rgba(255, 85, 85, 0.1);
+    padding: 2px 4px;
+    border-radius: 3px;
+}
+
+// Log level highlighting
+.log-level-error {
+    color: #ff5555;
+    font-weight: 700;
+    text-transform: uppercase;
+}
+
+.log-level-warn {
+    color: #f1fa8c;
+    font-weight: 700;
+    text-transform: uppercase;
+}
+
+.log-level-info {
+    color: #8be9fd;
+    font-weight: 600;
+    text-transform: uppercase;
+}
+
+.log-level-debug {
+    color: #6272a4;
+    font-weight: 500;
+    text-transform: uppercase;
+}
+
+// SQL keyword highlighting
+.sql-keyword {
+    color: #bd93f9;
+    font-weight: 600;
+    text-transform: uppercase;
+}
+
+// Exception type highlighting
+.exception-type {
+    color: #ff5555;
+    font-weight: 700;
+    background: rgba(255, 85, 85, 0.1);
+    padding: 1px 3px;
+    border-radius: 3px;
+}
+
+// Email highlighting
+.email {
+    color: #8be9fd;
+    font-weight: 500;
+    text-decoration: underline;
+}
+
+// UUID highlighting
+.uuid {
+    color: #bd93f9;
+    font-family: 'JetBrains Mono', 'Fira Code', 'Consolas', monospace;
+    font-size: 0.9em;
+    background: rgba(189, 147, 249, 0.1);
+    padding: 1px 3px;
+    border-radius: 3px;
+}
+
+// Timestamp highlighting
+.timestamp {
+    color: #ffb86c;
+    font-weight: 500;
+    font-family: 'JetBrains Mono', 'Fira Code', 'Consolas', monospace;
+}

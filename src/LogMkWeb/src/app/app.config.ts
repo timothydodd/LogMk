@@ -5,7 +5,7 @@ import { HTTP_INTERCEPTORS, provideHttpClient, withInterceptorsFromDi } from '@a
 import { BrowserAnimationsModule, provideAnimations } from '@angular/platform-browser/animations';
 import { JwtModule } from '@auth0/angular-jwt';
 import { BarController, BarElement, CategoryScale, Colors, Legend, LinearScale } from 'chart.js';
-import { AlertTriangle, Box, Check, ChevronDown, Clock, Copy, Download, FilterX, Gauge, Info, LogOut, LucideAngularModule, RefreshCw, Search, Settings, User, X } from 'lucide-angular';
+import { AlertTriangle, Bookmark, Box, Check, ChevronDown, Clock, Copy, Download, EyeOff, Filter, FilterX, Gauge, Info, LogOut, LucideAngularModule, Maximize2, Minimize2, MoreVertical, Play, RefreshCw, Save, Search, Settings, Trash2, User, X } from 'lucide-angular';
 import { provideCharts } from 'ng2-charts';
 import { provideToastr } from 'ngx-toastr';
 import { environment } from '../environments/environment';
@@ -37,7 +37,7 @@ export const appConfig: ApplicationConfig = {
         },
       })
     ),
-    importProvidersFrom(LucideAngularModule.pick({ X, User, Box, Gauge, Clock, Search, ChevronDown, Settings, LogOut, RefreshCw, Info, AlertTriangle, Copy, Check, FilterX, Download })),
+    importProvidersFrom(LucideAngularModule.pick({ X, User, Box, Gauge, Clock, Search, ChevronDown, Settings, LogOut, RefreshCw, Info, AlertTriangle, Copy, Check, FilterX, Download, MoreVertical, Save, Bookmark, Play, Trash2, Filter, EyeOff, Maximize2, Minimize2 })),
     provideToastr(),
   ],
 };
