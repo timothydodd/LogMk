@@ -54,13 +54,64 @@
     }
   }
 
-  // Responsive layout
-  @media (max-width: 768px) {
-    grid-template-columns: 1fr;
+  // Tablet layout
+  @media (max-width: 992px) {
+    grid-template-columns: auto 1fr 1fr;
+    grid-template-rows: auto auto;
 
     .clear-filters-wrapper {
-      order: -1; // Put clear button at top on mobile
+      grid-column: 1;
+      grid-row: 1;
+    }
+
+    >div:nth-child(2) { // Search
+      grid-column: 2 / 4;
+      grid-row: 1;
+    }
+
+    >div:nth-child(3) { // Log level
+      grid-column: 1 / 2;
+      grid-row: 2;
+    }
+
+    >div:nth-child(4) { // Pod select
+      grid-column: 2 / 3;
+      grid-row: 2;
+    }
+
+    >div:nth-child(5) { // Time filter
+      grid-column: 3 / 4;
+      grid-row: 2;
+    }
+  }
+
+  // Mobile layout
+  @media (max-width: 576px) {
+    grid-template-columns: 1fr;
+    gap: 8px;
+
+    .clear-filters-wrapper {
+      order: -1;
       margin-bottom: 0.5rem;
+
+      .clear-filters-btn {
+        width: 100%;
+        justify-content: center;
+      }
+    }
+
+    >div {
+      width: 100%;
+
+      lucide-icon {
+        display: none; // Hide icons on mobile to save space
+      }
+
+      input,
+      app-dropdown,
+      app-time-filter-dropdown {
+        width: 100%;
+      }
     }
   }
 }

@@ -93,8 +93,8 @@ export class LogFilterControlsComponent {
 
   hasActiveFilters = computed(() => {
     return (
-      this.logFilterState.selectedLogLevel().length > 0 ||
-      this.logFilterState.selectedPod().length > 0 ||
+      (this.logFilterState.selectedLogLevel()?.length ?? 0) > 0 ||
+      (this.logFilterState.selectedPod()?.length ?? 0) > 0 ||
       this.searchString().length > 0 ||
       this.logFilterState.selectedTimeRange() !== null ||
       this.logFilterState.customTimeRange() !== null
