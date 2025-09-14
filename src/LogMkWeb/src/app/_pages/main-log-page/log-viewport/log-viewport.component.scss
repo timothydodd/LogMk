@@ -24,11 +24,22 @@
   background: rgba(40, 42, 54, 0.3);
   border-left: 2px solid transparent;
   transition: all 0.2s ease;
-  
+  position: relative;
+
   &:hover {
     background: rgba(68, 71, 90, 0.4);
     border-left-color: var(--primary);
     box-shadow: 0 0 10px rgba(0, 234, 255, 0.1);
+
+    .copy-btn {
+      opacity: 1;
+    }
+  }
+
+  &.copied {
+    background: rgba(80, 250, 123, 0.1);
+    border-left-color: var(--success);
+    animation: copyPulse 0.3s ease-out;
   }
   .line {
     color: #e0e0e0;
@@ -142,6 +153,34 @@
        font-weight: bold;
      }
     }
+
+  .copy-btn {
+    position: absolute;
+    right: 8px;
+    top: 50%;
+    transform: translateY(-50%);
+    background: var(--surface-container);
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    padding: 4px 6px;
+    cursor: pointer;
+    opacity: 0;
+    transition: all 0.2s ease;
+    color: var(--on-surface-variant);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    &:hover {
+      background: var(--surface-container-high);
+      color: var(--primary);
+      border-color: var(--primary);
+    }
+
+    &:active {
+      transform: translateY(-50%) scale(0.95);
+    }
+  }
 }
 
 @keyframes fadeIn {
@@ -163,6 +202,18 @@
   50% {
     opacity: 1;
     filter: brightness(1.2);
+  }
+}
+
+@keyframes copyPulse {
+  0% {
+    background: rgba(80, 250, 123, 0.3);
+  }
+  50% {
+    background: rgba(80, 250, 123, 0.2);
+  }
+  100% {
+    background: rgba(80, 250, 123, 0.1);
   }
 }
 

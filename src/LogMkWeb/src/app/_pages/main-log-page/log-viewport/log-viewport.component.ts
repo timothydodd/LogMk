@@ -2,7 +2,8 @@ import { CommonModule } from '@angular/common';
 import { afterNextRender, ChangeDetectionStrategy, Component, DestroyRef, ElementRef, inject, signal, viewChild } from '@angular/core';
 import { takeUntilDestroyed, toObservable } from '@angular/core/rxjs-interop';
 import { VirtualScrollerComponent, VirtualScrollerModule } from '@iharbeck/ngx-virtual-scroller';
-
+import { LucideAngularModule } from 'lucide-angular';
+import { ToastrService } from 'ngx-toastr';
 import { combineLatest, Subject, switchMap, tap } from 'rxjs';
 import { LogApiService } from '../../../_services/log.api';
 import { Log, SignalRService } from '../../../_services/signalr.service';
@@ -11,7 +12,7 @@ import { LogFilterState } from '../_services/log-filter-state';
 @Component({
   selector: 'app-log-viewport',
   standalone: true,
-  imports: [CommonModule, VirtualScrollerModule,HighlightLogPipe,LogLevelPipe],
+  imports: [CommonModule, VirtualScrollerModule, HighlightLogPipe, LogLevelPipe, LucideAngularModule],
   template: `
     @if(parentScrollElement(); as parentScrollElement) {
     <virtual-scroller 
@@ -26,11 +27,22 @@ import { LogFilterState } from '../_services/log-filter-state';
       class="virtual-scroll-container">
       
       @for (log of scrollViewport.viewPortItems; track log.id) {
-        <div class="log-item">
+        <div class="log-item" [class.copied]="copiedLogId() === log.id">
           <div class="time">{{ log.timeStamp | date: 'short' }}</div>
           <div class="pod" [ngStyle]="{'color':log.podColor}">{{ log.pod }}</div>
           <div class="type" [ngClass]="log.logLevel | LogLevelPipe">{{ log.logLevel | LogLevelPipe }}</div>
           <div class="line flexible-wrap" [innerHTML]="log.view | highlightLog" [title]="log.line"></div>
+          <button
+            class="copy-btn"
+            (click)="copyLog(log)"
+            [title]="'Copy log to clipboard'"
+          >
+            @if (copiedLogId() === log.id) {
+              <lucide-icon name="check" size="14"></lucide-icon>
+            } @else {
+              <lucide-icon name="copy" size="14"></lucide-icon>
+            }
+          </button>
         </div>
       }
       
@@ -58,6 +70,8 @@ export class LogViewportComponent {
   $loadMoreTrigger = new Subject<void>();
   viewPort = viewChild<VirtualScrollerComponent>('scrollViewport');
   private elementRef = inject(ElementRef);
+  private toastr = inject(ToastrService);
+  copiedLogId = signal<string | null>(null);
   
   // Memory management
   private readonly MAX_LOGS_IN_MEMORY = 5000; // Limit logs to prevent memory leaks
@@ -253,6 +267,53 @@ export class LogViewportComponent {
         console.warn('Error scrolling to index:', error);
       }
     }, 50);
+  }
+
+  copyLog(log: Log) {
+    const logText = `[${new Date(log.timeStamp).toISOString()}] [${log.pod}] [${log.logLevel}] ${log.line}`;
+
+    if (navigator.clipboard) {
+      navigator.clipboard.writeText(logText).then(() => {
+        this.copiedLogId.set(log.id.toString());
+        this.toastr.success('Log copied to clipboard', '', {
+          timeOut: 2000,
+          positionClass: 'toast-bottom-right'
+        });
+
+        // Reset the copied state after animation
+        setTimeout(() => {
+          this.copiedLogId.set(null);
+        }, 2000);
+      }).catch(() => {
+        this.toastr.error('Failed to copy log', '', {
+          timeOut: 2000,
+          positionClass: 'toast-bottom-right'
+        });
+      });
+    } else {
+      // Fallback for older browsers
+      const textArea = document.createElement('textarea');
+      textArea.value = logText;
+      document.body.appendChild(textArea);
+      textArea.select();
+      try {
+        document.execCommand('copy');
+        this.copiedLogId.set(log.id.toString());
+        this.toastr.success('Log copied to clipboard', '', {
+          timeOut: 2000,
+          positionClass: 'toast-bottom-right'
+        });
+        setTimeout(() => {
+          this.copiedLogId.set(null);
+        }, 2000);
+      } catch (err) {
+        this.toastr.error('Failed to copy log', '', {
+          timeOut: 2000,
+          positionClass: 'toast-bottom-right'
+        });
+      }
+      document.body.removeChild(textArea);
+    }
   }
 
   private findParentScrollContainer(): void {
