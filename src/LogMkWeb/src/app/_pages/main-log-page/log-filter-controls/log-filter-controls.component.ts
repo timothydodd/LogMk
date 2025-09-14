@@ -15,6 +15,17 @@ import { LogFilterState } from '../_services/log-filter-state';
   standalone: true,
   imports: [FormsModule, DropdownComponent, TimeFilterDropdownComponent, LucideAngularModule],
   template: `
+    <div class="clear-filters-wrapper">
+      <button
+        class="btn btn-secondary clear-filters-btn"
+        (click)="clearAllFilters()"
+        [disabled]="!hasActiveFilters()"
+        title="Clear all filters"
+      >
+        <lucide-icon name="filter-x" size="16"></lucide-icon>
+        Clear
+      </button>
+    </div>
     <div>
       <lucide-icon name="search"></lucide-icon>
       <input
@@ -80,6 +91,16 @@ export class LogFilterControlsComponent {
   searchString = signal<string>('');
   selectedTimeFilter = signal<TimeFilter | null>(null);
 
+  hasActiveFilters = computed(() => {
+    return (
+      this.logFilterState.selectedLogLevel().length > 0 ||
+      this.logFilterState.selectedPod().length > 0 ||
+      this.searchString().length > 0 ||
+      this.logFilterState.selectedTimeRange() !== null ||
+      this.logFilterState.customTimeRange() !== null
+    );
+  });
+
   timeFilters: TimeFilter[] = [
     { label: 'Any', value: null },
     { label: 'Last Hour', value: subHours(startOfToday(), 1) },
@@ -122,5 +143,16 @@ export class LogFilterControlsComponent {
       this.pods.set(pods.map((p) => p.name));
     });
 
+  }
+
+  clearAllFilters(): void {
+    // Clear all filter states
+    this.logFilterState.selectedLogLevel.set([]);
+    this.logFilterState.selectedPod.set([]);
+    this.searchString.set('');
+    this.logFilterState.searchString.set('');
+    this.logFilterState.selectedTimeRange.set(null);
+    this.logFilterState.customTimeRange.set(null);
+    this.selectedTimeFilter.set(this.timeFilters[0]); // Reset to 'Any'
   }
 }

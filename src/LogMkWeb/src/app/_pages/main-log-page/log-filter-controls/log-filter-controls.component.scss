@@ -1,13 +1,67 @@
 :host {
   display: grid;
-  grid-template-columns: auto auto auto auto;
+  grid-template-columns: auto 1fr 1fr 1fr 1fr;
   gap: 5px;
+  align-items: center;
 
   >div {
     display: flex;
     align-items: center;
     gap: 5px;
     flex-grow: 1;
+  }
+
+  .clear-filters-wrapper {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .clear-filters-btn {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 12px;
+    font-size: 0.875rem;
+    font-weight: 500;
+    white-space: nowrap;
+    background: var(--surface-container);
+    color: var(--on-surface);
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+
+    &:hover:not(:disabled) {
+      background: var(--danger);
+      color: var(--on-primary);
+      border-color: var(--danger);
+      transform: translateY(-1px);
+      box-shadow: 0 2px 8px rgba(255, 85, 85, 0.3);
+    }
+
+    &:active:not(:disabled) {
+      transform: translateY(0);
+    }
+
+    &:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+
+    lucide-icon {
+      flex-shrink: 0;
+    }
+  }
+
+  // Responsive layout
+  @media (max-width: 768px) {
+    grid-template-columns: 1fr;
+
+    .clear-filters-wrapper {
+      order: -1; // Put clear button at top on mobile
+      margin-bottom: 0.5rem;
+    }
   }
 }
 
