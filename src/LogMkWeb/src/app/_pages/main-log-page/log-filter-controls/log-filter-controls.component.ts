@@ -1,12 +1,14 @@
 
-import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, ElementRef, HostListener, inject, signal } from '@angular/core';
 import { takeUntilDestroyed, toObservable } from '@angular/core/rxjs-interop';
 import { FormsModule } from '@angular/forms';
 import { startOfToday, subDays, subHours, subMonths } from 'date-fns'; // Import date-fns for date manipulations
 import { LucideAngularModule } from 'lucide-angular';
+import { ToastrService } from 'ngx-toastr';
 import { debounceTime } from 'rxjs';
 import { DropdownComponent } from '../../../_components/dropdown/dropdown.component';
 import { TimeFilterDropdownComponent, TimeFilter } from '../../../_components/time-filter-dropdown/time-filter-dropdown.component';
+import { ExportService } from '../../../_services/export.service';
 import { LogApiService } from '../../../_services/log.api';
 import { LogFilterState } from '../_services/log-filter-state';
 
@@ -78,6 +80,34 @@ import { LogFilterState } from '../_services/log-filter-state';
         placeholder="Select time range"
       ></app-time-filter-dropdown>
     </div>
+    <div class="export-controls">
+      <div class="dropdown-container export-dropdown">
+        <button
+          class="btn btn-outline export-btn"
+          [class.disabled]="!hasLogsToExport()"
+          [disabled]="!hasLogsToExport()"
+          (click)="toggleExportDropdown()"
+          #exportTrigger
+        >
+          <lucide-icon name="download" size="16"></lucide-icon>
+          Export
+          <lucide-icon name="chevron-down" size="14" [class.rotated]="showExportDropdown()"></lucide-icon>
+        </button>
+
+        @if (showExportDropdown()) {
+          <div class="export-dropdown-panel">
+            <div class="export-option" (click)="exportLogs('csv')">
+              <div class="export-option-title">CSV Format</div>
+              <div class="export-option-desc">Spreadsheet-friendly format</div>
+            </div>
+            <div class="export-option" (click)="exportLogs('json')">
+              <div class="export-option-title">JSON Format</div>
+              <div class="export-option-desc">Structured data with metadata</div>
+            </div>
+          </div>
+        }
+      </div>
+    </div>
   `,
   styleUrl: './log-filter-controls.component.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -85,11 +115,15 @@ import { LogFilterState } from '../_services/log-filter-state';
 export class LogFilterControlsComponent {
   logService = inject(LogApiService);
   logFilterState = inject(LogFilterState);
+  exportService = inject(ExportService);
+  toastr = inject(ToastrService);
+  elementRef = inject(ElementRef);
 
   logLevels = ['Debug', 'Information', 'Warning', 'Error'];
   pods = signal<string[]>([]);
   searchString = signal<string>('');
   selectedTimeFilter = signal<TimeFilter | null>(null);
+  showExportDropdown = signal<boolean>(false);
 
   hasActiveFilters = computed(() => {
     return (
@@ -99,6 +133,12 @@ export class LogFilterControlsComponent {
       this.logFilterState.selectedTimeRange() !== null ||
       this.logFilterState.customTimeRange() !== null
     );
+  });
+
+  hasLogsToExport = computed(() => {
+    // For now, assume we have logs to export if filters are applied or not
+    // In a real app, you might want to check the actual logs count
+    return true;
   });
 
   timeFilters: TimeFilter[] = [
@@ -154,5 +194,84 @@ export class LogFilterControlsComponent {
     this.logFilterState.selectedTimeRange.set(null);
     this.logFilterState.customTimeRange.set(null);
     this.selectedTimeFilter.set(this.timeFilters[0]); // Reset to 'Any'
+  }
+
+  toggleExportDropdown(): void {
+    this.showExportDropdown.set(!this.showExportDropdown());
+  }
+
+  @HostListener('document:click', ['$event'])
+  onDocumentClick(event: Event) {
+    if (!this.elementRef.nativeElement.contains(event.target) && this.showExportDropdown()) {
+      this.showExportDropdown.set(false);
+    }
+  }
+
+  exportLogs(format: 'csv' | 'json'): void {
+    this.showExportDropdown.set(false);
+
+    // Get current filter state
+    const filters = {
+      logLevels: this.logFilterState.selectedLogLevel(),
+      pods: this.logFilterState.selectedPod(),
+      searchTerm: this.searchString(),
+      timeRange: this.logFilterState.customTimeRange() || (
+        this.logFilterState.selectedTimeRange() ? {
+          start: this.logFilterState.selectedTimeRange()!,
+          end: new Date()
+        } : null
+      )
+    };
+
+    // For now, we'll use a placeholder for getting filtered logs
+    // In a real implementation, you'd get the actual filtered logs from the log service
+    const mockLogs = this.generateMockExportLogs();
+
+    try {
+      this.exportService.exportFilteredLogs(mockLogs, filters, format);
+
+      this.toastr.success(
+        `Logs exported successfully in ${format.toUpperCase()} format`,
+        'Export Complete',
+        { timeOut: 3000 }
+      );
+    } catch (error) {
+      this.toastr.error(
+        'Failed to export logs. Please try again.',
+        'Export Error',
+        { timeOut: 5000 }
+      );
+    }
+  }
+
+  // Temporary method to generate mock logs for export demo
+  // In production, this would come from your actual log data source
+  private generateMockExportLogs() {
+    const mockLogs = [];
+    const pods = ['web-app-123', 'api-server-456', 'database-789'];
+    const levels = ['Information', 'Warning', 'Error', 'Debug'];
+    const messages = [
+      'User authentication successful',
+      'Database connection established',
+      'API request processed in 245ms',
+      'Warning: High memory usage detected',
+      'Error: Failed to connect to external service',
+      'Debug: Processing batch job #1234'
+    ];
+
+    for (let i = 0; i < 50; i++) {
+      const timestamp = new Date(Date.now() - Math.random() * 86400000 * 7); // Last 7 days
+      mockLogs.push({
+        id: i + 1,
+        timeStamp: timestamp.toISOString(),
+        pod: pods[Math.floor(Math.random() * pods.length)],
+        logLevel: levels[Math.floor(Math.random() * levels.length)],
+        line: `${messages[Math.floor(Math.random() * messages.length)]} - ID: ${i + 1}`,
+        view: `${messages[Math.floor(Math.random() * messages.length)]} - ID: ${i + 1}`,
+        podColor: '#00eaff'
+      });
+    }
+
+    return mockLogs;
   }
 }
