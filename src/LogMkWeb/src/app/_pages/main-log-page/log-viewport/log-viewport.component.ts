@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { afterNextRender, ChangeDetectionStrategy, Component, DestroyRef, ElementRef, inject, signal, viewChild, HostListener } from '@angular/core';
+import { afterNextRender, ChangeDetectionStrategy, Component, DestroyRef, ElementRef, HostListener, inject, signal, viewChild } from '@angular/core';
 import { takeUntilDestroyed, toObservable } from '@angular/core/rxjs-interop';
 import { VirtualScrollerComponent, VirtualScrollerModule } from '@iharbeck/ngx-virtual-scroller';
 import { LucideAngularModule } from 'lucide-angular';
@@ -9,8 +9,8 @@ import { ContextMenuComponent } from '../../../_components/context-menu/context-
 import { LogDetailsModalComponent } from '../../../_components/log-details-modal/log-details-modal.component';
 import { TimestampFormatPipe } from '../../../_pipes/timestamp-format.pipe';
 import { LogApiService } from '../../../_services/log.api';
-import { ViewModeService } from '../../../_services/view-mode.service';
 import { Log, SignalRService } from '../../../_services/signalr.service';
+import { ViewModeService } from '../../../_services/view-mode.service';
 import { HighlightLogPipe, LogLevelPipe } from '../_services/highlight.directive';
 import { LogFilterState } from '../_services/log-filter-state';
 @Component({
@@ -257,7 +257,10 @@ export class LogViewportComponent {
           podColor: getPodColor(z.pod),
           view: this.cleanLogLine(z.line),
         };
-      }).sort((a, b) => {
+      });
+
+      this.logs.update((x) => {
+        const newLogs = [...x,...filteredLogs, ].sort((a, b) => {
 
         var timedif =new Date(b.timeStamp).getTime() - new Date(a.timeStamp).getTime();
         if (timedif > 0) return 1;
@@ -265,10 +268,7 @@ export class LogViewportComponent {
         if(a.id > b.id) return 1;
         if(a.id < b.id) return -1;
         return 0;
-      });
-
-      this.logs.update((x) => {
-        const newLogs = [...filteredLogs, ...x];
+        });
         // Trim logs if we exceed memory limit
         if (newLogs.length > this.MAX_LOGS_IN_MEMORY) {
           return newLogs.slice(0, this.MAX_LOGS_IN_MEMORY);
