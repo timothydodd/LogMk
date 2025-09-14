@@ -212,9 +212,9 @@ export class LogFilterControlsComponent {
 
     // Get current filter state
     const filters = {
-      logLevels: this.logFilterState.selectedLogLevel(),
-      pods: this.logFilterState.selectedPod(),
-      searchTerm: this.searchString(),
+      logLevels: this.logFilterState.selectedLogLevel() || undefined,
+      pods: this.logFilterState.selectedPod() || undefined,
+      searchTerm: this.searchString() || undefined,
       timeRange: this.logFilterState.customTimeRange() || (
         this.logFilterState.selectedTimeRange() ? {
           start: this.logFilterState.selectedTimeRange()!,
