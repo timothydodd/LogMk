@@ -136,6 +136,14 @@ val-errors {
     border-radius: 3px;
 }
 
+.http-redirect {
+    color: #8be9fd;
+    font-weight: 700;
+    background: rgba(139, 233, 253, 0.1);
+    padding: 2px 4px;
+    border-radius: 3px;
+}
+
 .http-client-error {
     color: #ffb86c;
     font-weight: 700;
@@ -193,6 +201,13 @@ val-errors {
     border-radius: 3px;
 }
 
+// .NET namespace highlighting
+.dotnet-namespace {
+    color: #8be9fd;
+    font-weight: 500;
+    font-family: 'JetBrains Mono', 'Fira Code', 'Consolas', monospace;
+}
+
 // Email highlighting
 .email {
     color: #8be9fd;
@@ -208,6 +223,31 @@ val-errors {
     background: rgba(189, 147, 249, 0.1);
     padding: 1px 3px;
     border-radius: 3px;
+}
+
+// Key-value pair highlighting
+.kv-key {
+    color: #ffb86c;  // Orange - less commonly used
+    font-weight: 600;
+}
+
+.kv-number {
+    color: #ff79c6;  // Pink - distinctive for values
+    font-weight: 600;
+}
+
+.kv-string {
+    color: #f1fa8c;
+    font-style: italic;
+}
+
+.kv-boolean {
+    color: #ff79c6;  // Pink - same as numbers for consistency
+    font-weight: 600;
+}
+
+.kv-value {
+    color: #ff79c6;  // Pink - same as numbers for consistency
 }
 
 // Timestamp highlighting

@@ -1,10 +1,11 @@
 
-import { ChangeDetectionStrategy, Component, computed, inject, signal, viewChild, ElementRef, AfterViewInit } from '@angular/core';
+import { AfterViewInit, ChangeDetectionStrategy, Component, computed, inject, signal, viewChild } from '@angular/core';
 import { takeUntilDestroyed, toObservable } from '@angular/core/rxjs-interop';
 import { ActiveElement, ChartEvent, ChartOptions } from 'chart.js';
 import { BaseChartDirective } from 'ng2-charts';
 import { combineLatest, switchMap } from 'rxjs';
 import { LogApiService, LogStatistic, TimePeriod } from '../../../_services/log.api';
+import { ChartType, ChartTypeService } from '../../../_services/chart-type.service';
 import { LogFilterState } from '../_services/log-filter-state';
 @Component({
   selector: 'app-log-stats',
@@ -12,36 +13,38 @@ import { LogFilterState } from '../_services/log-filter-state';
   imports: [BaseChartDirective],
 
   template: `@if (stats() !== null) {
-    <div class="chart-container">
+    <div class="chart-container"
+         #chartContainer
+         (mousedown)="onMouseDown($event)"
+         (mousemove)="onMouseMove($event)"
+         (mouseup)="onMouseUp($event)"
+         (mouseleave)="onMouseLeave($event)">
       <canvas baseChart
-              #chartCanvas
-              [data]="barChartView()"
-              [options]="barChartOptions"
-              [type]="'bar'"
+              [data]="chartView()"
+              [options]="chartOptions()"
+              [type]="chartTypeService.getChartJsType()"
               (chartClick)="onChartClick($event, $any($event.active))"
-              (mousedown)="onMouseDown($event)"
-              (mousemove)="onMouseMove($event)"
-              (mouseup)="onMouseUp($event)"
               class="chart-canvas">
       </canvas>
       @if (isSelecting()) {
         <div class="selection-overlay"
-             [style.left.px]="selectionStart()"
+             [style.left.px]="Math.min(selectionStart(), selectionEnd())"
              [style.width.px]="selectionWidth()"
-             [style.top.px]="0"
-             [style.height.%]="100">
+             [style.top]="'0'"
+             [style.height]="'100%'">
         </div>
       }
     </div>
   }`,
   styleUrl: './log-stats.component.scss',
-  changeDetection: ChangeDetectionStrategy.OnPush,
+  changeDetection: ChangeDetectionStrategy.Default,
 })
 export class LogStatsComponent implements AfterViewInit {
   logFilterState = inject(LogFilterState);
   logService = inject(LogApiService);
+  chartTypeService = inject(ChartTypeService);
 
-  chartCanvas = viewChild<BaseChartDirective>('chartCanvas');
+  chartCanvas = viewChild<BaseChartDirective>(BaseChartDirective);
 
   stats = signal<LogStatistic | null>(null);
 
@@ -51,47 +54,60 @@ export class LogStatsComponent implements AfterViewInit {
   selectionEnd = signal<number>(0);
   selectionWidth = computed(() => Math.abs(this.selectionEnd() - this.selectionStart()));
 
-  private isDragging = false;
-  private chartRect: DOMRect | null = null;
+  // Make Math available in template
+  Math = Math;
 
-  barChartView = computed(() => {
-    return this.getBarChat();
+  private isDragging = false;
+  private containerRect: DOMRect | null = null;
+
+  chartView = computed(() => {
+    return this.getChartData();
   });
 
-  barChartOptions: ChartOptions<'bar'> = {
-    responsive: true,
-    maintainAspectRatio: false,
-    interaction: {
-      intersect: false,
-      mode: 'index'
-    },
-    onHover: (event, elements) => {
-      if (event.native?.target) {
-        (event.native.target as HTMLElement).style.cursor = elements.length > 0 ? 'pointer' : 'default';
-      }
-    },
-    scales: {
-      x: {
-        stacked: true, // Enable stacking for the x-axis
-         grid: {
-          color: 'rgba(68, 71, 90, 0.4)'  // Use theme border color
-        },
-        ticks: {
-          color: '#a0a0a0'  // Use theme muted text color
+  chartOptions = computed(() => {
+    return this.getChartOptions();
+  });
+
+  private getChartOptions(): ChartOptions {
+    const chartType = this.chartTypeService.selectedChartType();
+
+    const baseOptions: ChartOptions = {
+      responsive: true,
+      maintainAspectRatio: false,
+      interaction: {
+        intersect: false,
+        mode: 'index'
+      },
+      onHover: (event, elements) => {
+        if (event.native?.target) {
+          (event.native.target as HTMLElement).style.cursor = elements.length > 0 ? 'pointer' : 'default';
         }
       },
-      y: {
-        stacked: true, // Enable stacking for the y-axis
-        beginAtZero: true,
-         grid: {
-          color: 'rgba(68, 71, 90, 0.4)'  // Use theme border color
+      scales: {
+        x: {
+          stacked: chartType === 'area', // Only stack for area charts
+          grid: {
+            color: 'rgba(68, 71, 90, 0.4)'
+          },
+          ticks: {
+            color: '#a0a0a0'
+          }
         },
-        ticks: {
-          color: '#a0a0a0'  // Use theme muted text color
-        }
+        y: {
+          stacked: chartType === 'area', // Only stack for area charts
+          beginAtZero: true,
+          grid: {
+            color: 'rgba(68, 71, 90, 0.4)'
+          },
+          ticks: {
+            color: '#a0a0a0'
+          }
+        },
       },
-    },
-  };
+    };
+
+    return baseOptions;
+  }
    
   constructor() {
     const logFilterState = toObservable(this.logFilterState.selectedLogLevel);
@@ -118,26 +134,29 @@ export class LogStatsComponent implements AfterViewInit {
   }
 
   ngAfterViewInit(): void {
-    // Initialize chart rect for mouse calculations
+    // Initialize container rect for mouse calculations
     setTimeout(() => {
-      this.updateChartRect();
+      this.updateContainerRect();
     });
   }
 
-  private updateChartRect(): void {
-    const canvas = this.chartCanvas()?.chart?.canvas;
-    if (canvas) {
-      this.chartRect = canvas.getBoundingClientRect();
+  private updateContainerRect(): void {
+    const container = (event?.currentTarget as HTMLElement) || document.querySelector('.chart-container');
+    if (container) {
+      this.containerRect = container.getBoundingClientRect();
     }
   }
 
   onMouseDown(event: MouseEvent): void {
     if (event.button !== 0) return; // Only handle left click
 
-    this.updateChartRect();
-    if (!this.chartRect) return;
+    const container = event.currentTarget as HTMLElement;
+    if (container) {
+      this.containerRect = container.getBoundingClientRect();
+    }
+    if (!this.containerRect) return;
 
-    const x = event.clientX - this.chartRect.left;
+    const x = event.clientX - this.containerRect.left;
 
     this.isDragging = true;
     this.isSelecting.set(true);
@@ -148,16 +167,18 @@ export class LogStatsComponent implements AfterViewInit {
   }
 
   onMouseMove(event: MouseEvent): void {
-    if (!this.isDragging || !this.chartRect) return;
+    if (!this.isDragging || !this.containerRect) return;
 
-    const x = event.clientX - this.chartRect.left;
-    this.selectionEnd.set(x);
+    const x = event.clientX - this.containerRect.left;
+    // Clamp to container bounds
+    const clampedX = Math.max(0, Math.min(x, this.containerRect.width));
+    this.selectionEnd.set(clampedX);
 
     event.preventDefault();
   }
 
   onMouseUp(event: MouseEvent): void {
-    if (!this.isDragging || !this.chartRect) return;
+    if (!this.isDragging || !this.containerRect) return;
 
     this.isDragging = false;
 
@@ -170,15 +191,29 @@ export class LogStatsComponent implements AfterViewInit {
     // Clear selection after processing
     setTimeout(() => {
       this.isSelecting.set(false);
+      this.selectionStart.set(0);
+      this.selectionEnd.set(0);
     }, 100);
 
     event.preventDefault();
   }
 
+  onMouseLeave(event: MouseEvent): void {
+    if (this.isDragging) {
+      // Cancel selection if mouse leaves the chart area
+      this.isDragging = false;
+      this.isSelecting.set(false);
+      this.selectionStart.set(0);
+      this.selectionEnd.set(0);
+    }
+  }
+
   private processTimeRangeSelection(): void {
-    const chart = this.chartCanvas()?.chart;
+    var ele = this.chartCanvas();
+ 
+    const chart = ele?.chart;
     const stats = this.stats();
-    if (!chart || !stats || !this.chartRect) return;
+    if (!chart || !stats || !this.containerRect) return;
 
     const startX = Math.min(this.selectionStart(), this.selectionEnd());
     const endX = Math.max(this.selectionStart(), this.selectionEnd());
@@ -191,10 +226,15 @@ export class LogStatsComponent implements AfterViewInit {
     const timeKeys = Object.keys(stats.counts);
     const totalDataPoints = timeKeys.length;
 
+    // Get canvas element to calculate relative positions
+    const canvas = chart.canvas;
+    const canvasRect = canvas.getBoundingClientRect();
+    const canvasOffsetX = canvasRect.left - this.containerRect.left;
+
     // Convert pixel positions to data indices
     const chartWidth = chartArea.right - chartArea.left;
-    const relativeStartX = Math.max(0, startX - chartArea.left);
-    const relativeEndX = Math.min(chartWidth, endX - chartArea.left);
+    const relativeStartX = Math.max(0, startX - canvasOffsetX - chartArea.left);
+    const relativeEndX = Math.min(chartWidth, endX - canvasOffsetX - chartArea.left);
 
     const startIndex = Math.floor((relativeStartX / chartWidth) * totalDataPoints);
     const endIndex = Math.ceil((relativeEndX / chartWidth) * totalDataPoints);
@@ -229,7 +269,7 @@ export class LogStatsComponent implements AfterViewInit {
       this.logFilterState.setCustomTimeRange(actualStartTime, actualEndTime);
     }
   }
-  getBarChat() {
+  getChartData() {
     const stats = this.stats();
 
     if (stats?.timePeriod === TimePeriod.Hour) {
@@ -260,34 +300,52 @@ export class LogStatsComponent implements AfterViewInit {
     };
   }
   private getData(stats: LogStatistic) {
+    const chartType = this.chartTypeService.selectedChartType();
+
     return [
+      {
+        label: 'Debug',
+        data: this.getDataSet(stats, 'Debug'),
+        backgroundColor: chartType === 'area' ? 'rgba(80, 250, 123, 0.3)' : 'rgba(80, 250, 123, 0.15)',
+        borderColor: 'rgba(80, 250, 123, 0.7)',
+        borderWidth: chartType === 'line' ? 2 : 1,
+        fill: chartType === 'area' ? 'origin' : false,
+        tension: chartType === 'line' || chartType === 'area' ? 0.4 : 0,
+        pointRadius: chartType === 'line' ? 3 : 0,
+        pointHoverRadius: chartType === 'line' ? 5 : 0,
+      },
       {
         label: 'Information',
         data: this.getDataSet(stats, 'Information'),
-        backgroundColor: 'rgba(0, 234, 255, 0.15)', // Electric cyan
+        backgroundColor: chartType === 'area' ? 'rgba(0, 234, 255, 0.3)' : 'rgba(0, 234, 255, 0.15)',
         borderColor: 'rgba(0, 234, 255, 0.7)',
-        borderWidth: 2,
+        borderWidth: chartType === 'line' ? 3 : 2,
+        fill: chartType === 'area' ? '-1' : false,
+        tension: chartType === 'line' || chartType === 'area' ? 0.4 : 0,
+        pointRadius: chartType === 'line' ? 4 : 0,
+        pointHoverRadius: chartType === 'line' ? 6 : 0,
       },
       {
         label: 'Warnings',
         data: this.getDataSet(stats, 'Warning'),
-        backgroundColor: 'rgba(157, 0, 255, 0.15)', // Neon purple
+        backgroundColor: chartType === 'area' ? 'rgba(157, 0, 255, 0.3)' : 'rgba(157, 0, 255, 0.15)',
         borderColor: 'rgba(157, 0, 255, 0.7)',
-        borderWidth: 2,
+        borderWidth: chartType === 'line' ? 3 : 2,
+        fill: chartType === 'area' ? '-1' : false,
+        tension: chartType === 'line' || chartType === 'area' ? 0.4 : 0,
+        pointRadius: chartType === 'line' ? 4 : 0,
+        pointHoverRadius: chartType === 'line' ? 6 : 0,
       },
       {
         label: 'Errors',
         data: this.getDataSet(stats, 'Error'),
-        backgroundColor: 'rgba(255, 0, 170, 0.15)', // Hot magenta
+        backgroundColor: chartType === 'area' ? 'rgba(255, 0, 170, 0.3)' : 'rgba(255, 0, 170, 0.15)',
         borderColor: 'rgba(255, 0, 170, 0.7)',
-        borderWidth: 2,
-      },
-      {
-        label: 'Other',
-        data: this.getDataSet(stats, 'Any'),
-        backgroundColor: 'rgba(30, 30, 40, 0.15)', // Dark cyber gray
-        borderColor: 'rgba(30, 30, 40, 0.4)',
-        borderWidth: 1,
+        borderWidth: chartType === 'line' ? 3 : 2,
+        fill: chartType === 'area' ? '-1' : false,
+        tension: chartType === 'line' || chartType === 'area' ? 0.4 : 0,
+        pointRadius: chartType === 'line' ? 4 : 0,
+        pointHoverRadius: chartType === 'line' ? 6 : 0,
       },
     ];
   }

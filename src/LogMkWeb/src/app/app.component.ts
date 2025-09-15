@@ -3,6 +3,7 @@ import { Component, inject, signal, TemplateRef } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { Router, RouterOutlet } from '@angular/router';
 import { ErrorCountBadgeComponent } from './_components/error-count-badge/error-count-badge.component';
+import { MobileMenuComponent } from './_components/mobile-menu/mobile-menu.component';
 import { ModalComponent } from './_components/modal/modal.component';
 import { UserMenuComponent } from './_components/user-menu/user-menu.component';
 import { AuthService } from './_services/auth-service';
@@ -11,7 +12,7 @@ import { ToolbarService } from './_services/toolbar.service';
 @Component({
   selector: 'app-root',
   standalone: true,
-  imports: [RouterOutlet, UserMenuComponent, CommonModule, ModalComponent, ErrorCountBadgeComponent],
+  imports: [RouterOutlet, UserMenuComponent, CommonModule, ModalComponent, ErrorCountBadgeComponent, MobileMenuComponent],
   templateUrl: './app.component.html',
   styleUrl: './app.component.scss',
 })
@@ -53,5 +54,10 @@ export class AppComponent {
       detail: { logLevels: ['Error'] }
     });
     window.dispatchEvent(filterErrorsEvent);
+  }
+
+  onMobileMenuToggle(isOpen: boolean) {
+    // Handle mobile menu state if needed
+    // For now, this is just for future extensibility
   }
 }

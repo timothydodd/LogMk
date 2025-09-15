@@ -1,6 +1,7 @@
 
 import { ChangeDetectionStrategy, Component, effect, inject, TemplateRef, viewChild, HostListener } from '@angular/core';
 import { AuthService } from '../../_services/auth-service';
+import { ChartVisibilityService } from '../../_services/chart-visibility.service';
 import { ToolbarService } from '../../_services/toolbar.service';
 import { LogFilterControlsComponent } from './log-filter-controls/log-filter-controls.component';
 import { LogStatsComponent } from './log-stats/log-stats.component';
@@ -15,7 +16,9 @@ import { LogFilterState } from './_services/log-filter-state';
    <ng-template #filters>
     <app-log-filter-controls></app-log-filter-controls>
   </ng-template>
-    <app-log-stats></app-log-stats>
+    @if (chartVisibilityService.isChartVisible()) {
+      <app-log-stats></app-log-stats>
+    }
     <app-log-viewport></app-log-viewport>
   `,
   styleUrl: './main-log-page.component.scss',
@@ -23,6 +26,7 @@ import { LogFilterState } from './_services/log-filter-state';
 })
 export class MainLogPageComponent {
   authService = inject(AuthService);
+  chartVisibilityService = inject(ChartVisibilityService);
   filters = viewChild<TemplateRef<any>>('filters');
   toolbarService = inject(ToolbarService);
   logFilterState = inject(LogFilterState);

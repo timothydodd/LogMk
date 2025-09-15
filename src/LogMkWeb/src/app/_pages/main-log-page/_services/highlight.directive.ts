@@ -8,21 +8,32 @@ export class HighlightLogPipe implements PipeTransform {
   transform(value: string, searchTerm?: string): SafeHtml {
     if (!value) return value;
 
-    // First, highlight search terms if provided
-    if (searchTerm && searchTerm.trim()) {
-      const searchRegex = new RegExp(`(${this.escapeRegExp(searchTerm.trim())})`, 'gi');
-      value = value.replace(searchRegex, '<span class="search-highlight">$1</span>');
-    }
+    // Escape any existing HTML to prevent injection
+    value = this.escapeHtml(value);
 
-const replacements: [RegExp, string][] = [
-  // URLs (http, https, ftp)
-  [/(https?:\/\/[^\s<>"'{},|\\^`\[\]]+)/g, '<span class="url">$1</span>'],
+    // Apply syntax highlighting patterns
+    const replacements: [RegExp, string][] = [
+
+  // HTTP Methods - do this early to avoid conflicts
+  [/\b(GET|POST|PUT|DELETE|PATCH|HEAD|OPTIONS|TRACE)\b/gi, '<span class="http-method">$&</span>'],
+
+  // HTTP Status Codes - only match 3-digit codes that aren't part of time formats
+  [/(?<![:\d])(200|201|202|204|206)\b/g, '<span class="http-success">$&</span>'],
+  [/(?<![:\d])(301|302|303|304|307|308)\b/g, '<span class="http-redirect">$&</span>'],
+  [/(?<![:\d])(400|401|403|404|405|409|410|422|429)\b/g, '<span class="http-client-error">$&</span>'],
+  [/(?<![:\d])(500|501|502|503|504|505)\b/g, '<span class="http-server-error">$&</span>'],
+
+  // URLs (http, https, ftp) - must be complete URLs with domain
+  [/(https?:\/\/[a-zA-Z0-9][-a-zA-Z0-9._]*[a-zA-Z0-9](?::[0-9]+)?(?:\/[^\s<>"'{},|\\^`\[\]]*)?)/g, '<span class="url">$1</span>'],
 
   // IP Addresses (IPv4)
   [/\b(?:[0-9]{1,3}\.){3}[0-9]{1,3}\b/g, '<span class="ip-address">$&</span>'],
 
-  // File paths (absolute and relative)
-  [/([/\\]?[a-zA-Z0-9_.-]+[/\\])*[a-zA-Z0-9_.-]*\.[a-zA-Z]{2,4}/g, '<span class="file-path">$&</span>'],
+  // Key-value pairs - more specific patterns to avoid conflicts
+  [/\b(DeviceId|Value|QueueSize|Temperature|Humidity|Status|Count|Total|Size|Length|Width|Height|Speed|Rate|Level|Threshold|Timeout|Delay|Interval|Duration|Timestamp|Id|Name|Type|State|Mode|Version|Index|Offset|Limit|Max|Min|Average|Sum)=(\d+(?:\.\d+)?)\b/gi, '<span class="kv-key">$1</span>=<span class="kv-number">$2</span>'],
+
+  // .NET Namespaces and Services (e.g., LogSummaryService.LogSummaryHourlyBackgroundService[0])
+  [/\b([A-Z][a-zA-Z0-9]*(?:\.[A-Z][a-zA-Z0-9]*)+)(\[[0-9]+\])?/g, '<span class="dotnet-namespace">$1</span>$2'],
 
   // JSON keys (quoted strings followed by colon)
   [/"([^"]+)"\s*:/g, '"<span class="json-key">$1</span>":'],
@@ -39,26 +50,14 @@ const replacements: [RegExp, string][] = [
   // JSON null
   [/:\s*(null)\b/g, ': <span class="json-null">$1</span>'],
 
-  // Stack trace class names
-  [/\b([a-zA-Z_$][a-zA-Z0-9_$]*(?:\.[a-zA-Z_$][a-zA-Z0-9_$]*)+)\b/g, '<span class="stack-class">$1</span>'],
+  // Stack trace class names (only match when followed by method call or line number)
+  [/\b([a-zA-Z_$][a-zA-Z0-9_$]*(?:\.[a-zA-Z_$][a-zA-Z0-9_$]*)+)(?=\.[a-zA-Z_$][a-zA-Z0-9_$]*\(|:\d+)/g, '<span class="stack-class">$1</span>'],
 
   // Stack trace method calls
   [/\.([a-zA-Z_$][a-zA-Z0-9_$]*)\(/g, '.<span class="stack-method">$1</span>('],
 
   // Line numbers in stack traces
   [/:(\d+)\)/g, ':<span class="stack-line">$1</span>)'],
-
-  // HTTP Methods
-  [/\b(GET|POST|PUT|DELETE|PATCH|HEAD|OPTIONS|TRACE)\b/gi, '<span class="http-method">$&</span>'],
-
-  // HTTP Success Codes (2xx)
-  [/\b(200|201|202|204|206)\b/g, '<span class="http-success">$&</span>'],
-
-  // HTTP Client Error Codes (4xx)
-  [/\b(400|401|403|404|405|409|410|422|429)\b/g, '<span class="http-client-error">$&</span>'],
-
-  // HTTP Server Error Codes (5xx)
-  [/\b(500|501|502|503|504|505)\b/g, '<span class="http-server-error">$&</span>'],
 
   // Log levels with color coding
   [/\b(ERROR|FATAL|CRITICAL)\b/gi, '<span class="log-level-error">$&</span>'],
@@ -86,11 +85,28 @@ const replacements: [RegExp, string][] = [
       value = value.replace(pattern, replacement);
     }
 
+    // Apply search term highlighting AFTER other patterns
+    if (searchTerm && searchTerm.trim()) {
+      const searchRegex = new RegExp(`(${this.escapeRegExp(searchTerm.trim())})`, 'gi');
+      value = value.replace(searchRegex, '<span class="search-highlight">$1</span>');
+    }
+
     return this.sanitizer.bypassSecurityTrustHtml(value);
   }
 
   private escapeRegExp(string: string): string {
     return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  }
+
+  private escapeHtml(text: string): string {
+    const map: { [key: string]: string } = {
+      '&': '&amp;',
+      '<': '&lt;',
+      '>': '&gt;',
+      '"': '&quot;',
+      "'": '&#039;'
+    };
+    return text.replace(/[&<>"']/g, m => map[m]);
   }
 }
 

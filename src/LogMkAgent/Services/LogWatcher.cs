@@ -509,14 +509,48 @@ public class LogWatcher : BackgroundService
     {
         var timestamp = ParseTimestamp(originalLine) ?? DateTimeOffset.UtcNow;
 
+        // Truncate pod and deployment names for UI display optimization
+        var truncatedPodName = TruncateString(podName, 50);
+        var truncatedDeploymentName = TruncateString(deploymentName, 50);
+
         return new LogLine
         {
-            DeploymentName = deploymentName,
-            PodName = podName,
+            DeploymentName = truncatedDeploymentName,
+            PodName = truncatedPodName,
             Line = cleanLine,
             LogLevel = logLevel,
             TimeStamp = timestamp
         };
+    }
+
+    /// <summary>
+    /// Truncates a string to the specified maximum length, preserving word boundaries when possible.
+    /// </summary>
+    /// <param name="value">The string to truncate</param>
+    /// <param name="maxLength">Maximum length allowed</param>
+    /// <returns>Truncated string with ellipsis if truncation occurred</returns>
+    private static string TruncateString(string value, int maxLength)
+    {
+        if (string.IsNullOrEmpty(value) || value.Length <= maxLength)
+            return value;
+
+        // Try to truncate at word boundary
+        var truncated = value.Substring(0, maxLength - 3); // Reserve 3 chars for "..."
+        var lastDash = truncated.LastIndexOf('-');
+        var lastDot = truncated.LastIndexOf('.');
+        var lastUnderscore = truncated.LastIndexOf('_');
+
+        // Find the best break point (prefer dashes, then dots, then underscores)
+        var breakPoint = Math.Max(lastDash, Math.Max(lastDot, lastUnderscore));
+
+        // Only use the break point if it's not too early in the string (at least 60% of max length)
+        if (breakPoint > maxLength * 0.6)
+        {
+            return value.Substring(0, breakPoint) + "...";
+        }
+
+        // Otherwise, truncate at exact length
+        return value.Substring(0, maxLength - 3) + "...";
     }
 
     private DateTimeOffset? ParseTimestamp(string line)
@@ -705,10 +739,11 @@ public class LogWatcher : BackgroundService
             // Build the log message
             var message = BuildEventLogMessage(eventRecord);
             var logname = eventRecord.LogName ?? logName;
+            var podName = $"{machine}-{logname}";
             var logLine = new LogLine
             {
-                DeploymentName = machine,
-                PodName = $"{machine}-{logname}",
+                DeploymentName = TruncateString(machine, 50),
+                PodName = TruncateString(podName, 50),
                 Line = message,
                 LogLevel = logLevel,
                 TimeStamp = eventRecord.TimeCreated ?? DateTimeOffset.UtcNow

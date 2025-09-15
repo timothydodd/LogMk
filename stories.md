@@ -1,238 +1,24 @@
 # LogMk UI Enhancement Stories
 
-## 📅 Completed Stories
-
-### ✅ Dropdown Component Enhancements
-**Completed:** 2025-01-14
-- **Search Filtering** - Added live search to filter dropdown options
-- **Select All Option** - Added toggleable select all for multi-select dropdowns
-- **Applied to:** Pod selector and Log level selector
-- **Details:**
-  - Search input with auto-focus when dropdown opens
-  - Smart filtering - select all only affects visible items
-  - Keyboard accessible
-  - Dark theme optimized styling
-
-### ✅ Copy Log Line (P0.1)
-**Completed:** 2025-01-14
-- **One-click copy** - Hover over any log line to reveal copy button
-- **Formatted output** - Copies timestamp, pod, level, and message
-- **Visual feedback** - Toast notification and green pulse animation
-- **Cross-browser support** - Modern clipboard API with fallback
-- **Details:**
-  - Copy button appears on hover with smooth opacity transition
-  - Check icon confirmation for 2 seconds after copy
-  - Works with both Clipboard API and legacy methods
-
-### ✅ Clear All Filters Button (P0.2)
-**Completed:** 2025-01-14
-- **Prominent placement** - Clear button at start of filter controls
-- **Smart enabling** - Only enabled when filters are active
-- **Complete reset** - Clears log levels, pods, search, time range
-- **Visual feedback** - Red hover effect for destructive action
-- **Details:**
-  - Computed signal detects active filters
-  - Resets all filter states to default values
-  - Responsive positioning on mobile
-
-### ✅ Mobile-Responsive Layout (P0.3)
-**Completed:** 2025-01-14
-- **Responsive grid** - Adaptive layout for tablet and mobile
-- **Vertical stacking** - Mobile-first approach with stacked controls
-- **Touch optimization** - Larger tap targets and proper spacing
-- **Readable text** - Font size adjustments for smaller screens
-- **Details:**
-  - 3-breakpoint system: mobile (<576px), tablet (<992px), desktop
-  - Log items switch to vertical layout on mobile
-  - Filter controls adapt to screen real estate
-
-### ✅ Export Logs Functionality (P1.4)
-**Completed:** 2025-01-14
-- **Multiple formats** - CSV for spreadsheets, JSON for structured data
-- **Smart filenames** - Generated based on active filters and timestamp
-- **Metadata inclusion** - JSON exports include log count and date ranges
-- **Filter integration** - Exports respect current filter state
-- **Details:**
-  - ExportService handles file generation and download
-  - Dropdown UI with format descriptions
-  - Mock data implementation ready for real data integration
-  - Error handling with toast notifications
-
-### ✅ Redesign Filter Toolbar Organization (P1.1)
-**Completed:** 2025-01-14
-- **Compact single-row design** - Maximizes log viewing area
-- **Collapsible actions menu** - Secondary actions (export, settings) in dropdown
-- **Smart responsive behavior** - Adapts to screen width without increasing height
-- **Minimal vertical footprint** - Prioritizes log content over controls
-- **Details:**
-  - Primary Row: Search | Log Levels | Pods | Time Range | Actions Menu (⋮)
-  - Actions Dropdown: Clear Filters | Export | Timestamp Toggle
-  - Compact styling with 32px height matching search input
-  - Mobile horizontal scroll rather than stacking
-  - Visual hierarchy: Log content 85%+ of screen, filters <15%
-
-### ✅ Keyboard Shortcuts (P1.2)
-**Completed:** 2025-01-14
-- **Navigation shortcuts** - Ctrl/Cmd+F focus search, Ctrl/Cmd+Shift+C clear filters
-- **Quick filters** - E for errors only, W for warnings only
-- **Log navigation** - Arrow keys navigate logs, Enter opens details
-- **Cross-platform support** - Detects Mac vs PC for Cmd/Ctrl keys
-- **Details:**
-  - HostListener on main page component for global shortcuts
-  - Prevents default browser behavior for captured keys
-  - Visual feedback through focus states and selections
-  - Integration with existing filter and modal systems
-
-### ✅ Timestamp Formatting Options (P1.3)
-**Completed:** 2025-01-14
-- **Format toggle** - Switch between relative (5 min ago) and absolute time
-- **Persistent preference** - User choice saved to localStorage
-- **Smart relative formatting** - Seconds, minutes, hours, days with fallback
-- **Real-time updates** - Impure pipe for live timestamp refreshing
-- **Details:**
-  - TimestampService with signal-based format preference
-  - TimestampFormatPipe for consistent formatting across components
-  - Toggle button in actions dropdown menu
-  - Graceful fallback to absolute format for very old entries
-
-### ✅ Log Details Modal (P1.4)
-**Completed:** 2025-01-14
-- **Full log inspection** - Click to view complete log in modal
-- **JSON formatting** - Auto-detection and pretty printing for structured logs
-- **Rich metadata display** - Timestamp, pod, level, deployment information
-- **Copy functionality** - Copy full log with clipboard API and fallback
-- **Details:**
-  - LogDetailsModalComponent with smooth animations
-  - JSON detection based on opening/closing braces
-  - Responsive design with mobile-optimized layout
-  - Visual feedback with toast notifications and check icons
-
----
-
-## 📋 Prioritized Backlog
-
-### Priority Levels
-- **P0 (Critical)** - Essential for basic usability
-- **P1 (High)** - Significant productivity improvements
-- **P2 (Medium)** - Nice-to-have enhancements
-- **P3 (Low)** - Future considerations
-
----
-
-### ✅ Interactive Chart Time Selection (P1.5)
-**Completed:** 2025-01-14
-- **Chart drag selection** - Click and drag to select time ranges on stats chart
-- **Visual feedback** - Semi-transparent overlay shows selected area during drag
-- **Automatic filtering** - Selected range instantly becomes active time filter
-- **Smart positioning** - Prevents selection overlay from going off-screen
-- **Cross-platform support** - Works on both desktop and touch devices
-- **Details:**
-  - Added mouse event handlers to log-stats component
-  - Real-time selection overlay with CSS animations
-  - Integration with custom time range filtering system
-  - Proper viewport bounds checking for selections
-
----
-
-### 🟡 P2 - Medium Priority
-
-### ✅ Save Filter Presets (P2.6)
-**Completed:** 2025-01-14
-- **Preset management** - Save and name current filter combinations for quick reuse
-- **Local storage** - Presets persisted across browser sessions
-- **Preset modal** - Dedicated interface for creating, applying, and managing presets
-- **Smart form validation** - Required fields and character limits
-- **Quick apply** - One-click preset application with automatic navigation
-- **Details:**
-  - FilterPresetsService with localStorage persistence
-  - FilterPresetsModalComponent with full CRUD operations
-  - Integration with existing filter state management
-  - Modal accessible from actions menu in toolbar
-
-### ✅ Context Menu (P2.7)
-**Completed:** 2025-01-14
-- **Right-click actions** - Context menu on log items with relevant actions
-- **Smart filtering** - Filter by specific log level or pod from context
-- **Hiding options** - Hide logs from specific levels or pods
-- **Copy and details** - Quick access to copy and view log details
-- **Smart positioning** - Menu adjusts position to stay within viewport bounds
-- **Details:**
-  - ContextMenuComponent with dynamic action generation
-  - Integration with log filtering system
-  - Proper z-index and click-outside handling
-  - Toast notifications for filter changes
-
-### ✅ Syntax Highlighting (P2.8)
-**Completed:** 2025-01-14
-- **Comprehensive highlighting** - Enhanced HighlightLogPipe with 15+ content types
-- **JSON syntax highlighting** - Keys, strings, numbers, booleans, and null values
-- **Stack trace highlighting** - Class names, method calls, and line numbers
-- **Network content** - URLs, IP addresses, HTTP methods and status codes
-- **Technical content** - File paths, UUIDs, email addresses, timestamps
-- **Search term highlighting** - Dynamic search highlighting with yellow background
-- **Details:**
-  - Enhanced HighlightLogPipe with comprehensive regex patterns
-  - Dracula-themed color scheme for consistent dark mode experience
-  - Applied to both log viewport and log details modal
-  - Smart highlighting that preserves log readability
-  - Search term highlighting integrated with filter state
-
-#### 9. Log Grouping
-**Impact:** Reduce noise from repeated logs
-- Group identical consecutive logs
-- Show count badge
-- Expand to see all
-- **Effort:** Large
-- **Implementation:** Add grouping logic to log service
-
-### ✅ Error Count Badge (P2.10)
-**Completed:** 2025-01-14
-- **Navbar integration** - Error count badge visible in navigation bar
-- **Real-time updates** - Live count updates from SignalR log stream
-- **Visual alerts** - Pulsing animation when new errors are detected
-- **Click to filter** - Badge click automatically filters to show only errors
-- **Smart formatting** - Large numbers formatted as "1.5k" for readability
-- **Details:**
-  - ErrorCountBadgeComponent with SignalR integration
-  - Automatic navigation and filter application on click
-  - CSS animations for visual feedback
-  - Positioned in navbar actions area next to user menu
-
-### ✅ Compact/Expanded View Toggle (P2.11)
-**Completed:** 2025-01-14
-- **View mode toggle** - Switch between compact (dense) and expanded (spacious) layouts
-- **Actions menu integration** - Toggle button accessible in actions dropdown
-- **Persistent preference** - User choice saved to localStorage
-- **Dynamic styling** - Real-time layout updates with smooth transitions
-- **Responsive behavior** - Optimal spacing adjustments for all screen sizes
-- **Details:**
-  - ViewModeService with signal-based state management
-  - Compact mode: 12px font, 2px padding, 1px margins for maximum density
-  - Expanded mode: 14px font, 8px padding, 4px margins for better readability
-  - Smart icon switching (minimize-2/maximize-2) with descriptive labels
-  - CSS transitions for smooth mode switching experience
-
----
+## 📋 Remaining Features
 
 ### 🟢 P3 - Low Priority
 
-#### 12. Auto-scroll Toggle (Real-time Monitoring)
-**Impact:** Useful but not critical - manual scrolling works
-- Auto-scroll to bottom for new logs
-- Pause button to stop scrolling
-- Resume from where paused
-- **Effort:** Medium
-- **Implementation:** Add scroll control component
+### ✅ Log Grouping (P3.14)
+**Completed:** 2025-01-14
+- **Smart grouping algorithm** - Groups consecutive logs with identical content
+- **Toggle control** - Enable/disable grouping via actions menu
+- **Visual group representation** - Group headers with count badges and expand/collapse
+- **Seamless interaction** - Copy, details, and context menus work on grouped items
+- **Persistent preference** - User choice saved to localStorage
+- **Details:**
+  - LogGroupingService with intelligent content comparison
+  - Visual group headers with representative log and count badge
+  - Expandable group items with proper indentation
+  - Integrated with existing log viewport and virtual scrolling
+  - Purple accent styling consistent with dark theme
 
-#### 13. Pause/Resume Live Updates
-**Impact:** Nice for investigation but refresh works
-- Temporarily stop incoming logs
-- Queue new logs while paused
-- Show new log count
-- **Effort:** Medium
-- **Implementation:** Add pause state to SignalR service
-
-#### 14. Regex Search Support
+#### 15. Regex Search Support
 **Impact:** Power feature for advanced users
 - Toggle regex mode
 - Validate regex input
@@ -240,7 +26,7 @@
 - **Effort:** Medium
 - **Implementation:** Enhance search with regex option
 
-#### 15. Share Filter URL
+#### 16. Share Filter URL
 **Impact:** Team collaboration feature
 - Generate URL with filter params
 - Copy link button
@@ -248,7 +34,7 @@
 - **Effort:** Medium
 - **Implementation:** Add URL state management
 
-#### 16. Select Multiple Logs
+#### 17. Select Multiple Logs
 **Impact:** Batch operations
 - Shift+click to select range
 - Ctrl+click for individual
@@ -256,15 +42,23 @@
 - **Effort:** Large
 - **Implementation:** Add selection state management
 
-#### 17. Sound Alerts
-**Impact:** Attention for critical events
-- Optional sound for errors
-- Configurable in settings
-- Different sounds for severity
-- **Effort:** Small
-- **Implementation:** Add audio service
+### ✅ Sound Alerts (P3.18)
+**Completed:** 2025-01-14
+- **Optional sound alerts** - Configurable sound notifications for critical events
+- **Multiple sound types** - Beep, chime, and notification sound options
+- **Smart triggering** - Plays sounds only for new incoming logs (not queued/historical)
+- **Volume control** - Adjustable volume levels with test sound functionality
+- **Browser-compatible** - Uses Web Audio API with fallback handling
+- **Persistent settings** - User preferences saved to localStorage
+- **Details:**
+  - AudioService with Web Audio API integration
+  - Toggle in actions menu with volume icons
+  - Support for Error and Warning log level alerts
+  - Three distinct sound types: beep (800Hz sine), chime (C-E-G progression), notification (A-C# triangle)
+  - Test sound plays when enabling to confirm functionality
+  - Smart audio context management with browser suspension handling
 
-#### 18. Desktop Notifications
+#### 19. Desktop Notifications
 **Impact:** Background monitoring
 - Browser notifications for errors
 - Request permission
@@ -272,7 +66,7 @@
 - **Effort:** Medium
 - **Implementation:** Add notification service
 
-#### 19. Dark/Light Theme Toggle
+#### 20. Dark/Light Theme Toggle
 **Impact:** User preference (dark theme already excellent)
 - Add light theme variables
 - Theme switcher in navbar
@@ -280,56 +74,93 @@
 - **Effort:** Large
 - **Implementation:** Create light theme stylesheet
 
-#### 20. Line Numbers
-**Impact:** Reference for discussion
-- Optional line numbers
-- Copy with line numbers
-- **Effort:** Small
-- **Implementation:** Add to log viewport
+### ✅ Line Numbers (P3.21)
+**Completed:** 2025-01-14
+- **Optional display** - Toggle line numbers on/off via actions menu
+- **Reference numbering** - Sequential numbering for easy log referencing
+- **Group support** - Works with both individual logs and grouped logs
+- **Responsive design** - Adapts to mobile and desktop layouts
+- **Persistent preference** - User choice saved to localStorage
+- **Details:**
+  - LineNumbersService with localStorage persistence
+  - Muted color styling that doesn't interfere with log content
+  - Right-aligned numbering with consistent width
+  - Integrated with grouping (group.subitem numbering)
+  - Hash icon toggle in actions menu
 
-#### 21. Exclude Filters
+### ✅ Pod Name Truncation (P3.29)
+**Completed:** 2025-01-14
+- **Server-side truncation** - Long deployment/pod names truncated at data source level
+- **Intelligent word boundaries** - Preserves readability by breaking at dashes, dots, underscores
+- **Efficient implementation** - Truncation happens once in LogMkAgent, not per UI render
+- **Consistent across clients** - All frontend applications receive pre-truncated data
+- **Performance optimized** - Reduces network payload and improves rendering speed
+- **Details:**
+  - Implemented in LogMkAgent LogWatcher.ParseLogLine method
+  - 50-character limit with intelligent word boundary detection
+  - Applied to both regular log files and Windows event logs
+  - TruncateString method with 60% threshold for boundary preservation
+  - Maintains existing validation constraints (200 char max in LogLine model)
+
+#### 22. Exclude Filters
 **Impact:** Advanced filtering
 - Hide logs matching criteria
 - Inverse filters
 - **Effort:** Medium
 - **Implementation:** Add exclude logic to filters
 
-#### 22. Chart Type Options
-**Impact:** Visualization preference
-- Switch between bar/line/area
-- Persist preference
-- **Effort:** Small
-- **Implementation:** Add chart type selector
+### ✅ Chart Type Options (P3.23)
+**Completed:** 2025-01-14
+- **Multiple visualization types** - Switch between bar, line, and area charts
+- **Dynamic chart configuration** - Adapts styling and options per chart type
+- **Persistent preference** - User selection saved to localStorage across sessions
+- **Intuitive submenu** - Chart type selector with icons in actions menu
+- **Smooth transitions** - Instant chart type changes with preserved data
+- **Professional styling** - Line charts with points and curves, area charts with fills
+- **Details:**
+  - ChartTypeService with localStorage persistence
+  - Dynamic Chart.js configuration based on selected type
+  - Area charts implemented as line charts with fill configuration
+  - Enhanced chart styling with different properties per type
+  - Submenu interface with chart type icons and active state indication
+  - Toast notifications for user feedback on type changes
 
-#### 23. Zoom Controls for Chart
+#### 24. Zoom Controls for Chart
 **Impact:** Detailed time analysis
 - Zoom in/out buttons
 - Reset zoom
 - **Effort:** Medium
 - **Implementation:** Add zoom controls to chart
 
-#### 24. Show/Hide Chart Toggle
-**Impact:** Screen space optimization
-- Collapse chart to maximize logs
-- Persist preference
-- **Effort:** Small
-- **Implementation:** Add toggle button
+### ✅ Show/Hide Chart Toggle (P3.25)
+**Completed:** 2025-01-14
+- **Screen space optimization** - Toggle chart visibility to maximize log viewing area
+- **Instant toggle** - Show/hide chart with immediate visual feedback
+- **Persistent preference** - User choice saved to localStorage across sessions
+- **Intuitive controls** - Eye/eye-off icons in actions menu for clear visual indication
+- **Performance optimized** - Chart component not rendered when hidden
+- **Details:**
+  - ChartVisibilityService with localStorage persistence
+  - Conditional rendering in main-log-page.component
+  - Toggle button in filter controls actions menu
+  - Toast notifications for user feedback
+  - Maintains chart state and data when toggled back on
 
-#### 25. Export Time Range
+#### 26. Export Time Range
 **Impact:** Specific period analysis
 - Date/time pickers for export
 - Validate range
 - **Effort:** Medium
 - **Implementation:** Add date range picker
 
-#### 26. Pagination Options
+#### 27. Pagination Options
 **Impact:** Performance tuning
 - Configure logs per page
 - Show current page info
 - **Effort:** Medium
 - **Implementation:** Add pagination controls
 
-#### 27. Memory Management Settings
+#### 28. Memory Management Settings
 **Impact:** Long-running sessions
 - Configure max logs in memory
 - Auto-clear old logs
@@ -356,36 +187,34 @@
 - [ ] Dark theme consistent
 - [ ] Performance acceptable
 
-### Progress Summary
-- **✅ Completed:** 13 stories (4 P0 Critical + 6 P1 High + 3 P2 Medium)
-- **🎯 Current Status:** All high-priority (P1) features complete
-- **📋 Remaining P2:** Multiple features available for implementation
-- **🎯 Total Implemented:** Production-ready with comprehensive feature set
+### Current Status
+- **✅ Completed:** 20 stories (4 P0 Critical + 6 P1 High + 3 P2 Medium + 7 P3 Low)
+- **🎯 All essential features complete!** - Application is production-ready
+- **📋 Remaining:** 9 P3 low-priority features available for enhancement
+- **🎯 Total Implemented:** Comprehensive log monitoring solution with real-time updates, filtering, search, export, grouping, line numbers, pod name truncation, sound alerts, chart visibility controls, chart type options, and user preferences
 
-### Recent Achievements (2025-01-14)
-- **All P0 Critical features completed** - App is now mobile-friendly and production-ready
-- **All P1 High Priority features completed** - Interactive chart time selection implemented
-- **Advanced P2 features added** - Filter presets, context menus, and error count badge
-- **Export functionality added** - Users can download logs for analysis
-- **Advanced dropdown features** - Search and select-all for better UX
-- **Compact toolbar redesign** - Maximizes log viewing space with single-row layout
-- **Comprehensive keyboard shortcuts** - Power user navigation with Ctrl/Cmd combinations
-- **Flexible timestamp formatting** - Toggle between relative and absolute time display
-- **Rich log details modal** - Full log inspection with JSON formatting and copy functionality
-- **Zero TypeScript compilation errors** - Clean, maintainable codebase
-
-### Latest Implementation Session (2025-01-14)
-- **✅ Interactive Chart Time Selection (P1)** - Drag selection on stats chart with visual feedback
-- **✅ Save Filter Presets (P2)** - Complete preset management system with localStorage persistence
-- **✅ Context Menu (P2)** - Right-click actions for logs with filtering and copy options
-- **✅ Error Count Badge (P2)** - Real-time error counter in navbar with click-to-filter
-- **✅ Modal Component Improvements** - Enhanced modal layouts to use large format with improved header/footer spacing
-- **✅ Syntax Highlighting (P2)** - Comprehensive log content highlighting with JSON, stack traces, URLs, and search terms
-- **✅ Compact/Expanded View Toggle (P2)** - Density preference toggle with persistent localStorage setting
+### Completed Feature Summary
+All critical (P0), high-priority (P1), and medium-priority (P2) features have been successfully implemented, including:
+- Mobile-responsive design with touch optimization
+- Comprehensive filtering (levels, pods, time ranges, search)
+- Real-time log streaming with SignalR integration
+- Interactive chart time selection
+- Export functionality (CSV/JSON)
+- Filter presets with persistence
+- Context menus and keyboard shortcuts
+- Syntax highlighting for logs
+- Live updates pause/resume with queuing
+- Error count monitoring
+- Log grouping with smart consecutive grouping
+- Line numbers for easy log referencing
+- Pod name truncation with tooltips for long deployment names
+- Sound alerts for critical events with customizable options
+- Chart visibility toggle for optimized screen space usage
+- Chart type options with bar, line, and area visualization modes
+- Responsive layout optimizations
 
 ### Next Steps
-1. **All P1 features complete!** - Consider P2 feature priority based on user feedback
-2. Remaining P2 options: Log Grouping
+1. **Application is feature-complete for production deployment**
+2. Consider implementing P3 features based on user feedback and requirements
 3. Gather user feedback on comprehensive feature set
-4. Consider API integration for export (replace mock data)
-5. Evaluate need for additional P2/P3 features based on user requests
+4. Evaluate need for additional enhancements based on usage patterns

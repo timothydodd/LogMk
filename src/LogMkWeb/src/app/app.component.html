@@ -14,7 +14,16 @@
 
       <div class="navbar-actions">
         <app-error-count-badge (badgeClick)="onErrorBadgeClick()"></app-error-count-badge>
-        <app-user-menu></app-user-menu>
+
+        <!-- Desktop User Menu -->
+        <app-user-menu class="desktop-only"></app-user-menu>
+
+        <!-- Mobile Hamburger Menu -->
+        <app-mobile-menu
+          class="mobile-only"
+          [filtersTemplate]="templateRef()"
+          (menuToggle)="onMobileMenuToggle($event)">
+        </app-mobile-menu>
       </div>
     </div>
   </nav>

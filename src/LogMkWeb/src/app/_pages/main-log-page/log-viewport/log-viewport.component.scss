@@ -4,10 +4,115 @@
   flex-grow: 1;
 }
 
+// Log Group Styles
+.log-group {
+  margin-bottom: 2px;
+  background: rgba(40, 42, 54, 0.2);
+  border-radius: 4px;
+  overflow: hidden;
+  border-left: 3px solid var(--primary);
+
+  &.compact {
+    margin-bottom: 1px;
+  }
+}
+
+.log-group-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 12px;
+  background: rgba(189, 147, 249, 0.1);
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+
+  &:hover {
+    background: rgba(189, 147, 249, 0.15);
+  }
+
+  .group-toggle {
+    background: none;
+    border: none;
+    color: var(--primary);
+    padding: 2px;
+    display: flex;
+    align-items: center;
+    cursor: pointer;
+    transition: transform 0.2s ease;
+
+    &:hover {
+      transform: scale(1.1);
+    }
+  }
+
+  .group-badge {
+    background: var(--primary);
+    color: var(--on-primary);
+    font-size: 0.75rem;
+    font-weight: 600;
+    padding: 2px 6px;
+    border-radius: 10px;
+    min-width: 20px;
+    text-align: center;
+    line-height: 1.2;
+  }
+
+  .group-content {
+    display: flex;
+    flex-direction: row;
+    gap: 12px;
+    flex: 1;
+    align-items: center;
+    font-family: "JetBrains Mono", "Fira Code", "Consolas", "Courier New", monospace;
+    font-size: 13px;
+
+    .time, .pod, .type, .line-number {
+      flex-shrink: 0;
+    }
+
+    .line {
+      flex: 1;
+      opacity: 0.8;
+    }
+
+    .line-number {
+      color: var(--on-surface-muted);
+      font-weight: 500;
+      min-width: 40px;
+      text-align: right;
+      font-size: 11px;
+    }
+  }
+}
+
+.group-items {
+  background: rgba(40, 42, 54, 0.15);
+
+  .grouped-item {
+    margin-bottom: 0;
+    padding-left: 24px;
+    background: transparent;
+    border-left: none;
+    border-radius: 0;
+
+    &:hover {
+      background: rgba(40, 42, 54, 0.4);
+    }
+
+    &:last-child {
+      border-bottom: none;
+    }
+  }
+}
+
 .virtual-scroll-container {
   width: 100%;
   padding: 5px 10px;
   // Remove height and overflow constraints to let parent handle scrolling
+
+  @media (max-width: 576px) {
+    padding: 8px;
+  }
 }
 
 .log-item {
@@ -15,16 +120,46 @@
   opacity: 1;
   font-family: "JetBrains Mono", "Fira Code", "Consolas", "Courier New", monospace;
   font-size: 13px;
-  display: flex;
-  flex-direction: row;
-  justify-content: start;
-  gap: 12px;
-  border-radius: 2px;
   margin-bottom: 2px;
   background: rgba(40, 42, 54, 0.3);
   border-left: 2px solid transparent;
   transition: all 0.2s ease;
   position: relative;
+
+  // Layout containers
+  .desktop-layout {
+    display: flex;
+    flex-direction: row;
+    justify-content: start;
+    gap: 12px;
+    position: relative;
+
+    @media (max-width: 576px) {
+      display: none;
+    }
+  }
+
+  .mobile-layout {
+    display: none;
+    flex-direction: column;
+    gap: 6px;
+
+    @media (max-width: 576px) {
+      display: flex;
+    }
+
+    .mobile-row-1 {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      position: relative;
+    }
+
+    .mobile-row-2 {
+      display: flex;
+      padding-left: 4px;
+    }
+  }
 
   // Compact view mode - denser layout
   &.compact {
@@ -139,20 +274,39 @@
 
   // Mobile layout
   @media (max-width: 576px) {
-    flex-direction: column;
-    gap: 4px;
-    padding: 8px;
+    padding: 12px;
     font-size: 11px;
+    margin-bottom: 8px;
+    background: rgba(40, 42, 54, 0.6);
+    border: 1px solid rgba(68, 71, 90, 0.3);
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 
-    .time,
-    .pod,
-    .type {
-      flex-shrink: 0;
+    // Alternating mobile colors
+    &.mobile-even {
+      background: rgba(40, 42, 54, 0.6);
+      border-color: rgba(68, 71, 90, 0.3);
     }
 
-    .line {
-      width: 100%;
-      padding-right: 30px; // Space for copy button
+    &.mobile-odd {
+      background: rgba(52, 55, 70, 0.6);
+      border-color: rgba(80, 84, 102, 0.3);
+    }
+
+    // Enhanced mobile styling
+    .mobile-layout {
+      .mobile-row-1 {
+        margin-bottom: 8px;
+        padding-bottom: 6px;
+        border-bottom: 1px solid rgba(68, 71, 90, 0.4);
+      }
+
+      .mobile-row-2 {
+        .line {
+          font-size: 12px;
+          line-height: 1.4;
+          color: #e8e8e8;
+        }
+      }
     }
   }
 
@@ -164,12 +318,25 @@
     .copy-btn {
       opacity: 1;
     }
+
+    // Enhanced mobile hover
+    @media (max-width: 576px) {
+      background: rgba(68, 71, 90, 0.8) !important;
+      border-color: var(--primary) !important;
+      box-shadow: 0 4px 12px rgba(0, 234, 255, 0.15);
+      transform: translateY(-1px);
+    }
   }
 
   &.copied {
     background: rgba(80, 250, 123, 0.1);
     border-left-color: var(--success);
     animation: copyPulse 0.3s ease-out;
+
+    @media (max-width: 576px) {
+      background: rgba(80, 250, 123, 0.15) !important;
+      border-color: var(--success) !important;
+    }
   }
 
   &.selected {
@@ -180,11 +347,21 @@
     .copy-btn {
       opacity: 1;
     }
+
+    @media (max-width: 576px) {
+      background: rgba(189, 147, 249, 0.25) !important;
+      border-color: var(--primary) !important;
+    }
   }
 
   &.selected.copied {
     background: rgba(80, 250, 123, 0.2);
     border-left-color: var(--success);
+
+    @media (max-width: 576px) {
+      background: rgba(80, 250, 123, 0.3) !important;
+      border-color: var(--success) !important;
+    }
   }
   .line {
     color: #e0e0e0;
@@ -197,24 +374,39 @@
     font-size: 13px;
   }
   
+  .line-number {
+    color: var(--on-surface-muted);
+    font-weight: 500;
+    min-width: 40px;
+    width: 40px;
+    text-align: right;
+    font-size: 11px;
+    flex-shrink: 0;
+    opacity: 0.7;
+    letter-spacing: 0.5px;
+
+    .mobile-layout & {
+      font-size: 10px;
+      min-width: 30px;
+      width: 30px;
+    }
+  }
+
   .time {
-    grid-column: 1;
     color: #00eaff;
     text-wrap: nowrap;
     font-size: 12px;
     opacity: 0.8;
     font-weight: 500;
     letter-spacing: 0.5px;
+    flex-shrink: 0;
 
-    @media (max-width: 576px) {
+    .mobile-layout & {
       font-size: 10px;
-      display: inline-block;
-      margin-right: 8px;
     }
   }
 
   .pod {
-    grid-column: 2;
     text-wrap: nowrap;
     max-width: 180px;
     overflow: hidden;
@@ -224,10 +416,8 @@
     text-shadow: 0 0 5px currentColor;
     opacity: 0.9;
 
-    @media (max-width: 576px) {
-      max-width: none;
-      display: inline-block;
-      margin-right: 8px;
+    .mobile-layout & {
+      max-width: 120px;
       font-size: 11px;
     }
   }
@@ -243,8 +433,7 @@
     min-width: 50px;
     text-align: center;
 
-    @media (max-width: 576px) {
-      display: inline-block;
+    .mobile-layout & {
       padding: 1px 6px;
       font-size: 9px;
       min-width: auto;
@@ -320,10 +509,6 @@
     }
 
   .copy-btn {
-    position: absolute;
-    right: 8px;
-    top: 50%;
-    transform: translateY(-50%);
     background: var(--surface-container);
     border: 1px solid var(--border-color);
     border-radius: 4px;
@@ -335,6 +520,24 @@
     display: flex;
     align-items: center;
     justify-content: center;
+    flex-shrink: 0;
+
+    // Desktop positioning
+    .desktop-layout & {
+      position: absolute;
+      right: 8px;
+      top: 50%;
+      transform: translateY(-50%);
+    }
+
+    // Mobile positioning
+    .mobile-layout & {
+      position: static;
+      margin-left: auto;
+      width: 24px;
+      height: 24px;
+      opacity: 1; // Always visible on mobile
+    }
 
     &:hover {
       background: var(--surface-container-high);
@@ -343,7 +546,11 @@
     }
 
     &:active {
-      transform: translateY(-50%) scale(0.95);
+      transform: scale(0.95);
+
+      .desktop-layout & {
+        transform: translateY(-50%) scale(0.95);
+      }
     }
   }
 }

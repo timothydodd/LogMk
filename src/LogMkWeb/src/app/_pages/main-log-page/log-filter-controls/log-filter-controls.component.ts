@@ -11,9 +11,15 @@ import { FilterPresetsModalComponent } from '../../../_components/filter-presets
 import { TimeFilterDropdownComponent, TimeFilter } from '../../../_components/time-filter-dropdown/time-filter-dropdown.component';
 import { ExportService } from '../../../_services/export.service';
 import { FilterPresetsService } from '../../../_services/filter-presets.service';
+import { LiveUpdatesService } from '../../../_services/live-updates.service';
+import { LogGroupingService } from '../../../_services/log-grouping.service';
+import { LineNumbersService } from '../../../_services/line-numbers.service';
 import { LogApiService } from '../../../_services/log.api';
 import { TimestampService } from '../../../_services/timestamp.service';
 import { ViewModeService } from '../../../_services/view-mode.service';
+import { AudioService } from '../../../_services/audio.service';
+import { ChartVisibilityService } from '../../../_services/chart-visibility.service';
+import { ChartTypeService } from '../../../_services/chart-type.service';
 import { LogFilterState } from '../_services/log-filter-state';
 
 @Component({
@@ -84,6 +90,16 @@ import { LogFilterState } from '../_services/log-filter-state';
         ></app-time-filter-dropdown>
       </div>
 
+      <!-- Clear Filters Button -->
+      <button
+        class="clear-filters-btn"
+        (click)="clearAllFilters()"
+        [disabled]="!hasActiveFilters()"
+        [title]="'Clear all filters'"
+      >
+        <lucide-icon name="filter-x" size="16"></lucide-icon>
+      </button>
+
       <!-- Actions Menu -->
       <div class="actions-menu">
         <button
@@ -97,57 +113,154 @@ import { LogFilterState } from '../_services/log-filter-state';
 
         @if (showActionsMenu()) {
           <div class="actions-dropdown">
-            <!-- Clear Filters -->
-            <button
-              class="action-item"
-              (click)="clearAllFilters()"
-              [disabled]="!hasActiveFilters()"
-            >
-              <lucide-icon name="filter-x" size="14"></lucide-icon>
-              Clear Filters
-            </button>
-
-            <!-- Timestamp Format Toggle -->
-            <button
-              class="action-item"
-              (click)="toggleTimestampFormat()"
-            >
-              <lucide-icon name="clock" size="14"></lucide-icon>
-              {{ timestampService.timestampFormat() === 'relative' ? 'Show Absolute Time' : 'Show Relative Time' }}
-            </button>
-
-            <!-- View Mode Toggle -->
-            <button
-              class="action-item"
-              (click)="toggleViewMode()"
-            >
-              <lucide-icon name="{{ viewModeService.isCompact() ? 'maximize-2' : 'minimize-2' }}" size="14"></lucide-icon>
-              {{ viewModeService.isCompact() ? 'Expanded View' : 'Compact View' }}
-            </button>
-
-            <!-- Filter Presets -->
-            <button
-              class="action-item"
-              (click)="openPresetsModal()"
-            >
-              <lucide-icon name="bookmark" size="14"></lucide-icon>
-              Filter Presets
-            </button>
-
-            <!-- Export Submenu -->
-            <div class="action-item submenu-trigger" (click)="toggleExportSubmenu()">
-              <lucide-icon name="download" size="14"></lucide-icon>
-              Export Logs
-              <lucide-icon name="chevron-down" size="12" [class.rotated]="showExportSubmenu()"></lucide-icon>
+            <!-- Display Settings Category -->
+            <div class="category-header submenu-trigger" (click)="toggleDisplayCategory()">
+              <lucide-icon name="eye" size="12"></lucide-icon>
+              Display
+              <lucide-icon name="chevron-down" size="12" [class.rotated]="showDisplayCategory()"></lucide-icon>
             </div>
 
-            @if (showExportSubmenu()) {
-              <div class="submenu">
-                <button class="submenu-item" (click)="exportLogs('csv')">
-                  CSV Format
+            @if (showDisplayCategory()) {
+              <div class="category-content">
+                <button
+                  class="action-item"
+                  (click)="toggleTimestampFormat()"
+                >
+                  <lucide-icon name="clock" size="14"></lucide-icon>
+                  {{ timestampService.timestampFormat() === 'relative' ? 'Show Absolute Time' : 'Show Relative Time' }}
                 </button>
-                <button class="submenu-item" (click)="exportLogs('json')">
-                  JSON Format
+
+                <button
+                  class="action-item"
+                  (click)="toggleViewMode()"
+                >
+                  <lucide-icon name="{{ viewModeService.isCompact() ? 'maximize-2' : 'minimize-2' }}" size="14"></lucide-icon>
+                  {{ viewModeService.isCompact() ? 'Expanded View' : 'Compact View' }}
+                </button>
+
+                <button
+                  class="action-item"
+                  (click)="toggleLogGrouping()"
+                >
+                  <lucide-icon name="group" size="14"></lucide-icon>
+                  {{ groupingService.isGroupingEnabled() ? 'Disable Grouping' : 'Enable Grouping' }}
+                </button>
+
+                <button
+                  class="action-item"
+                  (click)="toggleLineNumbers()"
+                >
+                  <lucide-icon name="hash" size="14"></lucide-icon>
+                  {{ lineNumbersService.isLineNumbersEnabled() ? 'Hide Line Numbers' : 'Show Line Numbers' }}
+                </button>
+              </div>
+            }
+
+            <!-- Live Updates Category -->
+            <div class="category-header submenu-trigger" (click)="toggleLiveUpdatesCategory()">
+              <lucide-icon name="activity" size="12"></lucide-icon>
+              Live Updates
+              <lucide-icon name="chevron-down" size="12" [class.rotated]="showLiveUpdatesCategory()"></lucide-icon>
+            </div>
+
+            @if (showLiveUpdatesCategory()) {
+              <div class="category-content">
+                <button
+                  class="action-item"
+                  (click)="toggleLiveUpdates()"
+                >
+                  <lucide-icon name="{{ liveUpdatesService.isLiveUpdatesEnabled() ? 'pause' : 'play' }}" size="14"></lucide-icon>
+                  {{ liveUpdatesService.isLiveUpdatesEnabled() ? 'Pause Live Updates' : 'Resume Live Updates' }}
+                  @if (liveUpdatesService.queuedLogsCount() > 0) {
+                    <span class="badge">{{ liveUpdatesService.queuedLogsCount() }}</span>
+                  }
+                </button>
+
+                <button
+                  class="action-item"
+                  (click)="toggleSoundAlerts()"
+                >
+                  <lucide-icon name="{{ audioService.soundSettings().enabled ? 'volume-2' : 'volume-x' }}" size="14"></lucide-icon>
+                  {{ audioService.soundSettings().enabled ? 'Disable Sound Alerts' : 'Enable Sound Alerts' }}
+                </button>
+              </div>
+            }
+
+            <!-- Chart Settings Category -->
+            <div class="category-header submenu-trigger" (click)="toggleChartCategory()">
+              <lucide-icon name="eye" size="12"></lucide-icon>
+              Chart Display
+              <lucide-icon name="chevron-down" size="12" [class.rotated]="showChartCategory()"></lucide-icon>
+            </div>
+
+            @if (showChartCategory()) {
+              <div class="category-content">
+                <button
+                  class="action-item"
+                  (click)="toggleChartVisibility()"
+                >
+                  <lucide-icon name="{{ chartVisibilityService.isChartVisible() ? 'eye-off' : 'eye' }}" size="14"></lucide-icon>
+                  {{ chartVisibilityService.isChartVisible() ? 'Hide Chart' : 'Show Chart' }}
+                </button>
+              </div>
+            }
+
+            <!-- Chart Type Category -->
+            <div class="category-header submenu-trigger" (click)="toggleChartTypeCategory()">
+              <lucide-icon name="bar-chart-3" size="12"></lucide-icon>
+              Chart Type
+              <lucide-icon name="chevron-down" size="12" [class.rotated]="showChartTypeCategory()"></lucide-icon>
+            </div>
+
+            @if (showChartTypeCategory()) {
+              <div class="category-content">
+                @for (chartType of chartTypeService.chartTypes; track chartType.type) {
+                  <button
+                    class="action-item"
+                    [class.active]="chartTypeService.selectedChartType() === chartType.type"
+                    (click)="selectChartType(chartType.type)">
+                    <lucide-icon name="{{ chartType.icon }}" size="14"></lucide-icon>
+                    {{ chartType.label }}
+                  </button>
+                }
+              </div>
+            }
+
+            <!-- Filter Presets Category -->
+            <div class="category-header submenu-trigger" (click)="toggleDataCategory()">
+              <lucide-icon name="bookmark" size="12"></lucide-icon>
+              Filter Presets
+              <lucide-icon name="chevron-down" size="12" [class.rotated]="showDataCategory()"></lucide-icon>
+            </div>
+
+            @if (showDataCategory()) {
+              <div class="category-content">
+                <button
+                  class="action-item"
+                  (click)="openPresetsModal()"
+                >
+                  <lucide-icon name="bookmark" size="14"></lucide-icon>
+                  Manage Presets
+                </button>
+              </div>
+            }
+
+            <!-- Export Category -->
+            <div class="category-header submenu-trigger" (click)="toggleExportCategory()">
+              <lucide-icon name="download" size="12"></lucide-icon>
+              Export Logs
+              <lucide-icon name="chevron-down" size="12" [class.rotated]="showExportCategory()"></lucide-icon>
+            </div>
+
+            @if (showExportCategory()) {
+              <div class="category-content">
+                <button class="action-item" (click)="exportLogs('csv')">
+                  <lucide-icon name="download" size="14"></lucide-icon>
+                  Export as CSV
+                </button>
+                <button class="action-item" (click)="exportLogs('json')">
+                  <lucide-icon name="download" size="14"></lucide-icon>
+                  Export as JSON
                 </button>
               </div>
             }
@@ -171,6 +284,12 @@ export class LogFilterControlsComponent {
   timestampService = inject(TimestampService);
   presetsService = inject(FilterPresetsService);
   viewModeService = inject(ViewModeService);
+  liveUpdatesService = inject(LiveUpdatesService);
+  groupingService = inject(LogGroupingService);
+  lineNumbersService = inject(LineNumbersService);
+  audioService = inject(AudioService);
+  chartVisibilityService = inject(ChartVisibilityService);
+  chartTypeService = inject(ChartTypeService);
 
   presetsModal = viewChild<FilterPresetsModalComponent>('presetsModal');
 
@@ -179,7 +298,12 @@ export class LogFilterControlsComponent {
   searchString = signal<string>('');
   selectedTimeFilter = signal<TimeFilter | null>(null);
   showActionsMenu = signal<boolean>(false);
-  showExportSubmenu = signal<boolean>(false);
+  showDisplayCategory = signal<boolean>(true);
+  showLiveUpdatesCategory = signal<boolean>(true);
+  showChartCategory = signal<boolean>(true);
+  showChartTypeCategory = signal<boolean>(true);
+  showDataCategory = signal<boolean>(true);
+  showExportCategory = signal<boolean>(true);
 
   hasActiveFilters = computed(() => {
     return (
@@ -242,10 +366,6 @@ export class LogFilterControlsComponent {
   }
 
   clearAllFilters(): void {
-    // Close menus
-    this.showActionsMenu.set(false);
-    this.showExportSubmenu.set(false);
-
     // Clear all filter states
     this.logFilterState.selectedLogLevel.set([]);
     this.logFilterState.selectedPod.set([]);
@@ -258,14 +378,30 @@ export class LogFilterControlsComponent {
 
   toggleActionsMenu(): void {
     this.showActionsMenu.set(!this.showActionsMenu());
-    // Close export submenu when actions menu is toggled
-    if (!this.showActionsMenu()) {
-      this.showExportSubmenu.set(false);
-    }
   }
 
-  toggleExportSubmenu(): void {
-    this.showExportSubmenu.set(!this.showExportSubmenu());
+  toggleDisplayCategory(): void {
+    this.showDisplayCategory.set(!this.showDisplayCategory());
+  }
+
+  toggleLiveUpdatesCategory(): void {
+    this.showLiveUpdatesCategory.set(!this.showLiveUpdatesCategory());
+  }
+
+  toggleChartCategory(): void {
+    this.showChartCategory.set(!this.showChartCategory());
+  }
+
+  toggleChartTypeCategory(): void {
+    this.showChartTypeCategory.set(!this.showChartTypeCategory());
+  }
+
+  toggleDataCategory(): void {
+    this.showDataCategory.set(!this.showDataCategory());
+  }
+
+  toggleExportCategory(): void {
+    this.showExportCategory.set(!this.showExportCategory());
   }
 
   toggleTimestampFormat(): void {
@@ -278,9 +414,97 @@ export class LogFilterControlsComponent {
     this.viewModeService.toggleViewMode();
   }
 
+  toggleLiveUpdates(): void {
+    this.showActionsMenu.set(false);
+
+    const wasEnabled = this.liveUpdatesService.isLiveUpdatesEnabled();
+    this.liveUpdatesService.toggleLiveUpdates();
+
+    if (wasEnabled) {
+      this.toastr.warning(
+        'Live updates paused. New logs will be queued.',
+        'Live Updates',
+        { timeOut: 3000 }
+      );
+    } else {
+      const queuedCount = this.liveUpdatesService.queuedLogsCount();
+      this.toastr.success(
+        queuedCount > 0 ? `Live updates resumed. ${queuedCount} queued logs processed.` : 'Live updates resumed',
+        'Live Updates',
+        { timeOut: 3000 }
+      );
+    }
+  }
+
+  toggleLogGrouping(): void {
+    this.showActionsMenu.set(false);
+    this.groupingService.toggleGrouping();
+
+    const isEnabled = this.groupingService.isGroupingEnabled();
+    this.toastr.info(
+      isEnabled ? 'Log grouping enabled. Consecutive identical logs will be grouped.' : 'Log grouping disabled. All logs shown individually.',
+      'Log Grouping',
+      { timeOut: 3000 }
+    );
+  }
+
+  toggleLineNumbers(): void {
+    this.showActionsMenu.set(false);
+    this.lineNumbersService.toggleLineNumbers();
+
+    const isEnabled = this.lineNumbersService.isLineNumbersEnabled();
+    this.toastr.info(
+      isEnabled ? 'Line numbers shown for easy reference.' : 'Line numbers hidden.',
+      'Line Numbers',
+      { timeOut: 2000 }
+    );
+  }
+
+  toggleSoundAlerts(): void {
+    this.showActionsMenu.set(false);
+    this.audioService.toggleEnabled();
+
+    const isEnabled = this.audioService.soundSettings().enabled;
+    this.toastr.info(
+      isEnabled ? 'Sound alerts enabled for errors and warnings.' : 'Sound alerts disabled.',
+      'Sound Alerts',
+      { timeOut: 2000 }
+    );
+
+    // Play test sound when enabling
+    if (isEnabled) {
+      setTimeout(() => {
+        this.audioService.playTestSound();
+      }, 500);
+    }
+  }
+
+  toggleChartVisibility(): void {
+    this.showActionsMenu.set(false);
+    this.chartVisibilityService.toggleVisibility();
+
+    const isVisible = this.chartVisibilityService.isChartVisible();
+    this.toastr.info(
+      isVisible ? 'Chart is now visible.' : 'Chart is now hidden to maximize log space.',
+      'Chart Display',
+      { timeOut: 2000 }
+    );
+  }
+
+  selectChartType(chartType: any): void {
+    this.showActionsMenu.set(false);
+    this.chartTypeService.setChartType(chartType);
+
+    const typeOption = this.chartTypeService.getChartTypeOption(chartType);
+    this.toastr.info(
+      `Chart type changed to ${typeOption?.label || chartType}.`,
+      'Chart Type',
+      { timeOut: 2000 }
+    );
+  }
+
   openPresetsModal(): void {
     this.showActionsMenu.set(false);
-    this.showExportSubmenu.set(false);
 
     const modal = this.presetsModal();
     if (modal) {
@@ -293,14 +517,12 @@ export class LogFilterControlsComponent {
     if (!this.elementRef.nativeElement.contains(event.target)) {
       if (this.showActionsMenu()) {
         this.showActionsMenu.set(false);
-        this.showExportSubmenu.set(false);
       }
     }
   }
 
   exportLogs(format: 'csv' | 'json'): void {
     this.showActionsMenu.set(false);
-    this.showExportSubmenu.set(false);
 
     // Get current filter state
     const filters = {

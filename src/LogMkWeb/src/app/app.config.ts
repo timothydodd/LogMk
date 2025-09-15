@@ -4,8 +4,8 @@ import { provideRouter } from '@angular/router';
 import { HTTP_INTERCEPTORS, provideHttpClient, withInterceptorsFromDi } from '@angular/common/http';
 import { BrowserAnimationsModule, provideAnimations } from '@angular/platform-browser/animations';
 import { JwtModule } from '@auth0/angular-jwt';
-import { BarController, BarElement, CategoryScale, Colors, Legend, LinearScale } from 'chart.js';
-import { AlertTriangle, Bookmark, Box, Check, ChevronDown, Clock, Copy, Download, EyeOff, Filter, FilterX, Gauge, Info, LogOut, LucideAngularModule, Maximize2, Minimize2, MoreVertical, Play, RefreshCw, Save, Search, Settings, Trash2, User, X } from 'lucide-angular';
+import { BarController, BarElement, CategoryScale, Colors, Filler, Legend, LineController, LineElement, LinearScale, PointElement } from 'chart.js';
+import { Activity, AlertTriangle, AreaChart, BarChart3, Bookmark, Box, Check, ChevronDown, ChevronRight, Clock, Copy, Database, Download, Eye, EyeOff, Filter, FilterX, Gauge, Group, Hash, Info, LogOut, LucideAngularModule, Maximize2, Minimize2, MoreVertical, Pause, Play, RefreshCw, Save, Search, Settings, Trash2, TrendingUp, User, Volume2, VolumeX, X } from 'lucide-angular';
 import { provideCharts } from 'ng2-charts';
 import { provideToastr } from 'ngx-toastr';
 import { environment } from '../environments/environment';
@@ -27,7 +27,7 @@ export const appConfig: ApplicationConfig = {
       useClass: JwtInterceptor,
       multi: true,
     },
-    provideCharts({ registerables: [BarController, Legend, Colors, CategoryScale, LinearScale, BarElement] }),
+    provideCharts({ registerables: [BarController, LineController, Legend, Colors, CategoryScale, LinearScale, BarElement, LineElement, PointElement, Filler] }),
     importProvidersFrom(
       JwtModule.forRoot({
         config: {
@@ -37,7 +37,7 @@ export const appConfig: ApplicationConfig = {
         },
       })
     ),
-    importProvidersFrom(LucideAngularModule.pick({ X, User, Box, Gauge, Clock, Search, ChevronDown, Settings, LogOut, RefreshCw, Info, AlertTriangle, Copy, Check, FilterX, Download, MoreVertical, Save, Bookmark, Play, Trash2, Filter, EyeOff, Maximize2, Minimize2 })),
+    importProvidersFrom(LucideAngularModule.pick({ X, User, Box, Gauge, Clock, Search, ChevronDown, ChevronRight, Settings, LogOut, RefreshCw, Info, AlertTriangle, Copy, Check, FilterX, Download, MoreVertical, Save, Bookmark, Play, Pause, Trash2, Filter, Eye, EyeOff, Maximize2, Minimize2, Group, Hash, Volume2, VolumeX, BarChart3, TrendingUp, AreaChart, Activity, Database })),
     provideToastr(),
   ],
 };

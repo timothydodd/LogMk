@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { afterNextRender, ChangeDetectionStrategy, Component, DestroyRef, ElementRef, HostListener, inject, signal, viewChild } from '@angular/core';
+import { afterNextRender, ChangeDetectionStrategy, Component, DestroyRef, effect, ElementRef, HostListener, inject, signal, viewChild } from '@angular/core';
 import { takeUntilDestroyed, toObservable } from '@angular/core/rxjs-interop';
 import { VirtualScrollerComponent, VirtualScrollerModule } from '@iharbeck/ngx-virtual-scroller';
 import { LucideAngularModule } from 'lucide-angular';
@@ -10,7 +10,11 @@ import { LogDetailsModalComponent } from '../../../_components/log-details-modal
 import { TimestampFormatPipe } from '../../../_pipes/timestamp-format.pipe';
 import { LogApiService } from '../../../_services/log.api';
 import { Log, SignalRService } from '../../../_services/signalr.service';
+import { LiveUpdatesService } from '../../../_services/live-updates.service';
+import { LogGroupingService, LogGroup } from '../../../_services/log-grouping.service';
+import { LineNumbersService } from '../../../_services/line-numbers.service';
 import { ViewModeService } from '../../../_services/view-mode.service';
+import { AudioService } from '../../../_services/audio.service';
 import { HighlightLogPipe, LogLevelPipe } from '../_services/highlight.directive';
 import { LogFilterState } from '../_services/log-filter-state';
 @Component({
@@ -19,45 +23,143 @@ import { LogFilterState } from '../_services/log-filter-state';
   imports: [CommonModule, VirtualScrollerModule, HighlightLogPipe, LogLevelPipe, LucideAngularModule, TimestampFormatPipe, LogDetailsModalComponent, ContextMenuComponent],
   template: `
     @if(parentScrollElement(); as parentScrollElement) {
-    <virtual-scroller 
-      #scrollViewport 
-      [items]="logs()" 
+    <virtual-scroller
+      #scrollViewport
+      [items]="groupedLogs()"
       [bufferAmount]="10"
       [scrollThrottlingTime]="50"
-      [enableUnequalChildrenSizes]="false"
+      [enableUnequalChildrenSizes]="true"
       [checkResizeInterval]="1000"
       [scrollAnimationTime]="750"
       [parentScroll]="parentScrollElement"
       class="virtual-scroll-container">
-      
-      @for (log of scrollViewport.viewPortItems; track log.id; let i = $index) {
-        <div class="log-item"
-             [class.copied]="copiedLogId() === log.id"
-             [class.selected]="selectedLogId() === log.id.toString()"
-             [class.compact]="viewModeService.isCompact()"
-             [class.expanded]="viewModeService.isExpanded()"
-             (click)="selectedLogId.set(log.id.toString())"
-             (dblclick)="openLogModal(log)"
-             (contextmenu)="showContextMenu($event, log)"
-             title="Double-click to view full log details">
-          <div class="time">{{ log.timeStamp | timestampFormat }}</div>
-          <div class="pod" [ngStyle]="{'color':log.podColor}">{{ log.pod }}</div>
-          <div class="type" [ngClass]="log.logLevel | LogLevelPipe">{{ log.logLevel | LogLevelPipe }}</div>
-          <div class="line flexible-wrap" [innerHTML]="log.view | highlightLog:logFilterState.searchString()" [title]="log.line"></div>
-          <button
-            class="copy-btn"
-            (click)="copyLog(log); $event.stopPropagation()"
-            [title]="'Copy log to clipboard'"
-          >
-            @if (copiedLogId() === log.id) {
-              <lucide-icon name="check" size="14"></lucide-icon>
-            } @else {
-              <lucide-icon name="copy" size="14"></lucide-icon>
+
+      @for (item of scrollViewport.viewPortItems; track trackByItem($index, item); let i = $index) {
+        @if (isLogGroup(item)) {
+          <!-- Log Group Display -->
+          <div class="log-group"
+               [class.compact]="viewModeService.isCompact()"
+               [class.expanded]="viewModeService.isExpanded()">
+            <!-- Group Header -->
+            <div class="log-group-header"
+                 (click)="toggleGroupExpansion(item.id)"
+                 [title]="'Click to ' + (item.isExpanded ? 'collapse' : 'expand') + ' group'">
+              <button class="group-toggle">
+                <lucide-icon
+                  [name]="item.isExpanded ? 'chevron-down' : 'chevron-right'"
+                  size="14">
+                </lucide-icon>
+              </button>
+              <span class="group-badge">{{ item.count }}</span>
+              <div class="group-content">
+                @if (lineNumbersService.isLineNumbersEnabled()) {
+                  <div class="line-number">{{ getLineNumber(i) }}</div>
+                }
+                <div class="time">{{ item.representative.timeStamp | timestampFormat }}</div>
+                <div class="pod" [ngStyle]="{'color': item.representative.podColor}">{{ item.representative.pod }}</div>
+                <div class="type" [ngClass]="item.representative.logLevel | LogLevelPipe">{{ item.representative.logLevel | LogLevelPipe }}</div>
+                <div class="line flexible-wrap" [innerHTML]="item.representative.view | highlightLog:logFilterState.searchString()" [title]="item.representative.line"></div>
+              </div>
+            </div>
+
+            <!-- Expanded Group Content -->
+            @if (item.isExpanded) {
+              <div class="group-items">
+                @for (groupLog of item.logs; track groupLog.id) {
+                  <div class="log-item grouped-item"
+                       [class.copied]="copiedLogId() === groupLog.id.toString()"
+                       [class.selected]="selectedLogId() === groupLog.id.toString()"
+                       [class.compact]="viewModeService.isCompact()"
+                       [class.expanded]="viewModeService.isExpanded()"
+                       (click)="selectedLogId.set(groupLog.id.toString())"
+                       (dblclick)="openLogModal(groupLog)"
+                       (contextmenu)="showContextMenu($event, groupLog)">
+                    <div class="desktop-layout">
+                      @if (lineNumbersService.isLineNumbersEnabled()) {
+                        <div class="line-number">{{ getLineNumber(i) }}.{{ $index + 1 }}</div>
+                      }
+                      <div class="time">{{ groupLog.timeStamp | timestampFormat }}</div>
+                      <div class="pod" [ngStyle]="{'color':groupLog.podColor}">{{ groupLog.pod }}</div>
+                      <div class="type" [ngClass]="groupLog.logLevel | LogLevelPipe">{{ groupLog.logLevel | LogLevelPipe }}</div>
+                      <div class="line flexible-wrap" [innerHTML]="groupLog.view | highlightLog:logFilterState.searchString()" [title]="groupLog.line"></div>
+                      <button class="copy-btn" (click)="copyLog(groupLog); $event.stopPropagation()">
+                        @if (copiedLogId() === groupLog.id.toString()) {
+                          <lucide-icon name="check" size="14"></lucide-icon>
+                        } @else {
+                          <lucide-icon name="copy" size="14"></lucide-icon>
+                        }
+                      </button>
+                    </div>
+                  </div>
+                }
+              </div>
             }
-          </button>
+          </div>
+        } @else {
+          <!-- Regular Log Display -->
+          <div class="log-item"
+               [class.copied]="copiedLogId() === item.id.toString()"
+               [class.selected]="selectedLogId() === item.id.toString()"
+               [class.compact]="viewModeService.isCompact()"
+               [class.expanded]="viewModeService.isExpanded()"
+               [class.mobile-even]="i % 2 === 0"
+               [class.mobile-odd]="i % 2 === 1"
+               (click)="selectedLogId.set(item.id.toString())"
+               (dblclick)="openLogModal(item)"
+               (contextmenu)="showContextMenu($event, item)"
+               title="Double-click to view full log details">
+
+          <!-- Desktop Layout (flex row) -->
+          <div class="desktop-layout">
+            @if (lineNumbersService.isLineNumbersEnabled()) {
+              <div class="line-number">{{ getLineNumber(i) }}</div>
+            }
+            <div class="time">{{ item.timeStamp | timestampFormat }}</div>
+            <div class="pod" [ngStyle]="{'color':item.podColor}">{{ item.pod }}</div>
+            <div class="type" [ngClass]="item.logLevel | LogLevelPipe">{{ item.logLevel | LogLevelPipe }}</div>
+            <div class="line flexible-wrap" [innerHTML]="item.view | highlightLog:logFilterState.searchString()" [title]="item.line"></div>
+            <button
+              class="copy-btn"
+              (click)="copyLog(item); $event.stopPropagation()"
+              [title]="'Copy log to clipboard'"
+            >
+              @if (copiedLogId() === item.id.toString()) {
+                <lucide-icon name="check" size="14"></lucide-icon>
+              } @else {
+                <lucide-icon name="copy" size="14"></lucide-icon>
+              }
+            </button>
+          </div>
+
+          <!-- Mobile Layout (two rows) -->
+          <div class="mobile-layout">
+            <div class="mobile-row-1">
+              @if (lineNumbersService.isLineNumbersEnabled()) {
+                <div class="line-number">{{ getLineNumber(i) }}</div>
+              }
+              <div class="time">{{ item.timeStamp | timestampFormat }}</div>
+              <div class="pod" [ngStyle]="{'color':item.podColor}">{{ item.pod }}</div>
+              <div class="type" [ngClass]="item.logLevel | LogLevelPipe">{{ item.logLevel | LogLevelPipe }}</div>
+              <button
+                class="copy-btn"
+                (click)="copyLog(item); $event.stopPropagation()"
+                [title]="'Copy log to clipboard'"
+              >
+                @if (copiedLogId() === item.id.toString()) {
+                  <lucide-icon name="check" size="14"></lucide-icon>
+                } @else {
+                  <lucide-icon name="copy" size="14"></lucide-icon>
+                }
+              </button>
+            </div>
+            <div class="mobile-row-2">
+              <div class="line flexible-wrap" [innerHTML]="item.view | highlightLog:logFilterState.searchString()" [title]="item.line"></div>
+            </div>
+          </div>
         </div>
+        }
       }
-      
+
       @if (logs().length > 0) {
         <div class="load-more-container">
           <button (click)="$loadMoreTrigger.next()" class="btn btn-primary">
@@ -86,8 +188,13 @@ export class LogViewportComponent {
   logApi = inject(LogApiService);
   signalRService = inject(SignalRService);
   logs = signal<Log[]>([]);
+  groupedLogs = signal<(Log | LogGroup)[]>([]);
   logFilterState = inject(LogFilterState);
   viewModeService = inject(ViewModeService);
+  liveUpdatesService = inject(LiveUpdatesService);
+  groupingService = inject(LogGroupingService);
+  lineNumbersService = inject(LineNumbersService);
+  audioService = inject(AudioService);
   page = 1;
   ignoreScroll = true;
   $loadMoreTrigger = new Subject<void>();
@@ -110,10 +217,47 @@ export class LogViewportComponent {
     return item.id.toString();
   };
 
+  // TrackBy function for grouped logs
+  trackByItem = (index: number, item: Log | LogGroup): string => {
+    if (this.groupingService.isLogGroup(item)) {
+      return item.id;
+    }
+    return item.id.toString();
+  };
+
+  // Get line number for display
+  getLineNumber = (index: number): number => {
+    return index + 1;
+  };
+
+  // Type guard for template
+  isLogGroup = (item: Log | LogGroup): item is LogGroup => {
+    return this.groupingService.isLogGroup(item);
+  };
+
+  // Toggle group expansion
+  toggleGroupExpansion(groupId: string): void {
+    this.groupedLogs.update(items =>
+      this.groupingService.toggleGroupExpansion(items, groupId)
+    );
+  };
+
   constructor() {
     // Find the parent scroll container after render
     afterNextRender(() => {
       this.findParentScrollContainer();
+    });
+
+    // Update grouped logs whenever logs or grouping state changes
+    effect(() => {
+      const logs = this.logs();
+      const isGroupingEnabled = this.groupingService.isGroupingEnabled();
+
+      if (isGroupingEnabled) {
+        this.groupedLogs.set(this.groupingService.groupLogs(logs));
+      } else {
+        this.groupedLogs.set(logs);
+      }
     });
     
     // const vpO = toObservable(this.viewPort);
@@ -259,8 +403,18 @@ export class LogViewportComponent {
         };
       });
 
+      // If live updates are paused, queue the logs instead of displaying them
+      if (!this.liveUpdatesService.isLiveUpdatesEnabled()) {
+        this.liveUpdatesService.queueLogs(filteredLogs);
+        return;
+      }
+
+      // Process queued logs if any when resuming
+      const queuedLogs = this.liveUpdatesService.getQueuedLogs();
+      const allLogsToProcess = [...queuedLogs, ...filteredLogs];
+
       this.logs.update((x) => {
-        const newLogs = [...x,...filteredLogs, ].sort((a, b) => {
+        const newLogs = [...x,...allLogsToProcess, ].sort((a, b) => {
 
         var timedif =new Date(b.timeStamp).getTime() - new Date(a.timeStamp).getTime();
         if (timedif > 0) return 1;
@@ -269,12 +423,25 @@ export class LogViewportComponent {
         if(a.id < b.id) return -1;
         return 0;
         });
+
+        // Play sound alerts for new logs (not queued ones)
+        filteredLogs.forEach(log => {
+          this.audioService.playAlert(log.logLevel);
+        });
+
         // Trim logs if we exceed memory limit
         if (newLogs.length > this.MAX_LOGS_IN_MEMORY) {
           return newLogs.slice(0, this.MAX_LOGS_IN_MEMORY);
         }
         return newLogs;
       });
+
+      // Clear queued logs after processing
+      if (queuedLogs.length > 0) {
+        this.liveUpdatesService.clearQueue();
+      }
+
+      // No auto-scroll needed since newest logs appear at top
     });
   }
 
@@ -507,6 +674,7 @@ export class LogViewportComponent {
     this.parentScrollElement.set(window);
     console.log('Using window as scroll container');
   }
+
 }
 const podColorCache = new Map<string, string>();
 

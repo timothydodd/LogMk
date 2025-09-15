@@ -89,7 +89,7 @@ export interface DropdownItem {
                   type="checkbox"
                   [checked]="isAllSelected()"
                   [indeterminate]="isIndeterminate()"
-                  (click)="$event.stopPropagation()"
+                  (click)="$event.stopPropagation(); toggleSelectAll()"
                 />
                 <span class="select-all-label">{{ selectAllLabel() }}</span>
               </div>
@@ -108,7 +108,7 @@ export interface DropdownItem {
                     type="checkbox"
                     [checked]="isSelected(option)"
                     [disabled]="option.disabled"
-                    (click)="$event.stopPropagation()"
+                    (click)="$event.stopPropagation(); selectOption(option)"
                   />
                 }
                 {{ option.label }}
