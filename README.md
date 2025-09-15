@@ -34,8 +34,11 @@ LogMk is a lightweight log monitoring solution for Kubernetes environments. It c
 - **WCAG Compliance**: Accessible design with proper contrast ratios and keyboard navigation
 - **Progressive Enhancement**: Graceful degradation for older browsers
 
-![image](https://github.com/user-attachments/assets/a7f87068-4019-456a-b438-410ef5aad22a)
+<img width="1035" height="1162" alt="image" src="https://github.com/user-attachments/assets/ddfe177e-306a-414b-a38b-c5fb75ee03ef" />
 
+<img width="484" height="1202" alt="image" src="https://github.com/user-attachments/assets/a789f7a9-f35f-41df-aca1-6dc2d064038e" />
+
+<img width="203" height="882" alt="image" src="https://github.com/user-attachments/assets/f4582a42-e174-4673-818d-38ebc94c0d0a" />
 
 ## 🏗️ Architecture
 
