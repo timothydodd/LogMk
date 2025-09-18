@@ -5,6 +5,8 @@
 
 LogMk is a lightweight log monitoring solution for Kubernetes environments. It consists of three main components that work together to collect, store, and visualize pod logs in real-time. Designed for simplicity and ease of deployment, LogMk is perfect for smaller setups, development environments, and teams that need straightforward log monitoring without enterprise complexity.
 
+<img width="1035" height="1162" alt="image" src="https://github.com/user-attachments/assets/ddfe177e-306a-414b-a38b-c5fb75ee03ef" />
+
 ## ✨ Features
 
 ### **Core Functionality**
@@ -34,7 +36,7 @@ LogMk is a lightweight log monitoring solution for Kubernetes environments. It c
 - **WCAG Compliance**: Accessible design with proper contrast ratios and keyboard navigation
 - **Progressive Enhancement**: Graceful degradation for older browsers
 
-<img width="1035" height="1162" alt="image" src="https://github.com/user-attachments/assets/ddfe177e-306a-414b-a38b-c5fb75ee03ef" />
+
 
 <img width="484" height="1202" alt="image" src="https://github.com/user-attachments/assets/a789f7a9-f35f-41df-aca1-6dc2d064038e" />
 
