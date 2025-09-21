@@ -36,7 +36,10 @@ export class LogApiService {
     startDate: Date | null,
     endDate?: Date | null,
     page: number = 1,
-    pageSize: number = 200
+    pageSize: number = 200,
+    excludeLogLevel: string[] | null = null,
+    excludePodName: string[] | null = null,
+    excludeSearch: string = ''
   ) {
     let params = new HttpParams();
     if (loglevel && loglevel.length > 0) {
@@ -60,6 +63,23 @@ export class LogApiService {
       params = params.append('dateEnd', endDate.toISOString());
     }
 
+    // Add exclude parameters
+    if (excludeLogLevel && excludeLogLevel.length > 0) {
+      for (const level of excludeLogLevel) {
+        params = params.append('excludeLogLevel', level);
+      }
+    }
+
+    if (excludePodName && excludePodName.length > 0) {
+      for (const pod of excludePodName) {
+        params = params.append('excludePodName', pod);
+      }
+    }
+
+    if (excludeSearch && excludeSearch !== '') {
+      params = params.append('excludeSearch', excludeSearch);
+    }
+
     params = params.append('page', page.toString());
     params = params.append('pageSize', pageSize.toString());
     const url = `${environment.apiUrl}/api/log`;
@@ -69,7 +89,7 @@ export class LogApiService {
     const url = `${environment.apiUrl}/api/log/pods`;
     return this.httpClient.get<Pod[]>(url);
   }
-  public getStats(loglevel: string[] | null, podName: string[] | null, search: string = '', startDate: Date | null, endDate?: Date | null) {
+  public getStats(loglevel: string[] | null, podName: string[] | null, search: string = '', startDate: Date | null, endDate?: Date | null, excludeLogLevel: string[] | null = null, excludePodName: string[] | null = null, excludeSearch: string = '') {
     let params = new HttpParams();
     if (loglevel && loglevel.length > 0) {
       for (const ll of loglevel) {
@@ -91,6 +111,22 @@ export class LogApiService {
     if (endDate) {
       params = params.append('dateEnd', endDate.toISOString());
     }
+
+    // Add exclude parameters for stats
+    if (excludeLogLevel && excludeLogLevel.length > 0) {
+      for (const level of excludeLogLevel) {
+        params = params.append('excludeLogLevel', level);
+      }
+    }
+
+    if (excludePodName && excludePodName.length > 0) {
+      for (const pod of excludePodName) {
+        params = params.append('excludePodName', pod);
+      }
+    }
+
+    // Note: excludeSearch not supported for stats endpoint since summary tables don't contain Line content
+
     const url = `${environment.apiUrl}/api/log/stats`;
     return this.httpClient.get<LogStatistic>(url, { params });
   }

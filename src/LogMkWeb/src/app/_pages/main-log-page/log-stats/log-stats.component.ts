@@ -1,7 +1,9 @@
 
 import { AfterViewInit, ChangeDetectionStrategy, Component, computed, inject, signal, viewChild } from '@angular/core';
 import { takeUntilDestroyed, toObservable } from '@angular/core/rxjs-interop';
-import { ActiveElement, ChartEvent, ChartOptions } from 'chart.js';
+import { ActiveElement, Chart, ChartEvent, ChartOptions } from 'chart.js';
+import zoomPlugin from 'chartjs-plugin-zoom';
+import { LucideAngularModule } from 'lucide-angular';
 import { BaseChartDirective } from 'ng2-charts';
 import { combineLatest, switchMap } from 'rxjs';
 import { LogApiService, LogStatistic, TimePeriod } from '../../../_services/log.api';
@@ -10,30 +12,60 @@ import { LogFilterState } from '../_services/log-filter-state';
 @Component({
   selector: 'app-log-stats',
   standalone: true,
-  imports: [BaseChartDirective],
+  imports: [BaseChartDirective, LucideAngularModule],
 
   template: `@if (stats() !== null) {
-    <div class="chart-container"
-         #chartContainer
-         (mousedown)="onMouseDown($event)"
-         (mousemove)="onMouseMove($event)"
-         (mouseup)="onMouseUp($event)"
-         (mouseleave)="onMouseLeave($event)">
-      <canvas baseChart
-              [data]="chartView()"
-              [options]="chartOptions()"
-              [type]="chartTypeService.getChartJsType()"
-              (chartClick)="onChartClick($event, $any($event.active))"
-              class="chart-canvas">
-      </canvas>
-      @if (isSelecting()) {
-        <div class="selection-overlay"
-             [style.left.px]="Math.min(selectionStart(), selectionEnd())"
-             [style.width.px]="selectionWidth()"
-             [style.top]="'0'"
-             [style.height]="'100%'">
+    <div class="chart-wrapper">
+      <!-- Chart Controls -->
+      <div class="chart-controls">
+        <div class="zoom-controls">
+          <button
+            class="zoom-btn"
+            (click)="zoomIn()"
+            [title]="'Zoom in'"
+            [disabled]="!canZoomIn()">
+            <lucide-icon name="zoom-in" size="14"></lucide-icon>
+          </button>
+          <button
+            class="zoom-btn"
+            (click)="zoomOut()"
+            [title]="'Zoom out'"
+            [disabled]="!canZoomOut()">
+            <lucide-icon name="zoom-out" size="14"></lucide-icon>
+          </button>
+          <button
+            class="zoom-btn reset-btn"
+            (click)="resetZoom()"
+            [title]="'Reset zoom'"
+            [disabled]="!isZoomed()">
+            <lucide-icon name="rotate-ccw" size="14"></lucide-icon>
+          </button>
         </div>
-      }
+      </div>
+
+      <!-- Chart Container -->
+      <div class="chart-container"
+           #chartContainer
+           (mousedown)="onMouseDown($event)"
+           (mousemove)="onMouseMove($event)"
+           (mouseup)="onMouseUp($event)"
+           (mouseleave)="onMouseLeave($event)">
+        <canvas baseChart
+                [data]="chartView()"
+                [options]="chartOptions()"
+                [type]="chartTypeService.getChartJsType()"
+                (chartClick)="onChartClick($event, $any($event.active))"
+                class="chart-canvas">
+        </canvas>
+        @if (isSelecting()) {
+          <div class="selection-overlay"
+               [style.left.px]="Math.min(selectionStart(), selectionEnd())"
+               [style.width.px]="selectionWidth()"
+               [style.top]="'0'"
+               [style.height]="'100%'">
+          </div>
+        }
+      </div>
     </div>
   }`,
   styleUrl: './log-stats.component.scss',
@@ -53,6 +85,12 @@ export class LogStatsComponent implements AfterViewInit {
   selectionStart = signal<number>(0);
   selectionEnd = signal<number>(0);
   selectionWidth = computed(() => Math.abs(this.selectionEnd() - this.selectionStart()));
+
+  // Zoom state
+  zoomLevel = signal<number>(1);
+  isZoomed = computed(() => this.zoomLevel() > 1.01); // Consider zoomed if > 1% zoom
+  canZoomIn = computed(() => this.zoomLevel() < 5); // Max zoom 5x
+  canZoomOut = computed(() => this.zoomLevel() > 1.01); // Min zoom 1x
 
   // Make Math available in template
   Math = Math;
@@ -83,6 +121,34 @@ export class LogStatsComponent implements AfterViewInit {
           (event.native.target as HTMLElement).style.cursor = elements.length > 0 ? 'pointer' : 'default';
         }
       },
+      plugins: {
+        zoom: {
+          pan: {
+            enabled: true,
+            mode: 'x',
+            threshold: 5,
+          },
+          zoom: {
+            wheel: {
+              enabled: true,
+              speed: 0.1,
+            },
+            pinch: {
+              enabled: true
+            },
+            mode: 'x',
+            onZoomComplete: (context: any) => {
+              // Update zoom level signal
+              const chart = context.chart;
+              const xScale = chart.scales.x;
+              if (xScale) {
+                const zoomLevel = (xScale.max - xScale.min) / (xScale._maxx - xScale._minx);
+                this.zoomLevel.set(1 / zoomLevel);
+              }
+            }
+          }
+        }
+      },
       scales: {
         x: {
           stacked: chartType === 'area', // Only stack for area charts
@@ -110,20 +176,26 @@ export class LogStatsComponent implements AfterViewInit {
   }
    
   constructor() {
+    // Register zoom plugin
+    Chart.register(zoomPlugin);
+
     const logFilterState = toObservable(this.logFilterState.selectedLogLevel);
     const logPodFilterState = toObservable(this.logFilterState.selectedPod);
     const searchString = toObservable(this.logFilterState.searchString);
     const timeRange = toObservable(this.logFilterState.selectedTimeRange);
     const customTimeRange = toObservable(this.logFilterState.customTimeRange);
+    const excludeLogLevel = toObservable(this.logFilterState.excludeLogLevel);
+    const excludePod = toObservable(this.logFilterState.excludePod);
+    const excludeSearchString = toObservable(this.logFilterState.excludeSearchString);
 
-    combineLatest([logFilterState, logPodFilterState, searchString, timeRange, customTimeRange])
+    combineLatest([logFilterState, logPodFilterState, searchString, timeRange, customTimeRange, excludeLogLevel, excludePod, excludeSearchString])
       .pipe(
-        switchMap(([loglevel, podName, search, startDate, custom]) => {
+        switchMap(([loglevel, podName, search, startDate, custom, excludeLevel, excludePodName, excludeSearch]) => {
           // Use custom time range if available, otherwise use regular time range
           if (custom) {
-            return this.logService.getStats(loglevel, podName, search, custom.start, custom.end);
+            return this.logService.getStats(loglevel, podName, search, custom.start, custom.end, excludeLevel, excludePodName, excludeSearch);
           } else {
-            return this.logService.getStats(loglevel, podName, search, startDate);
+            return this.logService.getStats(loglevel, podName, search, startDate, undefined, excludeLevel, excludePodName, excludeSearch);
           }
         }),
         takeUntilDestroyed()
@@ -394,6 +466,31 @@ export class LogStatsComponent implements AfterViewInit {
         }
       }
     }
+  }
+
+  // Zoom control methods
+  zoomIn(): void {
+    const chart = this.chartCanvas()?.chart;
+    if (!chart) return;
+
+    // Zoom in by 25%
+    chart.zoom(1.25);
+  }
+
+  zoomOut(): void {
+    const chart = this.chartCanvas()?.chart;
+    if (!chart) return;
+
+    // Zoom out by 25%
+    chart.zoom(0.8);
+  }
+
+  resetZoom(): void {
+    const chart = this.chartCanvas()?.chart;
+    if (!chart) return;
+
+    chart.resetZoom();
+    this.zoomLevel.set(1);
   }
 
 }

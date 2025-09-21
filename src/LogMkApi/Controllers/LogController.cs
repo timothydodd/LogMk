@@ -358,13 +358,16 @@ public class LogController : ControllerBase
                                         [FromQuery] DateTime? dateStart = null,
                                         [FromQuery] DateTime? dateEnd = null,
                                         [FromQuery] string? search = null, [FromQuery] string[]? podName = null,
-                                        [FromQuery] string[]? deployment = null, [FromQuery] string[]? logLevel = null
+                                        [FromQuery] string[]? deployment = null, [FromQuery] string[]? logLevel = null,
+                                        [FromQuery] string? excludeSearch = null, [FromQuery] string[]? excludePodName = null,
+                                        [FromQuery] string[]? excludeDeployment = null, [FromQuery] string[]? excludeLogLevel = null
 
     )
     {
         var stats = await _logSummaryRepo.GetStatistics(dateStart,
                                                    dateEnd,
-                                                   search, podName, deployment, logLevel);
+                                                   search, podName, deployment, logLevel,
+                                                   excludeSearch, excludePodName, excludeDeployment, excludeLogLevel);
         if (stats == null)
             return NotFound();
 
@@ -376,7 +379,9 @@ public class LogController : ControllerBase
                                             [FromQuery] DateTime? dateStart = null,
                                             [FromQuery] DateTime? dateEnd = null,
                                             [FromQuery] string? search = null, [FromQuery] string[]? podName = null,
-                                            [FromQuery] string[]? deployment = null, [FromQuery] string[]? logLevel = null
+                                            [FromQuery] string[]? deployment = null, [FromQuery] string[]? logLevel = null,
+                                            [FromQuery] string? excludeSearch = null, [FromQuery] string[]? excludePodName = null,
+                                            [FromQuery] string[]? excludeDeployment = null, [FromQuery] string[]? excludeLogLevel = null
 
         )
     {
@@ -384,7 +389,8 @@ public class LogController : ControllerBase
                                                    pageSize,
                                                    dateStart,
                                                    dateEnd,
-                                                   search, podName, deployment, logLevel);
+                                                   search, podName, deployment, logLevel,
+                                                   excludeSearch, excludePodName, excludeDeployment, excludeLogLevel);
         return entries;
     }
     [AllowAnonymous]

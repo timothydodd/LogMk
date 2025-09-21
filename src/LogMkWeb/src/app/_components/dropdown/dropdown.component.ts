@@ -9,6 +9,18 @@ export interface DropdownOption {
   disabled?: boolean;
 }
 
+export interface TriStateOption {
+  value: any;
+  label: string;
+  state: 'unspecified' | 'included' | 'excluded'; // unspecified, included, excluded
+  disabled?: boolean;
+}
+
+export interface TriStateValue {
+  included: any[];
+  excluded: any[];
+}
+
 export interface DropdownItem {
   label?: string;
   value?: any;
@@ -29,7 +41,26 @@ export interface DropdownItem {
         #trigger
       >
         <div class="dropdown-value">
-          @if (multiple()) {
+          @if (triState()) {
+            @if (triStateValue().included.length === 0 && triStateValue().excluded.length === 0) {
+              <span class="placeholder">{{ placeholder() }}</span>
+            } @else {
+              <div class="tri-state-summary">
+                @if (triStateValue().included.length > 0) {
+                  <span class="included-count">
+                    <span class="count-badge">{{ triStateValue().included.length }}</span>
+                    <span class="count-text">included</span>
+                  </span>
+                }
+                @if (triStateValue().excluded.length > 0) {
+                  <span class="excluded-count">
+                    <span class="count-badge">{{ triStateValue().excluded.length }}</span>
+                    <span class="count-text">excluded</span>
+                  </span>
+                }
+              </div>
+            }
+          } @else if (multiple()) {
             @if (selectedItems().length === 0) {
               <span class="placeholder">{{ placeholder() }}</span>
             } @else if (showCount() || selectedItems().length > maxTagsDisplay()) {
@@ -96,23 +127,46 @@ export interface DropdownItem {
             </div>
           }
           <div class="dropdown-items">
-            @for (option of filteredOptions(); track option.value) {
-              <div
-                class="dropdown-item"
-                [class.selected]="isSelected(option)"
-                [class.disabled]="option.disabled"
-                (click)="selectOption(option)"
-              >
-                @if (multiple()) {
-                  <input
-                    type="checkbox"
-                    [checked]="isSelected(option)"
-                    [disabled]="option.disabled"
-                    (click)="$event.stopPropagation(); selectOption(option)"
-                  />
-                }
-                {{ option.label }}
-              </div>
+            @if (triState()) {
+              @for (option of filteredTriStateOptions(); track option.value) {
+                <div
+                  class="dropdown-item tri-state-item"
+                  [class.included]="option.state === 'included'"
+                  [class.excluded]="option.state === 'excluded'"
+                  [class.disabled]="option.disabled"
+                  (click)="selectTriStateOption(option)"
+                >
+                  <div class="tri-state-icon">
+                    @if (option.state === 'included') {
+                      <lucide-icon name="check" size="14" class="include-icon"></lucide-icon>
+                    } @else if (option.state === 'excluded') {
+                      <lucide-icon name="x" size="14" class="exclude-icon"></lucide-icon>
+                    } @else {
+                      <div class="unspecified-icon"></div>
+                    }
+                  </div>
+                  {{ option.label }}
+                </div>
+              }
+            } @else {
+              @for (option of filteredOptions(); track option.value) {
+                <div
+                  class="dropdown-item"
+                  [class.selected]="isSelected(option)"
+                  [class.disabled]="option.disabled"
+                  (click)="selectOption(option)"
+                >
+                  @if (multiple()) {
+                    <input
+                      type="checkbox"
+                      [checked]="isSelected(option)"
+                      [disabled]="option.disabled"
+                      (click)="$event.stopPropagation(); selectOption(option)"
+                    />
+                  }
+                  {{ option.label }}
+                </div>
+              }
             }
             @if (filteredOptions().length === 0) {
               <div class="dropdown-item disabled">
@@ -151,6 +205,7 @@ export class DropdownComponent implements ControlValueAccessor {
   showSelectAll = input<boolean>(false); // Show select all option for multi-select
   selectAllLabel = input<string>('Select All');
   size = input<'sm' | 'compact' | 'lg' | undefined>(undefined); // Size variant
+  triState = input<boolean>(false); // Enable tri-state mode (include/exclude/unspecified)
   
   // Modern signal-based outputs
   selectionChange = output<any>();
@@ -165,6 +220,8 @@ export class DropdownComponent implements ControlValueAccessor {
   selectedLabel = signal<string>('');
   selectedItems = signal<DropdownOption[]>([]);
   searchTerm = signal<string>('');
+  triStateOptions = signal<TriStateOption[]>([]);
+  triStateValue = signal<TriStateValue>({ included: [], excluded: [] });
   
   // Computed signals
   processedOptions = computed(() => {
@@ -189,6 +246,20 @@ export class DropdownComponent implements ControlValueAccessor {
   filteredOptions = computed(() => {
     const search = this.searchTerm().toLowerCase().trim();
     const options = this.processedOptions();
+
+    if (!search || !this.searchable()) {
+      return options;
+    }
+
+    return options.filter(option =>
+      option.label.toLowerCase().includes(search)
+    );
+  });
+
+  // Filtered tri-state options based on search term
+  filteredTriStateOptions = computed(() => {
+    const search = this.searchTerm().toLowerCase().trim();
+    const options = this.triStateOptions();
 
     if (!search || !this.searchable()) {
       return options;
@@ -240,6 +311,29 @@ export class DropdownComponent implements ControlValueAccessor {
       if (options.length > 0 && this.lastWrittenValue !== null) {
         // Re-apply the last written value now that we have options
         this.writeValue(this.lastWrittenValue);
+      }
+    });
+
+    // Effect to initialize tri-state options when options change
+    effect(() => {
+      const options = this.processedOptions();
+      if (this.triState() && options.length > 0) {
+        const currentTriStateValue = this.triStateValue();
+        const triStateOptions = options.map(opt => {
+          let state: 'unspecified' | 'included' | 'excluded' = 'unspecified';
+          if (currentTriStateValue.included.includes(opt.value)) {
+            state = 'included';
+          } else if (currentTriStateValue.excluded.includes(opt.value)) {
+            state = 'excluded';
+          }
+          return {
+            value: opt.value,
+            label: opt.label,
+            state,
+            disabled: opt.disabled
+          };
+        });
+        this.triStateOptions.set(triStateOptions);
       }
     });
 
@@ -313,11 +407,11 @@ export class DropdownComponent implements ControlValueAccessor {
   
   selectOption(option: DropdownOption) {
     if (option.disabled) return;
-    
+
     if (this.multiple()) {
       const currentItems = this.selectedItems();
       const isCurrentlySelected = currentItems.some(item => item.value === option.value);
-      
+
       if (isCurrentlySelected) {
         // Remove item
         const newItems = currentItems.filter(item => item.value !== option.value);
@@ -337,10 +431,46 @@ export class DropdownComponent implements ControlValueAccessor {
       this.selectedValue.set(option.value);
       this.selectedLabel.set(option.label);
       this.isOpen.set(false);
-      
+
       this.onChange(option.value);
       this.selectionChange.emit(option.value);
     }
+  }
+
+  selectTriStateOption(option: TriStateOption) {
+    if (option.disabled) return;
+
+    const currentOptions = this.triStateOptions();
+    const updatedOptions = currentOptions.map(opt => {
+      if (opt.value === option.value) {
+        // Cycle through states: unspecified -> included -> excluded -> unspecified
+        let newState: 'unspecified' | 'included' | 'excluded' = 'unspecified';
+        switch (opt.state) {
+          case 'unspecified':
+            newState = 'included';
+            break;
+          case 'included':
+            newState = 'excluded';
+            break;
+          case 'excluded':
+            newState = 'unspecified';
+            break;
+        }
+        return { ...opt, state: newState };
+      }
+      return opt;
+    });
+
+    this.triStateOptions.set(updatedOptions);
+
+    // Build the tri-state value
+    const included = updatedOptions.filter(opt => opt.state === 'included').map(opt => opt.value);
+    const excluded = updatedOptions.filter(opt => opt.state === 'excluded').map(opt => opt.value);
+    const triStateValue: TriStateValue = { included, excluded };
+
+    this.triStateValue.set(triStateValue);
+    this.onChange(triStateValue);
+    this.selectionChange.emit(triStateValue);
   }
   
   removeItem(event: Event, item: DropdownOption) {
@@ -365,18 +495,53 @@ export class DropdownComponent implements ControlValueAccessor {
   // ControlValueAccessor implementation
   writeValue(value: any): void {
     this.lastWrittenValue = value;
-    
-    if (this.multiple()) {
+
+    if (this.triState()) {
+      // Handle tri-state value
+      if (value && typeof value === 'object' && 'included' in value && 'excluded' in value) {
+        const triStateValue = value as TriStateValue;
+        this.triStateValue.set(triStateValue);
+
+        // Update tri-state options based on the value
+        const options = this.processedOptions();
+        const triStateOptions = options.map(opt => {
+          let state: 'unspecified' | 'included' | 'excluded' = 'unspecified';
+          if (triStateValue.included.includes(opt.value)) {
+            state = 'included';
+          } else if (triStateValue.excluded.includes(opt.value)) {
+            state = 'excluded';
+          }
+          return {
+            value: opt.value,
+            label: opt.label,
+            state,
+            disabled: opt.disabled
+          };
+        });
+        this.triStateOptions.set(triStateOptions);
+      } else {
+        // Initialize with empty tri-state value
+        this.triStateValue.set({ included: [], excluded: [] });
+        const options = this.processedOptions();
+        const triStateOptions = options.map(opt => ({
+          value: opt.value,
+          label: opt.label,
+          state: 'unspecified' as const,
+          disabled: opt.disabled
+        }));
+        this.triStateOptions.set(triStateOptions);
+      }
+    } else if (this.multiple()) {
       const values = Array.isArray(value) ? value : [];
       const options = this.processedOptions();
-      
+
       // If options aren't loaded yet, store the raw values
       if (options.length === 0 && values.length > 0) {
         // Create temporary options from the values
         const tempItems = values.map(v => ({ value: v, label: v }));
         this.selectedItems.set(tempItems);
       } else {
-        const selectedItems = values.map(v => 
+        const selectedItems = values.map(v =>
           options.find(opt => opt.value === v) || { value: v, label: v }
         ).filter(Boolean) as DropdownOption[];
         this.selectedItems.set(selectedItems);

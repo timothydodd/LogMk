@@ -20,6 +20,7 @@ import { ViewModeService } from '../../../_services/view-mode.service';
 import { AudioService } from '../../../_services/audio.service';
 import { ChartVisibilityService } from '../../../_services/chart-visibility.service';
 import { ChartTypeService } from '../../../_services/chart-type.service';
+import { MemoryManagementService } from '../../../_services/memory-management.service';
 import { LogFilterState } from '../_services/log-filter-state';
 
 @Component({
@@ -46,18 +47,14 @@ import { LogFilterState } from '../_services/log-filter-state';
         <app-dropdown
           id="log-level-select"
           [items]="logLevels"
-          [multiple]="true"
+          [triState]="true"
           [searchable]="true"
-          [showSelectAll]="true"
           searchPlaceholder="Search levels..."
-          selectAllLabel="All Levels"
           placeholder="Log Levels"
-          [maxTagsDisplay]="1"
-          [showCount]="true"
           [minWidth]="140"
           size="compact"
-          [ngModel]="logFilterState.selectedLogLevel()"
-          (ngModelChange)="logFilterState.selectedLogLevel.set($event)"
+          [ngModel]="logFilterState.triStateLogLevel()"
+          (ngModelChange)="logFilterState.triStateLogLevel.set($event)"
         ></app-dropdown>
       </div>
 
@@ -66,17 +63,14 @@ import { LogFilterState } from '../_services/log-filter-state';
         <app-dropdown
           id="pod-select"
           [items]="pods()"
-          [multiple]="true"
+          [triState]="true"
           [searchable]="true"
-          [showSelectAll]="true"
           searchPlaceholder="Search pods..."
-          selectAllLabel="All Pods"
           placeholder="Pods"
-          [showCount]="true"
           [minWidth]="120"
           size="compact"
-          [ngModel]="logFilterState.selectedPod()"
-          (ngModelChange)="logFilterState.selectedPod.set($event)"
+          [ngModel]="logFilterState.triStatePod()"
+          (ngModelChange)="logFilterState.triStatePod.set($event)"
         ></app-dropdown>
       </div>
 
@@ -89,6 +83,7 @@ import { LogFilterState } from '../_services/log-filter-state';
           placeholder="Time Range"
         ></app-time-filter-dropdown>
       </div>
+
 
       <!-- Clear Filters Button -->
       <button
@@ -264,10 +259,102 @@ import { LogFilterState } from '../_services/log-filter-state';
                 </button>
               </div>
             }
+
+            <!-- Memory Management Category -->
+            <div class="category-header submenu-trigger" (click)="toggleMemoryCategory()">
+              <lucide-icon name="database" size="12"></lucide-icon>
+              Memory Management
+              <lucide-icon name="chevron-down" size="12" [class.rotated]="showMemoryCategory()"></lucide-icon>
+            </div>
+
+            @if (showMemoryCategory()) {
+              <div class="category-content">
+                <div class="memory-info">
+                  <div class="memory-stat">
+                    <span class="stat-label">Current Logs:</span>
+                    <span class="stat-value">{{ memoryManagementService.currentLogCount() }}</span>
+                  </div>
+                  <div class="memory-stat">
+                    <span class="stat-label">Max Logs:</span>
+                    <span class="stat-value">{{ memoryManagementService.maxLogsInMemory() }}</span>
+                  </div>
+                  <div class="memory-usage-bar">
+                    <div class="usage-bar"
+                         [style.width.%]="memoryManagementService.memoryUsagePercentage()"
+                         [class.warning]="memoryManagementService.memoryUsagePercentage() > 75"
+                         [class.critical]="memoryManagementService.memoryUsagePercentage() > 90">
+                    </div>
+                    <span class="usage-text">{{ memoryManagementService.memoryUsagePercentage() }}%</span>
+                  </div>
+                </div>
+
+                <div class="memory-controls">
+                  <div class="memory-setting">
+                    <label for="maxLogs">Max Logs in Memory:</label>
+                    <input
+                      id="maxLogs"
+                      type="number"
+                      min="100"
+                      max="50000"
+                      step="100"
+                      class="memory-input"
+                      [ngModel]="memoryManagementService.maxLogsInMemory()"
+                      (ngModelChange)="updateMaxLogs($event)">
+                  </div>
+
+                  <div class="memory-setting">
+                    <label class="checkbox-label">
+                      <input
+                        type="checkbox"
+                        [ngModel]="memoryManagementService.autoCleanupEnabled()"
+                        (ngModelChange)="memoryManagementService.setAutoCleanupEnabled($event)">
+                      <span class="checkmark"></span>
+                      Auto-cleanup enabled
+                    </label>
+                  </div>
+
+                  @if (memoryManagementService.autoCleanupEnabled()) {
+                    <div class="memory-setting">
+                      <label for="cleanupThreshold">Cleanup at {{ memoryManagementService.cleanupThreshold() }}% usage:</label>
+                      <input
+                        id="cleanupThreshold"
+                        type="range"
+                        min="50"
+                        max="100"
+                        step="5"
+                        class="memory-slider"
+                        [ngModel]="memoryManagementService.cleanupThreshold()"
+                        (ngModelChange)="memoryManagementService.setCleanupThreshold($event)">
+                    </div>
+
+                    <div class="memory-setting">
+                      <label for="cleanupAmount">Remove {{ memoryManagementService.cleanupAmount() }}% of logs:</label>
+                      <input
+                        id="cleanupAmount"
+                        type="range"
+                        min="10"
+                        max="75"
+                        step="5"
+                        class="memory-slider"
+                        [ngModel]="memoryManagementService.cleanupAmount()"
+                        (ngModelChange)="memoryManagementService.setCleanupAmount($event)">
+                    </div>
+                  }
+
+                  <button
+                    class="action-item memory-reset-btn"
+                    (click)="resetMemorySettings()">
+                    <lucide-icon name="rotate-ccw" size="14"></lucide-icon>
+                    Reset to Defaults
+                  </button>
+                </div>
+              </div>
+            }
           </div>
         }
       </div>
     </div>
+
 
     <!-- Filter Presets Modal -->
     <app-filter-presets-modal #presetsModal></app-filter-presets-modal>
@@ -290,6 +377,7 @@ export class LogFilterControlsComponent {
   audioService = inject(AudioService);
   chartVisibilityService = inject(ChartVisibilityService);
   chartTypeService = inject(ChartTypeService);
+  memoryManagementService = inject(MemoryManagementService);
 
   presetsModal = viewChild<FilterPresetsModalComponent>('presetsModal');
 
@@ -304,14 +392,22 @@ export class LogFilterControlsComponent {
   showChartTypeCategory = signal<boolean>(true);
   showDataCategory = signal<boolean>(true);
   showExportCategory = signal<boolean>(true);
+  showMemoryCategory = signal<boolean>(true);
 
   hasActiveFilters = computed(() => {
+    const triStateLogLevel = this.logFilterState.triStateLogLevel();
+    const triStatePod = this.logFilterState.triStatePod();
+
     return (
       (this.logFilterState.selectedLogLevel()?.length ?? 0) > 0 ||
       (this.logFilterState.selectedPod()?.length ?? 0) > 0 ||
       this.searchString().length > 0 ||
       this.logFilterState.selectedTimeRange() !== null ||
-      this.logFilterState.customTimeRange() !== null
+      this.logFilterState.customTimeRange() !== null ||
+      (triStateLogLevel?.included?.length ?? 0) > 0 ||
+      (triStateLogLevel?.excluded?.length ?? 0) > 0 ||
+      (triStatePod?.included?.length ?? 0) > 0 ||
+      (triStatePod?.excluded?.length ?? 0) > 0
     );
   });
 
@@ -334,7 +430,7 @@ export class LogFilterControlsComponent {
   constructor() {
     // Initialize search string from persistent state
     this.searchString.set(this.logFilterState.searchString());
-    
+
     // Initialize time filter from persistent state
     const savedTimeRange = this.logFilterState.selectedTimeRange();
     if (savedTimeRange) {
@@ -358,7 +454,7 @@ export class LogFilterControlsComponent {
       .subscribe((searchString) => {
         this.logFilterState.searchString.set(searchString);
       });
-      
+
     this.logService.getPods().pipe(takeUntilDestroyed()).subscribe((pods) => {
       this.pods.set(pods.map((p) => p.name));
     });
@@ -373,8 +469,11 @@ export class LogFilterControlsComponent {
     this.logFilterState.searchString.set('');
     this.logFilterState.selectedTimeRange.set(null);
     this.logFilterState.customTimeRange.set(null);
+    this.logFilterState.triStateLogLevel.set(null);
+    this.logFilterState.triStatePod.set(null);
     this.selectedTimeFilter.set(this.timeFilters[0]); // Reset to 'Any'
   }
+
 
   toggleActionsMenu(): void {
     this.showActionsMenu.set(!this.showActionsMenu());
@@ -402,6 +501,10 @@ export class LogFilterControlsComponent {
 
   toggleExportCategory(): void {
     this.showExportCategory.set(!this.showExportCategory());
+  }
+
+  toggleMemoryCategory(): void {
+    this.showMemoryCategory.set(!this.showMemoryCategory());
   }
 
   toggleTimestampFormat(): void {
@@ -589,5 +692,15 @@ export class LogFilterControlsComponent {
     }
 
     return mockLogs;
+  }
+
+  // Memory management methods
+  updateMaxLogs(value: number): void {
+    this.memoryManagementService.setMaxLogsInMemory(value);
+  }
+
+  resetMemorySettings(): void {
+    this.memoryManagementService.resetToDefaults();
+    this.toastr.info('Memory settings reset to defaults', 'Memory Management', { timeOut: 2000 });
   }
 }

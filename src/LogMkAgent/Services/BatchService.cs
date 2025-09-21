@@ -12,9 +12,10 @@ public class BatchingService : IDisposable
     private readonly ILogger<BatchingService> _logger;
     private readonly BatchingOptions _options;
     private readonly SettingsService _settingsService;
-    private readonly Timer _timer;
+    private Timer? _debounceTimer;
     private readonly SemaphoreSlim _sendSemaphore = new(1, 1);
     private readonly CancellationTokenSource _cancellationTokenSource = new();
+    private readonly object _timerLock = new();
 
     // Retry mechanism
     private readonly Queue<BatchItem> _retryQueue = new();
@@ -34,6 +35,11 @@ public class BatchingService : IDisposable
     private long _totalValidationFailures;
     private DateTime _lastSuccessfulSend = DateTime.UtcNow;
 
+    // Debounce configuration
+    private readonly TimeSpan _debounceDelay = TimeSpan.FromMilliseconds(150); // Send after 150ms of no new logs
+    private readonly TimeSpan _maxWaitTime = TimeSpan.FromSeconds(2); // Force send after 2 seconds max
+    private DateTime _firstLogAddedTime = DateTime.MinValue;
+
     private volatile bool _disposed;
 
     public BatchingService(
@@ -49,14 +55,15 @@ public class BatchingService : IDisposable
 
         ValidateOptions();
 
-        _timer = new Timer(
-            async _ => await ProcessBatchAsync().ConfigureAwait(false),
-            null,
-            _options.BatchInterval,
-            _options.BatchInterval);
+        // Configure debounce delay from options if available, otherwise use defaults
+        if (_options.BatchInterval < TimeSpan.FromSeconds(5))
+        {
+            _debounceDelay = TimeSpan.FromMilliseconds(Math.Min(_options.BatchInterval.TotalMilliseconds / 10, 150));
+            _maxWaitTime = _options.BatchInterval;
+        }
 
-        _logger.LogInformation("BatchingService initialized with interval: {Interval}, max size: {MaxSize}, timeout: {Timeout}",
-            _options.BatchInterval, _options.MaxBatchSize, _options.SendTimeout);
+        _logger.LogInformation("BatchingService initialized with debounce: {DebounceDelay}ms, max wait: {MaxWait}s, max size: {MaxSize}, timeout: {Timeout}",
+            _debounceDelay.TotalMilliseconds, _maxWaitTime.TotalSeconds, _options.MaxBatchSize, _options.SendTimeout);
     }
 
     private void ValidateOptions()
@@ -87,12 +94,69 @@ public class BatchingService : IDisposable
 
         _batchData.Enqueue(data);
 
+        // Track when first log was added if this is the first in a batch
+        if (_firstLogAddedTime == DateTime.MinValue)
+        {
+            _firstLogAddedTime = DateTime.UtcNow;
+        }
+
         // Trigger immediate send if batch is full
         if (_batchData.Count >= _options.MaxBatchSize)
         {
-            _ = Task.Run(async () => await ProcessBatchAsync().ConfigureAwait(false),
-                _cancellationTokenSource.Token);
+            TriggerImmediateSend();
         }
+        else
+        {
+            // Reset the debounce timer
+            ResetDebounceTimer();
+        }
+    }
+
+    private void ResetDebounceTimer()
+    {
+        lock (_timerLock)
+        {
+            // Calculate how long we've been waiting
+            var waitTime = DateTime.UtcNow - _firstLogAddedTime;
+
+            // If we've been waiting too long, send immediately
+            if (_firstLogAddedTime != DateTime.MinValue && waitTime >= _maxWaitTime)
+            {
+                TriggerImmediateSend();
+                return;
+            }
+
+            // Create timer if it doesn't exist, otherwise reset it
+            if (_debounceTimer == null)
+            {
+                _debounceTimer = new Timer(
+                    _ => TriggerImmediateSend(),
+                    null,
+                    _debounceDelay,
+                    Timeout.InfiniteTimeSpan);
+            }
+            else
+            {
+                // Reuse existing timer by changing its due time
+                _debounceTimer.Change(_debounceDelay, Timeout.InfiniteTimeSpan);
+            }
+        }
+    }
+
+    private void TriggerImmediateSend()
+    {
+        lock (_timerLock)
+        {
+            _debounceTimer?.Dispose();
+            _debounceTimer = null;
+        }
+
+        _ = Task.Run(async () =>
+        {
+            await ProcessBatchAsync().ConfigureAwait(false);
+            // Reset first log time after processing
+            _firstLogAddedTime = DateTime.MinValue;
+        }, _cancellationTokenSource.Token);
     }
 
     private async Task ProcessBatchAsync()
@@ -323,8 +387,12 @@ public class BatchingService : IDisposable
     {
         _logger.LogInformation("Flushing remaining batches...");
 
-        // Stop the timer to prevent new batches from being processed
-        await _timer.DisposeAsync().ConfigureAwait(false);
+        // Stop the debounce timer to prevent new batches from being processed
+        lock (_timerLock)
+        {
+            _debounceTimer?.Dispose();
+            _debounceTimer = null;
+        }
 
         // Process all remaining data
         while (!_batchData.IsEmpty || HasPendingRetries())
@@ -394,7 +462,10 @@ public class BatchingService : IDisposable
         }
         finally
         {
-            _timer?.Dispose();
+            lock (_timerLock)
+            {
+                _debounceTimer?.Dispose();
+            }
             _sendSemaphore?.Dispose();
             _cancellationTokenSource?.Dispose();
         }
@@ -410,7 +481,7 @@ public class BatchingService : IDisposable
 
 public class BatchingOptions
 {
-    public TimeSpan BatchInterval { get; set; } = TimeSpan.FromSeconds(10);
+    public TimeSpan BatchInterval { get; set; } = TimeSpan.FromSeconds(2); // Now acts as max wait time
     public int MaxBatchSize { get; set; } = 100;
     public TimeSpan SendTimeout { get; set; } = TimeSpan.FromSeconds(30);
 }

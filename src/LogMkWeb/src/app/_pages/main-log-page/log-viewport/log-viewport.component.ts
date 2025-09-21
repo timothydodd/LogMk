@@ -1,26 +1,27 @@
 import { CommonModule } from '@angular/common';
 import { afterNextRender, ChangeDetectionStrategy, Component, DestroyRef, effect, ElementRef, HostListener, inject, signal, viewChild } from '@angular/core';
 import { takeUntilDestroyed, toObservable } from '@angular/core/rxjs-interop';
-import { VirtualScrollerComponent, VirtualScrollerModule } from '@iharbeck/ngx-virtual-scroller';
 import { LucideAngularModule } from 'lucide-angular';
 import { ToastrService } from 'ngx-toastr';
 import { combineLatest, Subject, switchMap, tap } from 'rxjs';
 import { ContextMenuComponent } from '../../../_components/context-menu/context-menu.component';
 import { LogDetailsModalComponent } from '../../../_components/log-details-modal/log-details-modal.component';
+import { VirtualScrollerComponent } from '../../../_components/scroller/ngx-virtual-scroller.component';
 import { TimestampFormatPipe } from '../../../_pipes/timestamp-format.pipe';
-import { LogApiService } from '../../../_services/log.api';
-import { Log, SignalRService } from '../../../_services/signalr.service';
-import { LiveUpdatesService } from '../../../_services/live-updates.service';
-import { LogGroupingService, LogGroup } from '../../../_services/log-grouping.service';
-import { LineNumbersService } from '../../../_services/line-numbers.service';
-import { ViewModeService } from '../../../_services/view-mode.service';
 import { AudioService } from '../../../_services/audio.service';
+import { LineNumbersService } from '../../../_services/line-numbers.service';
+import { LiveUpdatesService } from '../../../_services/live-updates.service';
+import { LogGroup, LogGroupingService } from '../../../_services/log-grouping.service';
+import { LogApiService } from '../../../_services/log.api';
+import { MemoryManagementService } from '../../../_services/memory-management.service';
+import { Log, SignalRService } from '../../../_services/signalr.service';
+import { ViewModeService } from '../../../_services/view-mode.service';
 import { HighlightLogPipe, LogLevelPipe } from '../_services/highlight.directive';
 import { LogFilterState } from '../_services/log-filter-state';
 @Component({
   selector: 'app-log-viewport',
   standalone: true,
-  imports: [CommonModule, VirtualScrollerModule, HighlightLogPipe, LogLevelPipe, LucideAngularModule, TimestampFormatPipe, LogDetailsModalComponent, ContextMenuComponent],
+  imports: [CommonModule, VirtualScrollerComponent, HighlightLogPipe, LogLevelPipe, LucideAngularModule, TimestampFormatPipe, LogDetailsModalComponent, ContextMenuComponent],
   template: `
     @if(parentScrollElement(); as parentScrollElement) {
     <virtual-scroller
@@ -70,8 +71,9 @@ import { LogFilterState } from '../_services/log-filter-state';
                        [class.copied]="copiedLogId() === groupLog.id.toString()"
                        [class.selected]="selectedLogId() === groupLog.id.toString()"
                        [class.compact]="viewModeService.isCompact()"
+                       [attr.data-log-id]="groupLog.id.toString()"
                        [class.expanded]="viewModeService.isExpanded()"
-                       (click)="selectedLogId.set(groupLog.id.toString())"
+                       (click)="selectItem(groupLog.id.toString())"
                        (dblclick)="openLogModal(groupLog)"
                        (contextmenu)="showContextMenu($event, groupLog)">
                     <div class="desktop-layout">
@@ -101,10 +103,11 @@ import { LogFilterState } from '../_services/log-filter-state';
                [class.copied]="copiedLogId() === item.id.toString()"
                [class.selected]="selectedLogId() === item.id.toString()"
                [class.compact]="viewModeService.isCompact()"
+               [attr.data-log-id]="item.id.toString()"
                [class.expanded]="viewModeService.isExpanded()"
                [class.mobile-even]="i % 2 === 0"
                [class.mobile-odd]="i % 2 === 1"
-               (click)="selectedLogId.set(item.id.toString())"
+               (click)="selectItem(item.id.toString())"
                (dblclick)="openLogModal(item)"
                (contextmenu)="showContextMenu($event, item)"
                title="Double-click to view full log details">
@@ -195,6 +198,7 @@ export class LogViewportComponent {
   groupingService = inject(LogGroupingService);
   lineNumbersService = inject(LineNumbersService);
   audioService = inject(AudioService);
+  memoryManagementService = inject(MemoryManagementService);
   page = 1;
   ignoreScroll = true;
   $loadMoreTrigger = new Subject<void>();
@@ -206,8 +210,15 @@ export class LogViewportComponent {
   copiedLogId = signal<string | null>(null);
   selectedLogId = signal<string | null>(null);
 
-  // Memory management
-  private readonly MAX_LOGS_IN_MEMORY = 5000; // Limit logs to prevent memory leaks
+
+
+
+  // Synchronize selection between template clicks and virtual scroller
+  selectItem(itemId: string) {
+    this.selectedLogId.set(itemId);
+  }
+
+  // Memory management is now handled by MemoryManagementService
   
   // Parent scroll element for virtual scroller
   parentScrollElement = signal<Element | Window | null>(null);
@@ -253,6 +264,9 @@ export class LogViewportComponent {
       const logs = this.logs();
       const isGroupingEnabled = this.groupingService.isGroupingEnabled();
 
+      // Update memory management service with current log count
+      this.memoryManagementService.updateCurrentLogCount(logs.length);
+
       if (isGroupingEnabled) {
         this.groupedLogs.set(this.groupingService.groupLogs(logs));
       } else {
@@ -271,26 +285,43 @@ export class LogViewportComponent {
       .pipe(
         switchMap(() => {
           this.page++;
+
+          // Extract include/exclude arrays from tri-state values
+          const triLogLevel = this.logFilterState.triStateLogLevel();
+          const triPod = this.logFilterState.triStatePod();
+          const includeLogLevel = triLogLevel?.included?.length ? triLogLevel.included : null;
+          const excludeLogLevel = triLogLevel?.excluded?.length ? triLogLevel.excluded : null;
+          const includePod = triPod?.included?.length ? triPod.included : null;
+          const excludePod = triPod?.excluded?.length ? triPod.excluded : null;
+
           const customRange = this.logFilterState.customTimeRange();
           if (customRange) {
             return this.logApi
               .getLogs(
-                this.logFilterState.selectedLogLevel(),
-                this.logFilterState.selectedPod(),
+                includeLogLevel,
+                includePod,
                 this.logFilterState.searchString(),
                 customRange.start,
                 customRange.end,
-                this.page
+                this.page,
+                200,
+                excludeLogLevel,
+                excludePod,
+                ''
               );
           } else {
             return this.logApi
               .getLogs(
-                this.logFilterState.selectedLogLevel(),
-                this.logFilterState.selectedPod(),
+                includeLogLevel,
+                includePod,
                 this.logFilterState.searchString(),
                 this.logFilterState.selectedTimeRange(),
                 undefined,
-                this.page
+                this.page,
+                200,
+                excludeLogLevel,
+                excludePod,
+                ''
               );
           }
         }),
@@ -306,11 +337,8 @@ export class LogViewportComponent {
                 const index = this.logs().length;
                 this.logs.update((items) => {
                   const newItems = [...items, ...ni];
-                  // Trim logs if we exceed memory limit
-                  if (newItems.length > this.MAX_LOGS_IN_MEMORY) {
-                    return newItems.slice(-this.MAX_LOGS_IN_MEMORY);
-                  }
-                  return newItems;
+                  // Apply memory management
+                  return this.applyMemoryManagement(newItems);
                 });
                 this.scrollToIndex(index);
               })
@@ -318,19 +346,26 @@ export class LogViewportComponent {
         takeUntilDestroyed()
       )
       .subscribe();
-    const logFilterState = toObservable(this.logFilterState.selectedLogLevel);
-    const logPodFilterState = toObservable(this.logFilterState.selectedPod);
     const searchString = toObservable(this.logFilterState.searchString);
     const timeRange = toObservable(this.logFilterState.selectedTimeRange);
     const customTimeRange = toObservable(this.logFilterState.customTimeRange);
-    combineLatest([logFilterState, logPodFilterState, searchString, timeRange, customTimeRange])
+    const triStateLogLevel = toObservable(this.logFilterState.triStateLogLevel);
+    const triStatePod = toObservable(this.logFilterState.triStatePod);
+    combineLatest([searchString, timeRange, customTimeRange, triStateLogLevel, triStatePod])
       .pipe(
-        switchMap(([level, pod, search, date, custom]) => {
+        switchMap(([search, date, custom, triLogLevel, triPod]) => {
           this.page = 1;
+
+          // Extract include/exclude arrays from tri-state values
+          const includeLogLevel = triLogLevel?.included?.length ? triLogLevel.included : null;
+          const excludeLogLevel = triLogLevel?.excluded?.length ? triLogLevel.excluded : null;
+          const includePod = triPod?.included?.length ? triPod.included : null;
+          const excludePod = triPod?.excluded?.length ? triPod.excluded : null;
+
           if (custom) {
-            return this.logApi.getLogs(level, pod, search, custom.start, custom.end, this.page);
+            return this.logApi.getLogs(includeLogLevel, includePod, search, custom.start, custom.end, this.page, 200, excludeLogLevel, excludePod, '');
           } else {
-            return this.logApi.getLogs(level, pod, search, date, undefined, this.page);
+            return this.logApi.getLogs(includeLogLevel, includePod, search, date, undefined, this.page, 200, excludeLogLevel, excludePod, '');
           }
         }),
         tap((l) => {
@@ -341,6 +376,8 @@ export class LogViewportComponent {
               view: this.cleanLogLine(z.line),
               };
             });
+
+          // Exclude filtering is now handled by the backend API
           this.logs.set(items);
         }),
         takeUntilDestroyed()
@@ -374,7 +411,7 @@ export class LogViewportComponent {
       const pod = this.logFilterState.selectedPod();
       const date = this.logFilterState.selectedTimeRange();
       const customRange = this.logFilterState.customTimeRange();
- 
+
       const filteredLogs = logs.filter((log) => {
         if (!log) return false;
 
@@ -403,15 +440,18 @@ export class LogViewportComponent {
         };
       });
 
+      // Apply exclude filters to real-time logs (still needed for SignalR since it sends all logs)
+      const excludeFilteredLogs = this.applyExcludeFilters(filteredLogs);
+
       // If live updates are paused, queue the logs instead of displaying them
       if (!this.liveUpdatesService.isLiveUpdatesEnabled()) {
-        this.liveUpdatesService.queueLogs(filteredLogs);
+        this.liveUpdatesService.queueLogs(excludeFilteredLogs);
         return;
       }
 
       // Process queued logs if any when resuming
       const queuedLogs = this.liveUpdatesService.getQueuedLogs();
-      const allLogsToProcess = [...queuedLogs, ...filteredLogs];
+      const allLogsToProcess = [...queuedLogs, ...excludeFilteredLogs];
 
       this.logs.update((x) => {
         const newLogs = [...x,...allLogsToProcess, ].sort((a, b) => {
@@ -425,15 +465,12 @@ export class LogViewportComponent {
         });
 
         // Play sound alerts for new logs (not queued ones)
-        filteredLogs.forEach(log => {
+        excludeFilteredLogs.forEach(log => {
           this.audioService.playAlert(log.logLevel);
         });
 
-        // Trim logs if we exceed memory limit
-        if (newLogs.length > this.MAX_LOGS_IN_MEMORY) {
-          return newLogs.slice(0, this.MAX_LOGS_IN_MEMORY);
-        }
-        return newLogs;
+        // Apply memory management
+        return this.applyMemoryManagement(newLogs);
       });
 
       // Clear queued logs after processing
@@ -509,60 +546,6 @@ export class LogViewportComponent {
     }
   }
 
-  @HostListener('keydown', ['$event'])
-  onKeyDown(event: KeyboardEvent) {
-    // Only handle arrow keys and only when not in input fields
-    if (event.target instanceof HTMLInputElement || event.target instanceof HTMLTextAreaElement) {
-      return;
-    }
-
-    const logs = this.logs();
-    const currentLogId = this.selectedLogId();
-
-    switch (event.key) {
-      case 'ArrowDown':
-        event.preventDefault();
-        if (logs.length > 0) {
-          let currentIndex = logs.findIndex(log => log.id.toString() === currentLogId);
-          if (currentIndex === -1) currentIndex = -1; // Start from beginning if no selection
-          const newIndex = currentIndex < logs.length - 1 ? currentIndex + 1 : logs.length - 1;
-          this.selectedLogId.set(logs[newIndex].id.toString());
-          this.scrollToSelectedLog(newIndex);
-        }
-        break;
-
-      case 'ArrowUp':
-        event.preventDefault();
-        if (logs.length > 0) {
-          let currentIndex = logs.findIndex(log => log.id.toString() === currentLogId);
-          if (currentIndex === -1) currentIndex = 1; // Start from end if no selection
-          const newIndex = currentIndex > 0 ? currentIndex - 1 : 0;
-          this.selectedLogId.set(logs[newIndex].id.toString());
-          this.scrollToSelectedLog(newIndex);
-        }
-        break;
-
-      case 'Enter':
-        event.preventDefault();
-        if (currentLogId) {
-          const selectedLog = logs.find(log => log.id.toString() === currentLogId);
-          if (selectedLog) {
-            this.copyLog(selectedLog);
-          }
-        }
-        break;
-
-      case 'Space':
-        event.preventDefault();
-        if (currentLogId) {
-          const selectedLog = logs.find(log => log.id.toString() === currentLogId);
-          if (selectedLog) {
-            this.openLogModal(selectedLog);
-          }
-        }
-        break;
-    }
-  }
 
   // Context menu methods
   showContextMenu(event: MouseEvent, log: Log) {
@@ -629,12 +612,83 @@ export class LogViewportComponent {
     }
   }
 
-  private scrollToSelectedLog(index: number) {
+  private scrollToSelectedLog(logIndex: number) {
     const viewport = this.viewPort();
-    if (viewport) {
-      viewport.scrollToIndex(index, true);
+    if (!viewport) return;
+
+    const logs = this.logs();
+    const groupedLogs = this.groupedLogs();
+
+    if (logIndex < 0 || logIndex >= logs.length) return;
+
+    const targetLogId = logs[logIndex].id.toString();
+
+    // Find the index in the grouped logs array
+    let groupedIndex = -1;
+
+    for (let i = 0; i < groupedLogs.length; i++) {
+      const item = groupedLogs[i];
+
+      if (this.groupingService.isLogGroup(item)) {
+        // Check if the target log is in this group
+        const groupContainsTarget = item.logs.some(log => log.id.toString() === targetLogId);
+        if (groupContainsTarget) {
+          groupedIndex = i;
+          break;
+        }
+      } else {
+        // Individual log
+        if (item.id.toString() === targetLogId) {
+          groupedIndex = i;
+          break;
+        }
+      }
+    }
+
+    if (groupedIndex !== -1) {
+      // For virtual scrolling, we need to ensure smooth scrolling and proper viewport management
+      try {
+        // Use scrollToIndex with alignment to keep item in view
+        viewport.scrollToIndex(groupedIndex, true, 0, 50); // 50px offset from top for better visibility
+
+        // Additional step: after scroll, ensure the selected item is properly highlighted
+        // Use setTimeout to wait for virtual scroller to render the item
+        setTimeout(() => {
+          this.ensureSelectedItemVisible(targetLogId);
+        }, 100);
+      } catch (error) {
+        // Fallback: manual scroll calculation for virtual scroller
+        console.warn('Virtual scroller navigation fallback', error);
+        this.fallbackScrollToItem(groupedIndex);
+      }
     }
   }
+
+  private ensureSelectedItemVisible(targetLogId: string) {
+    // Check if the selected item is in the DOM and properly highlighted
+    const selectedElement = this.elementRef.nativeElement.querySelector(`[data-log-id="${targetLogId}"]`);
+    if (selectedElement) {
+      // Ensure it's visible in the viewport
+      selectedElement.scrollIntoView({
+        behavior: 'smooth',
+        block: 'nearest',
+        inline: 'nearest'
+      });
+    }
+  }
+
+  private fallbackScrollToItem(index: number) {
+    const viewport = this.viewPort();
+    if (!viewport) return;
+
+    // Try to use the scrollToIndex method with different parameters as fallback
+    try {
+      viewport.scrollToIndex(index, false, 0, 0);
+    } catch (error) {
+      console.warn('Fallback scroll also failed:', error);
+    }
+  }
+
 
   openLogModal(log: Log): void {
     const modal = this.logDetailsModal();
@@ -673,6 +727,61 @@ export class LogViewportComponent {
     // Fallback to window if no scroll container found
     this.parentScrollElement.set(window);
     console.log('Using window as scroll container');
+  }
+
+  private applyExcludeFilters(logs: Log[]): Log[] {
+    const excludeLogLevel = this.logFilterState.excludeLogLevel();
+    const excludePod = this.logFilterState.excludePod();
+    const excludeSearchString = this.logFilterState.excludeSearchString();
+
+    // If no exclude filters are set, return original logs
+    if ((!excludeLogLevel || excludeLogLevel.length === 0) &&
+        (!excludePod || excludePod.length === 0) &&
+        !excludeSearchString) {
+      return logs;
+    }
+
+    return logs.filter(log => {
+      // Exclude by log level
+      if (excludeLogLevel && excludeLogLevel.length > 0 && excludeLogLevel.includes(log.logLevel)) {
+        return false;
+      }
+
+      // Exclude by pod
+      if (excludePod && excludePod.length > 0 && excludePod.includes(log.pod)) {
+        return false;
+      }
+
+      // Exclude by search string
+      if (excludeSearchString && log.line.includes(excludeSearchString)) {
+        return false;
+      }
+
+      return true;
+    });
+  }
+
+  private applyMemoryManagement(logs: Log[]): Log[] {
+    const maxLogs = this.memoryManagementService.maxLogsInMemory();
+
+    // Simple limit enforcement - keep the most recent logs
+    if (logs.length > maxLogs) {
+      const overage = logs.length - maxLogs;
+      console.log(`Memory management: Removing ${overage} logs. Total: ${logs.length} -> ${logs.length - overage}`);
+      return logs.slice(-maxLogs); // Keep the most recent logs
+    }
+
+    // Check if auto-cleanup is needed
+    if (this.memoryManagementService.shouldCleanup()) {
+      const targetCount = this.memoryManagementService.getTargetLogCountAfterCleanup();
+      if (targetCount < logs.length) {
+        const removedCount = logs.length - targetCount;
+        console.log(`Auto-cleanup: Removing ${removedCount} logs. Total: ${logs.length} -> ${targetCount}`);
+        return logs.slice(-targetCount); // Keep the most recent logs
+      }
+    }
+
+    return logs;
   }
 
 }

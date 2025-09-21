@@ -24,13 +24,16 @@ export interface ContextMenuAction {
         @for (action of actions(); track action.action) {
           @if (action.divider) {
             <div class="menu-divider"></div>
+          } @else {
+            <button
+              class="menu-item"
+              (click)="onActionClick(action.action)">
+              @if (action.icon) {
+                <lucide-icon [name]="action.icon" size="14"></lucide-icon>
+              }
+              {{ action.label }}
+            </button>
           }
-          <button
-            class="menu-item"
-            (click)="onActionClick(action.action)">
-            <lucide-icon [name]="action.icon" size="14"></lucide-icon>
-            {{ action.label }}
-          </button>
         }
       </div>
     }

@@ -87,6 +87,39 @@
     }
   }
 
+  .tri-state-summary {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+
+    .included-count, .excluded-count {
+      display: flex;
+      align-items: center;
+      gap: 0.25rem;
+      font-size: 0.875rem;
+      font-weight: 500;
+
+      .count-badge {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        min-width: 1.5rem;
+        height: 1.5rem;
+        background-color: var(--primary);
+        color: white;
+        border-radius: 50%;
+        font-size: 0.75rem;
+        font-weight: 600;
+        padding: 0 0.25rem;
+      }
+
+      .count-text {
+        color: var(--on-surface);
+        font-weight: 500;
+      }
+    }
+  }
+
   &:not(.multiple) {
     text-overflow: ellipsis;
     white-space: nowrap;
@@ -231,6 +264,79 @@
     height: 1rem;
     accent-color: var(--primary);
     margin: 0;
+  }
+
+  &.tri-state-item {
+    .tri-state-icon {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 1rem;
+      height: 1rem;
+      border-radius: 2px;
+      border: 1px solid #666;
+      background: var(--input-bg);
+      transition: all 0.15s ease;
+      flex-shrink: 0;
+
+      .unspecified-icon {
+        display: none;
+      }
+
+      lucide-icon {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+
+        &.include-icon {
+          color: var(--primary);
+        }
+
+        &.exclude-icon {
+          color: var(--primary);
+        }
+      }
+    }
+
+    &.included {
+      .tri-state-icon {
+        background-color: var(--primary);
+        border-color: var(--primary);
+
+        lucide-icon.include-icon {
+          color: #1a1a1a;
+
+          svg {
+            stroke-width: 4;
+          }
+        }
+      }
+    }
+
+    &.excluded {
+      .tri-state-icon {
+        background-color: var(--danger);
+        border-color: var(--danger);
+
+        lucide-icon.exclude-icon {
+          color: white;
+
+          svg {
+            stroke-width: 4;
+          }
+        }
+      }
+    }
+
+    &:hover:not(.disabled) {
+      .tri-state-icon {
+        transform: scale(1.1);
+
+        &:has(.unspecified-icon) {
+          background-color: var(--surface-container);
+        }
+      }
+    }
   }
 }
 

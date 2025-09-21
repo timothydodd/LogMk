@@ -53,6 +53,16 @@ public class LogRepo
             builder.AppendAnd($"{fieldClause} IN ({ids})");
         }
     }
+
+    private void AddManyExclude<T>(IEnumerable<T>? items, DynamicParameters dynamicParameters, WhereBuilder builder, string paramName, string fieldClause)
+    {
+        if (items != null && items.Any())
+        {
+            List<string> keys = dynamicParameters.AddList(items, paramName);
+            var ids = string.Join(',', keys);
+            builder.AppendAnd($"{fieldClause} NOT IN ({ids})");
+        }
+    }
     public async Task<PagedResults<Log>> GetAll(int offset = 0,
                                                             int pageSize = 100,
                                                             DateTime? dateStart = null,
@@ -60,7 +70,11 @@ public class LogRepo
                                                             string? search = null,
                                                             string[]? pod = null,
                                                             string[]? deployment = null,
-                                                            string[]? logLevel = null)
+                                                            string[]? logLevel = null,
+                                                            string? excludeSearch = null,
+                                                            string[]? excludePod = null,
+                                                            string[]? excludeDeployment = null,
+                                                            string[]? excludeLogLevel = null)
     {
         var result = new PagedResults<Log>();
         var sortOrderBuilder = new List<string>();
@@ -69,13 +83,21 @@ public class LogRepo
 
         var dynamicParameters = new DynamicParameters();
 
+        // Include filters
         AddMany(pod, dynamicParameters, whereBuilder, "plp", "l.Pod");
         AddMany(deployment, dynamicParameters, whereBuilder, "dlp", "l.Deployment");
         AddMany(logLevel, dynamicParameters, whereBuilder, "llp", "l.LogLevel");
 
+        // Exclude filters
+        AddManyExclude(excludePod, dynamicParameters, whereBuilder, "eplp", "l.Pod");
+        AddManyExclude(excludeDeployment, dynamicParameters, whereBuilder, "edlp", "l.Deployment");
+        AddManyExclude(excludeLogLevel, dynamicParameters, whereBuilder, "ellp", "l.LogLevel");
 
         if (!string.IsNullOrWhiteSpace(search))
             search = $"%{search}%";
+
+        if (!string.IsNullOrWhiteSpace(excludeSearch))
+            excludeSearch = $"%{excludeSearch}%";
 
 
 
@@ -87,15 +109,23 @@ public class LogRepo
         dynamicParameters.AddIfNotNull("dateEndHour", dateEnd?.Hour);
 
         dynamicParameters.AddIfNotNull("search", search);
+        dynamicParameters.AddIfNotNull("excludeSearch", excludeSearch);
 
         whereBuilder.AppendAnd(dateStart, "l.LogDate >= @dateStart AND (l.LogDate != @dateStart || (l.LogHour >= @dateStartHour))");
         whereBuilder.AppendAnd(dateEnd, "l.LogDate <= @dateEnd  AND (l.LogDate != @dateEnd || (l.LogHour < @dateEndHour)) ");
 
+        // Include search filter
         var likeClause = new AndOrBuilder();
         likeClause.AppendOr(search, "l.Line LIKE  @search ");
         if (likeClause.Length > 0)
         {
             whereBuilder.AppendAnd($"({likeClause})");
+        }
+
+        // Exclude search filter
+        if (!string.IsNullOrWhiteSpace(excludeSearch))
+        {
+            whereBuilder.AppendAnd("l.Line NOT LIKE @excludeSearch");
         }
 
         var queryBase = @"

@@ -28,12 +28,26 @@ public class LogSummaryRepo
         }
     }
 
+    private void AddManyExclude<T>(IEnumerable<T>? items, DynamicParameters dynamicParameters, WhereBuilder builder, string paramName, string fieldClause)
+    {
+        if (items != null && items.Any())
+        {
+            List<string> keys = dynamicParameters.AddList(items, paramName);
+            var ids = string.Join(',', keys);
+            builder.AppendAnd($"{fieldClause} NOT IN ({ids})");
+        }
+    }
+
     public async Task<LogStatistic> GetStatistics(DateTime? dateStart = null,
                                                             DateTime? dateEnd = null,
                                                             string? search = null,
                                                             string[]? pod = null,
                                                             string[]? deployment = null,
-                                                            string[]? logLevel = null)
+                                                            string[]? logLevel = null,
+                                                            string? excludeSearch = null,
+                                                            string[]? excludePod = null,
+                                                            string[]? excludeDeployment = null,
+                                                            string[]? excludeLogLevel = null)
     {
 
         var dynamicParameters = new DynamicParameters();
@@ -48,9 +62,15 @@ public class LogSummaryRepo
 
 
         var whereBuilder = new WhereBuilder();
+        // Include filters
         AddMany(pod, dynamicParameters, whereBuilder, "plp", "Pod");
         AddMany(deployment, dynamicParameters, whereBuilder, "dlp", "Deployment");
         AddMany(logLevel, dynamicParameters, whereBuilder, "llp", "LogLevel");
+
+        // Exclude filters (Note: excludeSearch not supported for stats since summary tables don't have Line content)
+        AddManyExclude(excludePod, dynamicParameters, whereBuilder, "eplp", "Pod");
+        AddManyExclude(excludeDeployment, dynamicParameters, whereBuilder, "edlp", "Deployment");
+        AddManyExclude(excludeLogLevel, dynamicParameters, whereBuilder, "ellp", "LogLevel");
 
         var isGreaterThan3Days = dateStart == null ? true : DateTime.UtcNow.Subtract(dateStart.Value).TotalDays > 3;
         var query = "";
