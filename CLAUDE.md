@@ -406,6 +406,137 @@ Use provided mixins for consistent styling:
 
 This styling system ensures a consistent, maintainable, and accessible dark theme throughout the LogMk application while supporting full-width layouts optimized for log monitoring workflows.
 
+### **Shared Component Styling Guidelines**
+
+**Global Style Classes for Component Reuse:**
+When creating new components, always check `src/styles/_dropdowns.scss` for existing reusable classes before writing component-specific styles. This file contains common patterns extracted from dropdown and filter components.
+
+**Available Global Classes:**
+```scss
+// Dropdown and menu styling
+.dropdown-menu-base        // Base dropdown menu with positioning and styling
+.dropdown-item-base        // Standard dropdown item with hover states
+.category-header-base      // Collapsible category headers with icons
+.custom-scrollbar          // Consistent scrollbar styling for lists
+
+// Form controls and inputs
+.search-input-base         // Standard search input with focus states
+.search-wrapper-base       // Search wrapper with icon positioning
+.compact-control           // Compact sizing (32px height) for filter controls
+
+// Buttons and actions
+.action-btn-base           // Standard action button with hover/active/disabled states
+.count-badge-base          // Circular count badges for quantities
+.tag-base                  // Selected item tags with remove functionality
+
+// Layout utilities
+.filter-container-base     // Flex container for filter controls
+.slide-down                // Slide-down animation for expanding sections
+```
+
+**Component Styling Best Practices:**
+```scss
+// ✅ Prefer global classes over component-specific styles
+.my-component {
+  .search-section {
+    @extend .search-wrapper-base;  // Use global class
+  }
+
+  .action-button {
+    @extend .action-btn-base;      // Use global class
+    // Add only component-specific overrides if needed
+    width: 100px;
+  }
+}
+
+// ❌ Avoid duplicating common patterns
+.my-component {
+  .search-input {
+    background: var(--input-bg);  // This is already in .search-input-base
+    color: var(--on-surface);     // Duplicate styling
+    border: 1px solid var(--border-color);
+    // ... more duplicate code
+  }
+}
+```
+
+**Creating New Shared Styles:**
+When you notice styling patterns being duplicated across 2+ components:
+
+1. **Extract to `_dropdowns.scss`** (or create new shared file if different domain)
+2. **Create reusable classes** (not mixins) for direct component usage
+3. **Use mixins only** for patterns that need customization parameters
+4. **Update this documentation** with new available classes
+
+**Style Architecture Philosophy:**
+- **Global classes for common patterns** - Direct usage in components
+- **Mixins for customizable patterns** - When parameters are needed
+- **Component styles for unique behavior** - Only what's truly component-specific
+- **CSS variables for all colors** - Never hardcode colors or spacing
+
+### **Implementation Best Practices**
+
+**Template Class Usage:**
+Always apply global classes directly in HTML templates, never use `@extend` in component SCSS:
+
+```html
+<!-- ✅ Correct: Direct class usage in template -->
+<div class="dropdown-panel dropdown-menu-base">
+  <input class="search-input search-input-base compact-control" />
+  <button class="clear-btn action-btn-base" />
+</div>
+
+<!-- ❌ Avoid: Using @extend in component SCSS -->
+<!-- This requires separate CSS rules instead of direct class usage -->
+```
+
+**Component SCSS Override Pattern:**
+Use global classes as selectors for component-specific overrides:
+
+```scss
+// ✅ Correct: Override global classes for component-specific styling
+.search-input-base {
+  &.filter-search {
+    width: 100%;
+    padding-left: 28px; // Space for icon
+  }
+}
+
+.action-btn-base {
+  &.clear-filters-btn {
+    width: 32px;
+    height: 32px;
+  }
+}
+
+// ❌ Avoid: Using @extend in component SCSS
+.filter-search {
+  @extend .search-input-base; // Don't do this
+  width: 100%;
+}
+```
+
+**Multi-Class Approach:**
+Combine global base classes with modifier classes for different variants:
+
+```html
+<!-- Base functionality + size modifier + component-specific -->
+<input class="search-input search-input-base compact-control" />
+
+<!-- Base functionality + component-specific styling -->
+<button class="action-btn action-btn-base clear-filters-btn" />
+
+<!-- Base + multiple modifiers -->
+<div class="dropdown-item dropdown-item-base action-item" />
+```
+
+**Benefits of This Approach:**
+- **Performance**: No CSS inheritance overhead from `@extend`
+- **Transparency**: Easy to see which global classes are used in templates
+- **Maintainability**: Global class changes automatically affect all components
+- **Debugging**: Clear class names in DevTools for easier inspection
+- **Consistency**: Enforces consistent styling patterns across components
+
 ## Advanced Features & Services
 
 ### **Real-time Log Processing**

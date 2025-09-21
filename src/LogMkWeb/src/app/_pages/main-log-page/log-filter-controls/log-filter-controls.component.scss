@@ -1,11 +1,3 @@
-.compact-toolbar {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 6px 8px;
-  background: var(--surface);
-  min-height: 40px;
-}
 
 .filter-item {
   display: flex;
@@ -26,25 +18,9 @@
       z-index: 1;
     }
 
-    .search-input {
+    .search-input-base {
       width: 100%;
-      padding: 6px 8px 6px 28px;
-      font-size: 0.875rem;
-      background: var(--input-bg);
-      color: var(--on-surface);
-      border: 1px solid var(--border-color);
-      border-radius: 4px;
-      transition: all 0.2s ease;
-
-      &:focus {
-        outline: none;
-        border-color: var(--primary);
-        box-shadow: 0 0 0 2px var(--focus-ring);
-      }
-
-      &::placeholder {
-        color: var(--on-surface-muted);
-      }
+    
     }
   }
 
@@ -52,73 +28,29 @@
   app-time-filter-dropdown {
     min-width: 120px;
 
-    // Make time-filter-dropdown compact to match search box height
-    ::ng-deep .dropdown-trigger {
-      padding: 6px 8px;
-      height: 32px;
-      font-size: 0.875rem;
-    }
   }
 }
 
 .exclude-toggle-btn {
-  display: flex;
-  align-items: center;
   gap: 6px;
   padding: 6px 10px;
-  height: 32px;
-  background: var(--surface-container);
-  color: var(--on-surface);
-  border: 1px solid var(--border-color);
-  border-radius: 4px;
-  cursor: pointer;
-  transition: all 0.2s ease;
   flex-shrink: 0;
-  font-size: 0.875rem;
 
   .exclude-label {
     font-weight: 500;
   }
-
-  &:hover {
-    background: var(--surface-container-high);
-    color: var(--primary);
-    border-color: var(--primary);
-  }
-
-  &.active {
-    background: var(--primary);
-    color: var(--on-primary);
-    border-color: var(--primary);
-  }
 }
 
-.clear-filters-btn {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 32px;
-  height: 32px;
-  padding: 0;
-  background: var(--surface-container);
-  color: var(--on-surface);
-  border: 1px solid var(--border-color);
-  border-radius: 4px;
-  cursor: pointer;
-  transition: all 0.2s ease;
-  flex-shrink: 0;
-
-  &:hover:not(:disabled) {
-    background: var(--surface-container-high);
-    color: var(--primary);
-    border-color: var(--primary);
+.action-btn-base {
+  &.clear-filters-btn {
+    width: 32px;
+    height: 32px;
+    flex-shrink: 0;
   }
 
-  &:disabled {
-    opacity: 0.5;
-    cursor: not-allowed;
-    background: var(--surface-container);
-    color: var(--on-surface-muted);
+  &.actions-btn {
+    width: 32px;
+    height: 32px;
   }
 }
 
@@ -128,79 +60,24 @@
   flex-shrink: 0;
 }
 
-.actions-btn {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 32px;
-  height: 32px;
-  padding: 0;
-  background: var(--surface-container);
-  color: var(--on-surface);
-  border: 1px solid var(--border-color);
-  border-radius: 4px;
-  cursor: pointer;
-  transition: all 0.2s ease;
 
-  &:hover {
-    background: var(--surface-container-high);
-    color: var(--primary);
-    border-color: var(--primary);
-  }
-
-  &.active {
-    background: var(--primary);
-    color: var(--on-primary);
-    border-color: var(--primary);
+.dropdown-menu-base {
+  &.actions-dropdown {
+    right: 0;
+    left: auto;
+    min-width: 200px;
   }
 }
 
-.actions-dropdown {
-  position: absolute;
-  top: calc(100% + 4px);
-  right: 0;
-  background: var(--surface);
-  border: 1px solid var(--border-color);
-  border-radius: 6px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
-  z-index: 1000;
-  min-width: 200px;
-  overflow: hidden;
-}
-
-.category-header {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 10px 16px;
-  font-size: 0.8125rem;
-  font-weight: 600;
-  color: var(--primary);
-  background: var(--surface-variant);
-  border: none;
-  cursor: pointer;
-  transition: background-color 0.2s ease;
-  width: 100%;
-  text-align: left;
-  justify-content: space-between;
+.category-header-base {
   border-top: 1px solid var(--border-color);
 
   &:first-child {
     border-top: none;
   }
 
-  &:hover {
-    background: var(--surface-container);
-  }
-
-  lucide-icon {
-    flex-shrink: 0;
-    color: var(--primary);
-    transition: transform 0.2s ease;
-
-    &:last-child.rotated {
-      transform: rotate(180deg);
-    }
+  lucide-icon:last-child.rotated {
+    transform: rotate(180deg);
   }
 }
 
@@ -213,77 +90,23 @@
   }
 }
 
-.action-item {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 12px 16px;
-  font-size: 0.875rem;
-  color: var(--on-surface);
-  background: transparent;
-  border: none;
-  cursor: pointer;
-  transition: background-color 0.2s ease;
-  width: 100%;
-  text-align: left;
-
-  .category-content & {
-    padding-left: 32px; // Indent items inside categories
-  }
-
-  &:hover:not(:disabled) {
-    background: var(--surface-container);
-  }
-
-  &:disabled {
-    opacity: 0.5;
-    cursor: not-allowed;
-  }
-
-  lucide-icon {
-    flex-shrink: 0;
-    color: var(--on-surface-variant);
-  }
-
-  .badge {
-    background: var(--warning);
-    color: var(--on-primary);
-    font-size: 0.75rem;
-    font-weight: 600;
-    padding: 2px 6px;
-    border-radius: 10px;
-    margin-left: auto;
-    min-width: 18px;
-    text-align: center;
-    line-height: 1.2;
-  }
-
-  &.submenu-trigger {
-    justify-content: space-between;
+.dropdown-item-base {
+  &.action-item {
+    gap: 8px;
+    padding: 12px 16px;
+    font-size: 0.875rem;
 
     .category-content & {
-      padding-left: 32px; // Maintain indentation for submenu triggers inside categories
+      padding-left: 32px; // Indent items inside categories
     }
 
-    lucide-icon:last-child {
-      transition: transform 0.2s ease;
-
-      &.rotated {
-        transform: rotate(180deg);
-      }
-    }
-  }
-
-  &.active {
-    background: var(--primary);
-    color: var(--on-primary);
-    font-weight: 600;
-
-    lucide-icon {
-      color: var(--on-primary);
+    &:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
     }
   }
 }
+
 
 .submenu {
   border-top: 1px solid var(--border-color);
@@ -410,7 +233,10 @@
 .exclude-filters-section {
   background: var(--surface-variant);
   border-top: 1px solid var(--border-color);
-  animation: slideDown 0.2s ease-out;
+
+  &.slide-down {
+    animation: slideDown 0.2s ease-out;
+  }
 }
 
 .exclude-filters-header {
@@ -458,22 +284,12 @@
 
     .exclude-input {
       width: 100%;
-      padding: 6px 8px 6px 28px;
-      font-size: 0.875rem;
-      background: var(--input-bg);
-      color: var(--on-surface);
-      border: 1px solid var(--danger);
-      border-radius: 4px;
-      transition: all 0.2s ease;
+      padding-left: 28px;
+      border-color: var(--danger);
 
       &:focus {
-        outline: none;
         border-color: var(--danger);
         box-shadow: 0 0 0 2px rgba(255, 85, 85, 0.2);
-      }
-
-      &::placeholder {
-        color: var(--on-surface-muted);
       }
     }
   }
@@ -482,9 +298,6 @@
     min-width: 120px;
 
     ::ng-deep .dropdown-trigger {
-      padding: 6px 8px;
-      height: 32px;
-      font-size: 0.875rem;
       border-color: var(--danger);
 
       &:focus,
@@ -497,19 +310,11 @@
 }
 
 .clear-exclude-btn {
-  display: flex;
-  align-items: center;
-  justify-content: center;
   width: 28px;
   height: 28px;
-  padding: 0;
-  background: var(--surface-container);
-  color: var(--danger);
-  border: 1px solid var(--danger);
-  border-radius: 4px;
-  cursor: pointer;
-  transition: all 0.2s ease;
   flex-shrink: 0;
+  color: var(--danger);
+  border-color: var(--danger);
 
   &:hover:not(:disabled) {
     background: var(--danger);
@@ -517,10 +322,6 @@
   }
 
   &:disabled {
-    opacity: 0.5;
-    cursor: not-allowed;
-    background: var(--surface-container);
-    color: var(--on-surface-muted);
     border-color: var(--border-color);
   }
 }
@@ -649,20 +450,11 @@
   }
 }
 
-.memory-input {
-  width: 100%;
-  padding: 4px 8px;
-  font-size: 0.8125rem;
-  background: var(--input-bg);
-  color: var(--on-surface);
-  border: 1px solid var(--border-color);
-  border-radius: 4px;
-  transition: all 0.2s ease;
-
-  &:focus {
-    outline: none;
-    border-color: var(--primary);
-    box-shadow: 0 0 0 2px var(--focus-ring);
+.search-input-base {
+  &.memory-input {
+    width: 100%;
+    padding: 4px 8px;
+    font-size: 0.8125rem;
   }
 }
 

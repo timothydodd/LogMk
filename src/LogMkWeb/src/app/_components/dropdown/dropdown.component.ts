@@ -48,13 +48,13 @@ export interface DropdownItem {
               <div class="tri-state-summary">
                 @if (triStateValue().included.length > 0) {
                   <span class="included-count">
-                    <span class="count-badge">{{ triStateValue().included.length }}</span>
+                    <span class="count-badge count-badge-base">{{ triStateValue().included.length }}</span>
                     <span class="count-text">included</span>
                   </span>
                 }
                 @if (triStateValue().excluded.length > 0) {
                   <span class="excluded-count">
-                    <span class="count-badge">{{ triStateValue().excluded.length }}</span>
+                    <span class="count-badge count-badge-base">{{ triStateValue().excluded.length }}</span>
                     <span class="count-text">excluded</span>
                   </span>
                 }
@@ -65,7 +65,7 @@ export interface DropdownItem {
               <span class="placeholder">{{ placeholder() }}</span>
             } @else if (showCount() || selectedItems().length > maxTagsDisplay()) {
               <div class="selected-count">
-                <span class="count-badge">{{ selectedItems().length }}</span>
+                <span class="count-badge count-badge-base">{{ selectedItems().length }}</span>
                 <span class="count-text">
                   {{ selectedItems().length === 1 ? 'item' : 'items' }} selected
                 </span>
@@ -73,7 +73,7 @@ export interface DropdownItem {
             } @else {
               <div class="selected-tags">
                 @for (item of selectedItems(); track item.value) {
-                  <span class="tag">
+                  <span class="tag tag-base">
                     {{ item.label }}
                     <lucide-icon name="x" size="12" (click)="removeItem($event, item)"></lucide-icon>
                   </span>
@@ -95,13 +95,13 @@ export interface DropdownItem {
       </div>
 
       @if (isOpen()) {
-        <div class="dropdown-panel" [style.min-width.px]="minWidth()">
+        <div class="dropdown-panel dropdown-menu-base" [style.min-width.px]="minWidth()">
           @if (searchable()) {
-            <div class="dropdown-search">
-              <lucide-icon name="search" size="16" class="search-icon"></lucide-icon>
+            <div class="dropdown-search search-wrapper-base">
+              <lucide-icon name="search" size="16" class="input-icon"></lucide-icon>
               <input
                 type="text"
-                class="search-input"
+                class="search-input search-input-base"
                 [placeholder]="searchPlaceholder()"
                 [(ngModel)]="searchTerm"
                 (ngModelChange)="onSearchChange()"
@@ -113,7 +113,7 @@ export interface DropdownItem {
           @if (multiple() && showSelectAll() && filteredOptions().length > 0) {
             <div class="dropdown-select-all">
               <div
-                class="dropdown-item select-all-item"
+                class="dropdown-item dropdown-item-base select-all-item"
                 (click)="toggleSelectAll()"
               >
                 <input
@@ -126,11 +126,11 @@ export interface DropdownItem {
               </div>
             </div>
           }
-          <div class="dropdown-items">
+          <div class="dropdown-items custom-scrollbar">
             @if (triState()) {
               @for (option of filteredTriStateOptions(); track option.value) {
                 <div
-                  class="dropdown-item tri-state-item"
+                  class="dropdown-item dropdown-item-base tri-state-item"
                   [class.included]="option.state === 'included'"
                   [class.excluded]="option.state === 'excluded'"
                   [class.disabled]="option.disabled"
@@ -151,7 +151,7 @@ export interface DropdownItem {
             } @else {
               @for (option of filteredOptions(); track option.value) {
                 <div
-                  class="dropdown-item"
+                  class="dropdown-item dropdown-item-base"
                   [class.selected]="isSelected(option)"
                   [class.disabled]="option.disabled"
                   (click)="selectOption(option)"
@@ -169,7 +169,7 @@ export interface DropdownItem {
               }
             }
             @if (filteredOptions().length === 0) {
-              <div class="dropdown-item disabled">
+              <div class="dropdown-item dropdown-item-base disabled">
                 {{ searchTerm() ? 'No matching options' : 'No options available' }}
               </div>
             }

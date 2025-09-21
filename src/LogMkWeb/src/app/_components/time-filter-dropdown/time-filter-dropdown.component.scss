@@ -13,6 +13,9 @@
 
 .dropdown-trigger {
   @include form-control-base;
+  padding: 6px 8px;
+    height: 32px;
+    font-size: .875rem;
   
   display: flex;
   align-items: center;

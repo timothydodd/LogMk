@@ -1,0 +1,258 @@
+// Shared dropdown and filter control classes
+// Use these classes directly in components instead of duplicating styles
+
+// Base dropdown menu that can be used directly
+.dropdown-menu-base {
+  background: var(--surface);
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  overflow: hidden;
+  z-index: 1000;
+  position: absolute;
+  top: calc(100% + 4px);
+  min-width: 100%;
+}
+
+// Search input that can be used directly
+.search-input-base {
+  background: var(--input-bg);
+  color: var(--on-surface);
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+  font-size: 0.875rem;
+  transition: all 0.2s ease;
+  outline: none;
+  padding: 6px 8px 6px 28px;
+
+  &::placeholder {
+    color: var(--on-surface-muted);
+  }
+
+  &:focus {
+    border-color: var(--primary);
+    box-shadow: 0 0 0 2px var(--focus-ring);
+  }
+}
+
+// Action button that can be used directly
+.action-btn-base {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--surface-container);
+  color: var(--on-surface);
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  padding: 0;
+
+  &:hover:not(:disabled) {
+    background: var(--surface-container-high);
+    color: var(--primary);
+    border-color: var(--primary);
+  }
+
+  &:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    background: var(--surface-container);
+    color: var(--on-surface-muted);
+  }
+
+  &.active {
+    background: var(--primary);
+    color: var(--on-primary);
+    border-color: var(--primary);
+  }
+}
+
+// Compact sizing class for filter controls
+.compact-control {
+  height: 32px;
+  font-size: 0.875rem;
+}
+
+// Search wrapper with icon
+.search-wrapper-base {
+  display: flex;
+  position: relative;
+  align-items: center;
+  flex: 1;
+
+
+  .search-input {
+    width: 100%;
+  }
+}
+
+// Custom scrollbar for dropdown lists
+.custom-scrollbar {
+  &::-webkit-scrollbar {
+    width: 12px;
+    background: transparent;
+  }
+
+  &::-webkit-scrollbar-track {
+    background: var(--surface-variant);
+    border-radius: 6px;
+  }
+
+  &::-webkit-scrollbar-thumb {
+    background: var(--border-color);
+    border-radius: 6px;
+    border: 2px solid var(--surface-variant);
+
+    &:hover {
+      background: var(--on-surface-variant);
+    }
+  }
+
+  scrollbar-width: thin;
+  scrollbar-color: var(--border-color) var(--surface-variant);
+}
+
+// Dropdown item base that can be used directly
+.dropdown-item-base {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 0.75rem;
+  color: var(--on-surface);
+  cursor: pointer;
+  transition: all 0.15s ease;
+  font-size: 1rem;
+  background: transparent;
+  border: none;
+  width: 100%;
+  text-align: left;
+
+  &:hover:not(.disabled) {
+    background-color: var(--surface-container);
+  }
+
+  &.disabled {
+    color: var(--disabled-text);
+    cursor: not-allowed;
+  }
+
+  lucide-icon {
+    flex-shrink: 0;
+    color: var(--on-surface-variant);
+  }
+}
+
+// Category header that can be used directly
+.category-header-base {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 16px;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--primary);
+  background: var(--surface-variant);
+  border: none;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+  width: 100%;
+  text-align: left;
+  justify-content: space-between;
+
+  &:hover {
+    background: var(--surface-container);
+  }
+
+  lucide-icon {
+    flex-shrink: 0;
+    color: var(--primary);
+    transition: transform 0.2s ease;
+
+    &.rotated {
+      transform: rotate(180deg);
+    }
+  }
+}
+
+// Count badge that can be used directly
+.count-badge-base {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 1.5rem;
+  height: 1.5rem;
+  background-color: var(--primary);
+  color: var(--on-primary);
+  border-radius: 50%;
+  font-size: 0.75rem;
+  font-weight: 600;
+  padding: 0 0.25rem;
+}
+
+// Tag styling for selected items
+.tag-base {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  background-color: var(--primary);
+  color: var(--on-primary);
+  padding: 0.125rem 0.375rem;
+  border-radius: 4px;
+  font-size: 0.75rem;
+  font-weight: 500;
+
+  lucide-icon {
+    cursor: pointer;
+    opacity: 0.7;
+    &:hover { opacity: 1; }
+  }
+}
+
+// Filter container layout
+.filter-container-base {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 8px;
+  background: var(--surface);
+  min-height: 40px;
+}
+
+// Slide down animation class
+.slide-down {
+  animation: slideDown 0.2s ease-out;
+}
+
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+// Mixins for customizable patterns only
+@mixin dropdown-positioning($width: 100%, $max-width: 400px) {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  width: max-content;
+  min-width: $width;
+  max-width: $max-width;
+  max-height: 500px;
+  overflow: visible;
+  z-index: 1000;
+}
+
+@mixin responsive-mobile-full-width {
+  @media (max-width: 576px) {
+    min-width: unset;
+    width: 100%;
+    left: 0;
+    right: 0;
+  }
+}
