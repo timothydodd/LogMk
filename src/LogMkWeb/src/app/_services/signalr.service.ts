@@ -131,5 +131,6 @@ export interface Log {
   view: string;
   logLevel: string;
   timeStamp: Date;
-  podColor:string;
+  podColor: string;
+  sequenceNumber: number;
 }

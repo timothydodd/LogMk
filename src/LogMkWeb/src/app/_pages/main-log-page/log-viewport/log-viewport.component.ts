@@ -13,6 +13,7 @@ import { LineNumbersService } from '../../../_services/line-numbers.service';
 import { LiveUpdatesService } from '../../../_services/live-updates.service';
 import { LogGroup, LogGroupingService } from '../../../_services/log-grouping.service';
 import { LogApiService } from '../../../_services/log.api';
+import { LogProcessingService } from '../../../_services/log-processing.service';
 import { MemoryManagementService } from '../../../_services/memory-management.service';
 import { Log, SignalRService } from '../../../_services/signalr.service';
 import { ViewModeService } from '../../../_services/view-mode.service';
@@ -190,6 +191,7 @@ export class LogViewportComponent {
   destroyRef = inject(DestroyRef);
   logApi = inject(LogApiService);
   signalRService = inject(SignalRService);
+  logProcessingService = inject(LogProcessingService);
   logs = signal<Log[]>([]);
   groupedLogs = signal<(Log | LogGroup)[]>([]);
   logFilterState = inject(LogFilterState);
@@ -286,59 +288,54 @@ export class LogViewportComponent {
         switchMap(() => {
           this.page++;
 
-          // Extract include/exclude arrays from tri-state values
-          const triLogLevel = this.logFilterState.triStateLogLevel();
-          const triPod = this.logFilterState.triStatePod();
-          const includeLogLevel = triLogLevel?.included?.length ? triLogLevel.included : null;
-          const excludeLogLevel = triLogLevel?.excluded?.length ? triLogLevel.excluded : null;
-          const includePod = triPod?.included?.length ? triPod.included : null;
-          const excludePod = triPod?.excluded?.length ? triPod.excluded : null;
+          // Extract include/exclude arrays from tri-state values using service
+          const filters = this.logProcessingService.extractTriStateFilters(
+            this.logFilterState.triStateLogLevel(),
+            this.logFilterState.triStatePod()
+          );
 
           const customRange = this.logFilterState.customTimeRange();
           if (customRange) {
             return this.logApi
               .getLogs(
-                includeLogLevel,
-                includePod,
+                filters.includeLogLevel,
+                filters.includePod,
                 this.logFilterState.searchString(),
                 customRange.start,
                 customRange.end,
                 this.page,
                 200,
-                excludeLogLevel,
-                excludePod,
+                filters.excludeLogLevel,
+                filters.excludePod,
                 ''
               );
           } else {
             return this.logApi
               .getLogs(
-                includeLogLevel,
-                includePod,
+                filters.includeLogLevel,
+                filters.includePod,
                 this.logFilterState.searchString(),
                 this.logFilterState.selectedTimeRange(),
                 undefined,
                 this.page,
                 200,
-                excludeLogLevel,
-                excludePod,
+                filters.excludeLogLevel,
+                filters.excludePod,
                 ''
               );
           }
         }),
               tap((z) => {
-                const ni = (z.items ?? []).map((z) => {
-                  return {
-                    ...z,
-                    podColor: getPodColor(z.pod),
-                    view: this.cleanLogLine(z.line),
-                    };
-                  });;
-                if (ni.length === 0) return;
+                if (!z.items || z.items.length === 0) return;
+
+                // Use service to process and append logs
                 const index = this.logs().length;
-                this.logs.update((items) => {
-                  const newItems = [...items, ...ni];
-                  // Apply memory management
-                  return this.applyMemoryManagement(newItems);
+                this.logs.update((existingLogs) => {
+                  return this.logProcessingService.processAppendLogs(
+                    z.items ?? [],
+                    existingLogs,
+                    this.memoryManagementService.maxLogsInMemory()
+                  );
                 });
                 this.scrollToIndex(index);
               })
@@ -356,29 +353,19 @@ export class LogViewportComponent {
         switchMap(([search, date, custom, triLogLevel, triPod]) => {
           this.page = 1;
 
-          // Extract include/exclude arrays from tri-state values
-          const includeLogLevel = triLogLevel?.included?.length ? triLogLevel.included : null;
-          const excludeLogLevel = triLogLevel?.excluded?.length ? triLogLevel.excluded : null;
-          const includePod = triPod?.included?.length ? triPod.included : null;
-          const excludePod = triPod?.excluded?.length ? triPod.excluded : null;
+          // Extract include/exclude arrays from tri-state values using service
+          const filters = this.logProcessingService.extractTriStateFilters(triLogLevel, triPod);
 
           if (custom) {
-            return this.logApi.getLogs(includeLogLevel, includePod, search, custom.start, custom.end, this.page, 200, excludeLogLevel, excludePod, '');
+            return this.logApi.getLogs(filters.includeLogLevel, filters.includePod, search, custom.start, custom.end, this.page, 200, filters.excludeLogLevel, filters.excludePod, '');
           } else {
-            return this.logApi.getLogs(includeLogLevel, includePod, search, date, undefined, this.page, 200, excludeLogLevel, excludePod, '');
+            return this.logApi.getLogs(filters.includeLogLevel, filters.includePod, search, date, undefined, this.page, 200, filters.excludeLogLevel, filters.excludePod, '');
           }
         }),
         tap((l) => {
-          const items = (l.items ?? []).map((z) => {
-            return {
-              ...z,
-              podColor: getPodColor(z.pod),
-              view: this.cleanLogLine(z.line),
-              };
-            });
-
-          // Exclude filtering is now handled by the backend API
-          this.logs.set(items);
+          // Use service to transform logs
+          const transformedLogs = this.logProcessingService.transformLogs(l.items ?? []);
+          this.logs.set(transformedLogs);
         }),
         takeUntilDestroyed()
       )
@@ -386,17 +373,7 @@ export class LogViewportComponent {
         this.startSignalR();
       });
   }
-  
-   cleanLogLine(line: string): string {
-  // Matches:
-  // [2025-04-15 17:52:04] INFO ...
-  // 04:09:34 fail: ...
-  // 2025-04-17T00:15:51Z WRN ...
-  return line.replace(
-    /^(\[\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}\]\s+\b(INFO|DEBUG|ERROR|WARN|TRACE|FATAL)\b\s*|^\d{2}:\d{2}:\d{2}\s+\w+:\s*|^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z\s+\b(INFO|DEBUG|ERROR|WARN|TRACE|FATAL|INF|DBG|ERR|WRN|TRC|FTL)\b\s*)/,
-    ''
-  );
-}
+
   monitoring = false;
   private startSignalR() {
     if (this.monitoring) return;
@@ -412,6 +389,7 @@ export class LogViewportComponent {
       const date = this.logFilterState.selectedTimeRange();
       const customRange = this.logFilterState.customTimeRange();
 
+      // Filter logs based on current filter state
       const filteredLogs = logs.filter((log) => {
         if (!log) return false;
 
@@ -432,12 +410,6 @@ export class LogViewportComponent {
           (!pod || pod.includes(log.pod)) &&
           timeMatches
         );
-      }).map(z=>{
-        return {
-          ...z,
-          podColor: getPodColor(z.pod),
-          view: this.cleanLogLine(z.line),
-        };
       });
 
       // Apply exclude filters to real-time logs (still needed for SignalR since it sends all logs)
@@ -458,33 +430,18 @@ export class LogViewportComponent {
         this.audioService.playAlert(log.logLevel);
       });
 
+      // Use service to process new logs with transformation, sorting, deduplication, and memory management
       this.logs.update((existingLogs) => {
-        // Sort new logs the same way as backend: TimeStamp DESC, SequenceNumber ASC
-        const sortedNewLogs = allLogsToProcess.sort((a, b) => {
-          const timeDiff = new Date(b.timeStamp).getTime() - new Date(a.timeStamp).getTime();
-          if (timeDiff !== 0) return timeDiff; // Newer first (DESC)
-          return a.sequenceNumber - b.sequenceNumber; // Lower sequence first (ASC)
-        });
-
-        // Remove duplicates - filter out any new logs that are older than or equal to the newest existing log
-        let filteredNewLogs = sortedNewLogs;
-        if (existingLogs.length > 0) {
-          const newestExisting = existingLogs[0];
-          const newestTimestamp = new Date(newestExisting.timeStamp).getTime();
-
-          filteredNewLogs = sortedNewLogs.filter(log => {
-            const logTimestamp = new Date(log.timeStamp).getTime();
-            // Keep logs that are newer, or same timestamp but different ID
-            return logTimestamp > newestTimestamp ||
-                   (logTimestamp === newestTimestamp && log.id !== newestExisting.id);
-          });
-        }
-
-        // Prepend new logs to the beginning (they're already sorted newest first)
-        const combinedLogs = [...filteredNewLogs, ...existingLogs];
-
-        // Apply memory management
-        return this.applyMemoryManagement(combinedLogs);
+        return this.logProcessingService.processNewLogs(
+          allLogsToProcess,
+          existingLogs,
+          {
+            transform: true,
+            sort: true,
+            deduplicate: true,
+            maxLogs: this.memoryManagementService.maxLogsInMemory()
+          }
+        );
       });
 
       // Clear queued logs after processing
@@ -775,105 +732,4 @@ export class LogViewportComponent {
     });
   }
 
-  private applyMemoryManagement(logs: Log[]): Log[] {
-    const maxLogs = this.memoryManagementService.maxLogsInMemory();
-
-    // Simple limit enforcement - keep the most recent logs
-    if (logs.length > maxLogs) {
-      const overage = logs.length - maxLogs;
-      console.log(`Memory management: Removing ${overage} logs. Total: ${logs.length} -> ${logs.length - overage}`);
-      return logs.slice(-maxLogs); // Keep the most recent logs
-    }
-
-    // Check if auto-cleanup is needed
-    if (this.memoryManagementService.shouldCleanup()) {
-      const targetCount = this.memoryManagementService.getTargetLogCountAfterCleanup();
-      if (targetCount < logs.length) {
-        const removedCount = logs.length - targetCount;
-        console.log(`Auto-cleanup: Removing ${removedCount} logs. Total: ${logs.length} -> ${targetCount}`);
-        return logs.slice(-targetCount); // Keep the most recent logs
-      }
-    }
-
-    return logs;
-  }
-
-}
-const podColorCache = new Map<string, string>();
-
-export function getPodColor(podName: string): string {
-  if (podColorCache.has(podName)) {
-    return podColorCache.get(podName)!;
-  }
-
-  // Generate multiple hash values for better distribution with overflow protection
-  let hash1 = 0;
-  let hash2 = 0;
-  for (let i = 0; i < podName.length; i++) {
-    const char = podName.charCodeAt(i);
-    hash1 = (char + ((hash1 << 5) - hash1)) >>> 0; // Use unsigned right shift to keep 32-bit
-    hash2 = (char + ((hash2 << 3) - hash2) + i) >>> 0;
-  }
-
-  // Create distinct color palette with wider ranges and better separation
-  const colorSchemes = [
-    // Bright, distinct color ranges for better visibility
-    { r: [220, 255], g: [50, 120], b: [50, 120] },   // Warm reds/oranges
-    { r: [50, 120], g: [220, 255], b: [50, 120] },   // Bright greens  
-    { r: [50, 120], g: [50, 120], b: [220, 255] },   // Bright blues
-    { r: [220, 255], g: [220, 255], b: [50, 120] },  // Bright yellows
-    { r: [220, 255], g: [50, 120], b: [220, 255] },  // Bright magentas
-    { r: [50, 120], g: [220, 255], b: [220, 255] },  // Bright cyans
-    { r: [180, 220], g: [140, 200], b: [50, 100] },  // Orange variations
-    { r: [140, 200], g: [50, 100], b: [180, 220] },  // Purple variations
-    { r: [50, 100], g: [180, 220], b: [140, 200] },  // Teal variations
-    { r: [240, 255], g: [160, 200], b: [160, 200] }, // Light corals
-    { r: [160, 200], g: [240, 255], b: [160, 200] }, // Light greens
-    { r: [160, 200], g: [160, 200], b: [240, 255] }  // Light blues
-  ];
-
-  // Select color scheme based on first hash
-  const schemeIndex = hash1 % colorSchemes.length;
-  const scheme = colorSchemes[schemeIndex];
-
-  // Generate RGB values within the selected scheme's ranges with safety checks
-  const rRange = Math.max(1, scheme.r[1] - scheme.r[0]);
-  const gRange = Math.max(1, scheme.g[1] - scheme.g[0]);
-  const bRange = Math.max(1, scheme.b[1] - scheme.b[0]);
-  
-  const r = scheme.r[0] + (hash1 % rRange);
-  const g = scheme.g[0] + (hash2 % gRange);
-  const b = scheme.b[0] + (Math.abs(hash1 ^ hash2) % bRange);
-
-  // Ensure minimum contrast for readability
-  let finalR = clamp(r);
-  let finalG = clamp(g);
-  let finalB = clamp(b);
-
-  // Boost colors that are too dim for dark theme
-  if (getLuminance(finalR, finalG, finalB) < 0.3) {
-    finalR = clamp(finalR + 60);
-    finalG = clamp(finalG + 60);
-    finalB = clamp(finalB + 60);
-  }
-
-  const color = `rgb(${finalR}, ${finalG}, ${finalB})`;
-  podColorCache.set(podName, color);
-  return color;
-}
-
-function clamp(v: number): number {
-  return Math.max(0, Math.min(255, v));
-}
-
-// Relative luminance calculation (WCAG contrast model)
-function getLuminance(r: number, g: number, b: number): number {
-  const toLinear = (c: number) => {
-    const sRGB = c / 255;
-    return sRGB <= 0.03928
-      ? sRGB / 12.92
-      : Math.pow((sRGB + 0.055) / 1.055, 2.4);
-  };
-  const l = 0.2126 * toLinear(r) + 0.7152 * toLinear(g) + 0.0722 * toLinear(b);
-  return l;
 }

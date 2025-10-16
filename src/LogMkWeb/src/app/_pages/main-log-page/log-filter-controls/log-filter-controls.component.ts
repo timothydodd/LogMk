@@ -15,6 +15,7 @@ import { LiveUpdatesService } from '../../../_services/live-updates.service';
 import { LogGroupingService } from '../../../_services/log-grouping.service';
 import { LineNumbersService } from '../../../_services/line-numbers.service';
 import { LogApiService } from '../../../_services/log.api';
+import { LogProcessingService } from '../../../_services/log-processing.service';
 import { TimestampService } from '../../../_services/timestamp.service';
 import { ViewModeService } from '../../../_services/view-mode.service';
 import { AudioService } from '../../../_services/audio.service';
@@ -365,6 +366,7 @@ import { LogFilterState } from '../_services/log-filter-state';
 export class LogFilterControlsComponent {
   logService = inject(LogApiService);
   logFilterState = inject(LogFilterState);
+  logProcessingService = inject(LogProcessingService);
   exportService = inject(ExportService);
   toastr = inject(ToastrService);
   elementRef = inject(ElementRef);
@@ -664,7 +666,7 @@ export class LogFilterControlsComponent {
   // Temporary method to generate mock logs for export demo
   // In production, this would come from your actual log data source
   private generateMockExportLogs() {
-    const mockLogs = [];
+    const rawMockLogs = [];
     const deployments = ['production', 'staging', 'development'];
     const pods = ['web-app-123', 'api-server-456', 'database-789'];
     const levels = ['Information', 'Warning', 'Error', 'Debug'];
@@ -677,21 +679,28 @@ export class LogFilterControlsComponent {
       'Debug: Processing batch job #1234'
     ];
 
+    // Generate raw logs
     for (let i = 0; i < 50; i++) {
       const timestamp = new Date(Date.now() - Math.random() * 86400000 * 7); // Last 7 days
-      mockLogs.push({
+      const pod = pods[Math.floor(Math.random() * pods.length)];
+      const level = levels[Math.floor(Math.random() * levels.length)];
+      const message = messages[Math.floor(Math.random() * messages.length)];
+
+      rawMockLogs.push({
         id: i + 1,
         deployment: deployments[Math.floor(Math.random() * deployments.length)],
-        timeStamp: timestamp, // Keep as Date object
-        pod: pods[Math.floor(Math.random() * pods.length)],
-        logLevel: levels[Math.floor(Math.random() * levels.length)],
-        line: `${messages[Math.floor(Math.random() * messages.length)]} - ID: ${i + 1}`,
-        view: `${messages[Math.floor(Math.random() * messages.length)]} - ID: ${i + 1}`,
-        podColor: '#00eaff'
+        timeStamp: timestamp,
+        pod: pod,
+        logLevel: level,
+        line: `[${timestamp.toISOString()}] ${level}: ${message} - ID: ${i + 1}`, // Include timestamp in line
+        view: '', // Will be set by transformation
+        podColor: '', // Will be set by transformation
+        sequenceNumber: i + 1
       });
     }
 
-    return mockLogs;
+    // Use service to transform logs with proper pod colors and cleaned lines
+    return this.logProcessingService.transformLogs(rawMockLogs as any);
   }
 
   // Memory management methods
