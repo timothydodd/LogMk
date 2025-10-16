@@ -23,8 +23,16 @@ public class LogController : ControllerBase
     private readonly LogSummaryRepo _logSummaryRepo;
     private readonly WorkQueueRepo _workQueueRepo;
     private readonly LogApiMetrics _metrics;
-    private readonly int LogMaxDaysOld = 30; // Maximum age of logs to accept
-    public LogController(ILogger<LogController> logger, LogRepo logRepo, LogHubService logHubService, LogSummaryRepo logSummaryRepo, WorkQueueRepo workQueueRepo, LogApiMetrics metrics, IConfiguration configuration)
+    private readonly LogCacheService _cacheService;
+
+    // Configuration: Maximum age limits
+    private readonly int LogMaxDaysOld = 30; // For new pods (backfill scenario)
+    private readonly int LogMaxMinutesOldForExistingPods = 5; // For existing pods (real-time scenario)
+    private readonly bool EnableDuplicateDetection = true;
+
+    public LogController(ILogger<LogController> logger, LogRepo logRepo, LogHubService logHubService,
+        LogSummaryRepo logSummaryRepo, WorkQueueRepo workQueueRepo, LogApiMetrics metrics,
+        LogCacheService cacheService, IConfiguration configuration)
     {
         _logger = logger;
         _logRepo = logRepo;
@@ -32,11 +40,23 @@ public class LogController : ControllerBase
         _logSummaryRepo = logSummaryRepo;
         _workQueueRepo = workQueueRepo;
         _metrics = metrics;
+        _cacheService = cacheService;
+
         if (configuration != null)
         {
             if (int.TryParse(configuration["LogSettings:MaxDaysOld"], out var maxDays))
             {
                 LogMaxDaysOld = maxDays;
+            }
+
+            if (int.TryParse(configuration["LogSettings:MaxMinutesOldForExistingPods"], out var maxMinutes))
+            {
+                LogMaxMinutesOldForExistingPods = maxMinutes;
+            }
+
+            if (bool.TryParse(configuration["LogSettings:EnableDuplicateDetection"], out var enableDuplicates))
+            {
+                EnableDuplicateDetection = enableDuplicates;
             }
         }
     }
@@ -78,13 +98,16 @@ public class LogController : ControllerBase
         _logger.LogDebug("Processing batch {BatchId} with {Count} log lines", batchId, logLines.Count);
         _metrics.IncrementLogsReceived(logLines.Count);
 
+        // Track pods for cache invalidation (new pods that were just inserted)
+        var newPods = new HashSet<string>();
+
         // Process each log line individually - don't let errors stop the batch
         for (int i = 0; i < logLines.Count; i++)
         {
             try
             {
                 var logLine = logLines[i];
-                var validationResult = ValidateLogLine(logLine, i);
+                var validationResult = await ValidateLogLineAsync(logLine, i);
 
                 if (!validationResult.IsValid)
                 {
@@ -96,6 +119,13 @@ public class LogController : ControllerBase
                     });
                     skippedCount++;
                     continue;
+                }
+
+                // Track if this is a new pod
+                var podExists = await _cacheService.PodExistsAsync(logLine.PodName);
+                if (!podExists)
+                {
+                    newPods.Add(logLine.PodName);
                 }
 
                 // Convert to database entity
@@ -141,6 +171,25 @@ public class LogController : ControllerBase
 
                 _logger.LogDebug("Successfully inserted {InsertedCount}/{ValidCount} logs for batch {BatchId}",
                     insertedCount, validLogs.Count, batchId);
+
+                // Update cache for successfully inserted logs
+                if (insertedCount > 0)
+                {
+                    // Invalidate pod existence cache for new pods and start backfill tracking
+                    foreach (var newPod in newPods)
+                    {
+                        _cacheService.InvalidatePodExistence(newPod);
+                        _cacheService.StartBackfillTracking(newPod);
+                        _logger.LogInformation("Started backfill tracking for new pod: {PodName}", newPod);
+                    }
+
+                    // Update recent logs cache for all pods in this batch
+                    var podGroups = validLogs.GroupBy(log => log.Pod);
+                    foreach (var group in podGroups)
+                    {
+                        _cacheService.UpdateRecentLogsCache(group.Key, group);
+                    }
+                }
             }
             catch (Exception ex)
             {
@@ -150,26 +199,23 @@ public class LogController : ControllerBase
             }
         }
 
-        // Send to real-time hub immediately - don't let this fail the API call
+        // Send to real-time hub
         if (insertedCount > 0)
         {
-            _ = Task.Run(async () =>
+            try
             {
-                try
-                {
-                    // Send all inserted logs for real-time delivery (limit to 500 for safety)
-                    var logsToSend = validLogs.Take(500).ToList();
+                // Send all inserted logs for real-time delivery (limit to 500 for safety)
+                var logsToSend = validLogs.Take(500).ToList();
 
-                    if (logsToSend.Any())
-                    {
-                        await _logHubService.SendLogs(logsToSend);
-                    }
-                }
-                catch (Exception ex)
+                if (logsToSend.Any())
                 {
-                    _logger.LogWarning(ex, "Failed to send logs to hub for batch {BatchId}", batchId);
+                    await _logHubService.SendLogs(logsToSend);
                 }
-            }, cancellationToken);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Failed to send logs to hub for batch {BatchId}", batchId);
+            }
         }
 
         // Log validation errors for monitoring
@@ -270,7 +316,7 @@ public class LogController : ControllerBase
         }
     }
 
-    private LogValidationResult ValidateLogLine(LogLine logLine, int index)
+    private async Task<LogValidationResult> ValidateLogLineAsync(LogLine logLine, int index)
     {
         var errors = new List<string>();
 
@@ -294,12 +340,47 @@ public class LogController : ControllerBase
             // Additional validations
             if (logLine != null)
             {
+                // Future timestamp check
                 if (logLine.TimeStamp > DateTimeOffset.UtcNow.AddMinutes(5))
                     errors.Add("TimeStamp is too far in the future");
 
-                if (logLine.TimeStamp < DateTimeOffset.UtcNow.AddDays(-LogMaxDaysOld))
-                    errors.Add("TimeStamp is too old (>30 days)");
+                // Conditional timestamp validation based on pod existence and backfill period
+                var podExists = await _cacheService.PodExistsAsync(logLine.PodName);
+                var isInBackfillPeriod = podExists && _cacheService.IsInBackfillPeriod(logLine.PodName);
 
+                if (!podExists || isInBackfillPeriod)
+                {
+                    // New pod OR in backfill grace period: allow backfill (30 days)
+                    if (logLine.TimeStamp < DateTimeOffset.UtcNow.AddDays(-LogMaxDaysOld))
+                    {
+                        errors.Add($"TimeStamp is too old (>{LogMaxDaysOld} days)");
+                    }
+                }
+                else
+                {
+                    // Existing pod outside backfill window: strict real-time validation (5 minutes)
+                    if (logLine.TimeStamp < DateTimeOffset.UtcNow.AddMinutes(-LogMaxMinutesOldForExistingPods))
+                    {
+                        errors.Add($"TimeStamp is too old (>{LogMaxMinutesOldForExistingPods} minutes) for existing pod");
+                    }
+                }
+
+                // Duplicate detection (if enabled)
+                if (EnableDuplicateDetection && podExists)
+                {
+                    var isDuplicate = await _cacheService.IsDuplicateLogAsync(
+                        logLine.PodName,
+                        logLine.TimeStamp,
+                        logLine.SequenceNumber,
+                        logLine.Line);
+
+                    if (isDuplicate)
+                    {
+                        errors.Add("Duplicate log entry detected");
+                    }
+                }
+
+                // Length validations
                 if (logLine.Line?.Length > 10000)
                     errors.Add("Line content too long (max 10,000 characters)");
 
@@ -405,6 +486,7 @@ public class LogController : ControllerBase
         var settings = new LogMkCommon.ValidationSettings
         {
             MaxDaysOld = LogMaxDaysOld,
+            MaxMinutesOldForExistingPods = LogMaxMinutesOldForExistingPods,
             MaxFutureMinutes = 5,
             MaxLineLength = 10000,
             MaxDeploymentNameLength = 100,
@@ -413,7 +495,8 @@ public class LogController : ControllerBase
             PodNamePattern = @"^[a-zA-Z0-9\-._]+$",
             AllowEmptyLogLevel = false,
             MaxBatchSize = 1000,
-            Version = "1.0",
+            EnableDuplicateDetection = EnableDuplicateDetection,
+            Version = "1.1",
             LastUpdated = DateTime.UtcNow
         };
 
@@ -527,17 +610,14 @@ public class LogController : ControllerBase
             _logger.LogDebug("Successfully inserted single log for Pod: {Pod}", logEntry.Pod);
 
             // Send to real-time hub
-            _ = Task.Run(async () =>
+            try
             {
-                try
-                {
-                    await _logHubService.SendLogs(new List<Log> { logEntity });
-                }
-                catch (Exception ex)
-                {
-                    _logger.LogWarning(ex, "Failed to send single log to hub");
-                }
-            }, cancellationToken);
+                await _logHubService.SendLogs(new List<Log> { logEntity });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Failed to send single log to hub");
+            }
 
             var response = new LogResponse
             {

@@ -208,5 +208,33 @@ public class LogRepo
         }
     }
 
+    /// <summary>
+    /// Checks if any logs exist for a specific pod
+    /// </summary>
+    public async Task<bool> PodExistsAsync(string podName)
+    {
+        using (var db = _dbFactory.CreateConnection())
+        {
+            var query = "SELECT COUNT(*) FROM Log WHERE Pod = @podName LIMIT 1";
+            var count = await db.ExecuteScalarAsync<int>(query, new { podName });
+            return count > 0;
+        }
+    }
+
+    /// <summary>
+    /// Gets the most recent logs for a specific pod
+    /// </summary>
+    public async Task<IEnumerable<Log>> GetRecentLogsForPodAsync(string podName, int limit = 1000)
+    {
+        using (var db = _dbFactory.CreateConnection())
+        {
+            var query = @"
+                SELECT * FROM Log
+                WHERE Pod = @podName
+                ORDER BY TimeStamp DESC, SequenceNumber DESC
+                LIMIT @limit";
+            return await db.QueryAsync<Log>(query, new { podName, limit });
+        }
+    }
 
 }

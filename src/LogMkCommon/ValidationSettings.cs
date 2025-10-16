@@ -4,15 +4,28 @@ namespace LogMkCommon;
 
 public class ValidationSettings
 {
-    public int MaxDaysOld { get; set; } = 30;
+    // Timestamp validation settings
+    public int MaxDaysOld { get; set; } = 30; // For new pods (backfill scenario)
+    public int MaxMinutesOldForExistingPods { get; set; } = 5; // For existing pods (real-time scenario)
     public int MaxFutureMinutes { get; set; } = 5;
+
+    // Content validation settings
     public int MaxLineLength { get; set; } = 10000;
     public int MaxDeploymentNameLength { get; set; } = 100;
     public int MaxPodNameLength { get; set; } = 100;
     public string DeploymentNamePattern { get; set; } = @"^[a-zA-Z0-9\-._]+$";
     public string PodNamePattern { get; set; } = @"^[a-zA-Z0-9\-._]+$";
+
+    // Log level validation
     public bool AllowEmptyLogLevel { get; set; } = false;
+
+    // Batch validation
     public int MaxBatchSize { get; set; } = 1000;
+
+    // Duplicate detection
+    public bool EnableDuplicateDetection { get; set; } = true;
+
+    // Metadata
     public string Version { get; set; } = "1.0";
     public DateTime LastUpdated { get; set; } = DateTime.UtcNow;
 }

@@ -22,7 +22,7 @@ public class Program
     public static void Main(string[] args)
     {
         var builder = WebApplication.CreateBuilder(args);
-        
+
         // Configure cleaner logging format
         builder.Logging.ClearProviders();
         builder.Logging.AddSimpleConsole(options =>
@@ -32,7 +32,7 @@ public class Program
             options.UseUtcTimestamp = true;
             options.IncludeScopes = false;
         });
-        
+
         builder.Services.AddRequestDecompression();
         builder.Services.AddResponseCompression(options =>
         {
@@ -95,7 +95,8 @@ public class Program
         builder.Services.AddControllers();
         builder.Services.AddSignalR();
         builder.Services.AddMemoryCache();
-        
+        builder.Services.AddSingleton<LogCacheService>();
+
         var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
 
         if (connectionString is null)
@@ -106,11 +107,11 @@ public class Program
 
         builder.Services.AddSingleton<DbConnectionFactory>(dbFactory);
         builder.Services.AddTransient<IDbConnection>(sp => sp.GetRequiredService<DbConnectionFactory>().CreateConnection());
-        builder.Services.AddScoped<LogRepo>();
-        builder.Services.AddScoped<LogSummaryRepo>();
-        builder.Services.AddScoped<WorkQueueRepo>();
-        builder.Services.AddScoped<LogHubService>();
-        builder.Services.AddScoped<DatabaseInitializer>();
+        builder.Services.AddSingleton<LogRepo>();
+        builder.Services.AddSingleton<LogSummaryRepo>();
+        builder.Services.AddSingleton<WorkQueueRepo>();
+        builder.Services.AddSingleton<LogHubService>();
+        builder.Services.AddSingleton<DatabaseInitializer>();
         builder.Services.AddSingleton<LogApiMetrics>();
         builder.Services.AddSingleton<PasswordService>();
         builder.Services.AddSingleton<AuthService>();
@@ -124,7 +125,7 @@ public class Program
         }).AddJwtBearer(options =>
         {
             var jwtSettings = builder.Configuration.GetSection("JwtSettings");
-            
+
             options.TokenValidationParameters = new TokenValidationParameters
             {
                 ValidateIssuer = true,
