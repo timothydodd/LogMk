@@ -72,6 +72,8 @@ export class SignalRService implements OnDestroy {
 
     this.hubConnection.onreconnected((connectionId) => {
       console.log('SignalR reconnected with connection ID:', connectionId);
+      // Re-register event listeners after reconnection
+      this.addTransferLogDataListener();
     });
   }
 
@@ -88,7 +90,14 @@ export class SignalRService implements OnDestroy {
   }
 
   private addTransferLogDataListener(): void {
-    this.hubConnection?.on('ReceiveLog', (data) => {
+    if (!this.hubConnection) return;
+
+    // Remove existing listeners to prevent duplicates on reconnection
+    this.hubConnection.off('ReceiveLog');
+    this.hubConnection.off('WorkQueueProgress');
+
+    // Register listeners
+    this.hubConnection.on('ReceiveLog', (data) => {
       try {
         const logs = <Log[]>data;
         this.logsReceived.next(logs);
@@ -97,7 +106,7 @@ export class SignalRService implements OnDestroy {
       }
     });
 
-    this.hubConnection?.on('WorkQueueProgress', (data) => {
+    this.hubConnection.on('WorkQueueProgress', (data) => {
       try {
         const update = <WorkQueueProgressUpdate>data;
         this.workQueueProgress.next(update);

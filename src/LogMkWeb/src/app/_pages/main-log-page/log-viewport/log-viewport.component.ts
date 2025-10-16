@@ -453,24 +453,38 @@ export class LogViewportComponent {
       const queuedLogs = this.liveUpdatesService.getQueuedLogs();
       const allLogsToProcess = [...queuedLogs, ...excludeFilteredLogs];
 
-      this.logs.update((x) => {
-        const newLogs = [...x,...allLogsToProcess, ].sort((a, b) => {
+      // Play sound alerts for new logs (not queued ones)
+      excludeFilteredLogs.forEach(log => {
+        this.audioService.playAlert(log.logLevel);
+      });
 
-        var timedif =new Date(b.timeStamp).getTime() - new Date(a.timeStamp).getTime();
-        if (timedif > 0) return 1;
-        if (timedif < 0) return -1;
-        if(a.id > b.id) return 1;
-        if(a.id < b.id) return -1;
-        return 0;
+      this.logs.update((existingLogs) => {
+        // Sort new logs the same way as backend: TimeStamp DESC, SequenceNumber ASC
+        const sortedNewLogs = allLogsToProcess.sort((a, b) => {
+          const timeDiff = new Date(b.timeStamp).getTime() - new Date(a.timeStamp).getTime();
+          if (timeDiff !== 0) return timeDiff; // Newer first (DESC)
+          return a.sequenceNumber - b.sequenceNumber; // Lower sequence first (ASC)
         });
 
-        // Play sound alerts for new logs (not queued ones)
-        excludeFilteredLogs.forEach(log => {
-          this.audioService.playAlert(log.logLevel);
-        });
+        // Remove duplicates - filter out any new logs that are older than or equal to the newest existing log
+        let filteredNewLogs = sortedNewLogs;
+        if (existingLogs.length > 0) {
+          const newestExisting = existingLogs[0];
+          const newestTimestamp = new Date(newestExisting.timeStamp).getTime();
+
+          filteredNewLogs = sortedNewLogs.filter(log => {
+            const logTimestamp = new Date(log.timeStamp).getTime();
+            // Keep logs that are newer, or same timestamp but different ID
+            return logTimestamp > newestTimestamp ||
+                   (logTimestamp === newestTimestamp && log.id !== newestExisting.id);
+          });
+        }
+
+        // Prepend new logs to the beginning (they're already sorted newest first)
+        const combinedLogs = [...filteredNewLogs, ...existingLogs];
 
         // Apply memory management
-        return this.applyMemoryManagement(newLogs);
+        return this.applyMemoryManagement(combinedLogs);
       });
 
       // Clear queued logs after processing

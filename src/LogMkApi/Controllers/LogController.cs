@@ -150,22 +150,19 @@ public class LogController : ControllerBase
             }
         }
 
-        // Send to real-time hub - don't let this fail the API call
+        // Send to real-time hub immediately - don't let this fail the API call
         if (insertedCount > 0)
         {
             _ = Task.Run(async () =>
             {
                 try
                 {
-                    // Only send recent logs to avoid overwhelming clients
-                    var recentLogs = validLogs
-                        .Where(l => receivedAt - l.ReceivedAt < TimeSpan.FromMinutes(5))
-                        .Take(100) // Limit hub messages
-                        .ToList();
+                    // Send all inserted logs for real-time delivery (limit to 500 for safety)
+                    var logsToSend = validLogs.Take(500).ToList();
 
-                    if (recentLogs.Any())
+                    if (logsToSend.Any())
                     {
-                        await _logHubService.SendLogs(recentLogs);
+                        await _logHubService.SendLogs(logsToSend);
                     }
                 }
                 catch (Exception ex)
