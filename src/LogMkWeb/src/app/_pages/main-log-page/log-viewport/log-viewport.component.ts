@@ -12,8 +12,8 @@ import { AudioService } from '../../../_services/audio.service';
 import { LineNumbersService } from '../../../_services/line-numbers.service';
 import { LiveUpdatesService } from '../../../_services/live-updates.service';
 import { LogGroup, LogGroupingService } from '../../../_services/log-grouping.service';
-import { LogApiService } from '../../../_services/log.api';
 import { LogProcessingService } from '../../../_services/log-processing.service';
+import { LogApiService } from '../../../_services/log.api';
 import { MemoryManagementService } from '../../../_services/memory-management.service';
 import { Log, SignalRService } from '../../../_services/signalr.service';
 import { ViewModeService } from '../../../_services/view-mode.service';
@@ -265,7 +265,7 @@ export class LogViewportComponent {
     effect(() => {
       const logs = this.logs();
       const isGroupingEnabled = this.groupingService.isGroupingEnabled();
-
+  
       // Update memory management service with current log count
       this.memoryManagementService.updateCurrentLogCount(logs.length);
 
@@ -365,6 +365,7 @@ export class LogViewportComponent {
         tap((l) => {
           // Use service to transform logs
           const transformedLogs = this.logProcessingService.transformLogs(l.items ?? []);
+          
           this.logs.set(transformedLogs);
         }),
         takeUntilDestroyed()
@@ -388,7 +389,7 @@ export class LogViewportComponent {
       const pod = this.logFilterState.selectedPod();
       const date = this.logFilterState.selectedTimeRange();
       const customRange = this.logFilterState.customTimeRange();
-
+  
       // Filter logs based on current filter state
       const filteredLogs = logs.filter((log) => {
         if (!log) return false;
@@ -396,6 +397,7 @@ export class LogViewportComponent {
         log.timeStamp = new Date(log.timeStamp);
         const logTime = new Date(log.timeStamp);
 
+      
         // Check time range (custom takes priority)
         let timeMatches = true;
         if (customRange) {
@@ -405,13 +407,13 @@ export class LogViewportComponent {
         }
 
         return (
-          (!search || log.line.includes(search)) &&
-          (!logLevel || logLevel.includes(log.logLevel)) &&
-          (!pod || pod.includes(log.pod)) &&
+          (!search || search.length <= 0 || log.line.includes(search)) &&
+          (!logLevel || logLevel.length<=0|| logLevel.includes(log.logLevel)) &&
+          (!pod || pod.length<=0 || pod.includes(log.pod)) &&
           timeMatches
         );
       });
-
+    console.log(filteredLogs)
       // Apply exclude filters to real-time logs (still needed for SignalR since it sends all logs)
       const excludeFilteredLogs = this.applyExcludeFilters(filteredLogs);
 
@@ -432,6 +434,7 @@ export class LogViewportComponent {
 
       // Use service to process new logs with transformation, sorting, deduplication, and memory management
       this.logs.update((existingLogs) => {
+    
         return this.logProcessingService.processNewLogs(
           allLogsToProcess,
           existingLogs,
