@@ -170,6 +170,19 @@ public class LogRepo
         }
     }
 
+    public async Task<IEnumerable<DeploymentCount>> GetDeploymentCounts()
+    {
+        using (var db = _dbFactory.CreateConnection())
+        {
+            var query = @"
+    SELECT Deployment, Pod, COUNT(*) AS Count
+    FROM Log
+    GROUP BY Deployment, Pod
+";
+            return await db.QueryAsync<DeploymentCount>(query);
+        }
+    }
+
     public async Task<int> PurgeLogsByDeployment(string deployment, DateTime? startDate)
     {
         using (var db = _dbFactory.CreateConnection())

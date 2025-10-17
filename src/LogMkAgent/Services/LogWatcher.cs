@@ -133,15 +133,28 @@ public class LogWatcher : BackgroundService
     {
         try
         {
+            // First, get deployment counts to know which deployments have already been backfilled
+            var counts = await client.GetDataAsync<List<DeploymentCount>>("api/log/counts").ConfigureAwait(false);
+            if (counts == null || !counts.Any())
+            {
+                _logger.LogInformation("No existing deployments found, all logs will be processed");
+                return;
+            }
+
+            _logger.LogInformation("Retrieved deployment counts for {Count} deployment/pod combinations", counts.Count);
+
+            // Then, get the latest timestamps for deployments that have logs
             var times = await client.GetDataAsync<List<LatestDeploymentEntry>>("api/log/times").ConfigureAwait(false);
             if (times != null)
             {
-                _logger.LogInformation("Retrieved latest deployment times for {Count} deployments", times.Count);
-                foreach (var pod in times)
+                foreach (var entry in times)
                 {
-                    var settings = GetDeploymentSettings(pod.Deployment);
-                    settings.LastDeploymentTime = pod.TimeStamp;
-                    _logger.LogDebug("Deployment {Deployment} last wrote at {TimeStamp}", pod.Deployment, pod.TimeStamp);
+                    // Use composite key (Deployment/Pod) to handle multiple containers per deployment
+                    var compositeKey = $"{entry.Deployment}/{entry.Pod}";
+                    var settings = GetDeploymentSettings(compositeKey);
+                    settings.LastDeploymentTime = entry.TimeStamp;
+                    _logger.LogDebug("Container {Deployment}/{Pod} last wrote at {TimeStamp}, will skip older logs",
+                        entry.Deployment, entry.Pod, entry.TimeStamp);
                 }
             }
         }
@@ -304,7 +317,9 @@ public class LogWatcher : BackgroundService
     {
         var filePath = info.LogPath;
         var podSettings = GetPodSettings(info.PodName);
-        var deploymentSettings = GetDeploymentSettings(info.DeploymentName);
+        // Use composite key (Deployment/Pod) for deployment settings
+        var compositeKey = $"{info.DeploymentName}/{info.PodName}";
+        var deploymentSettings = GetDeploymentSettings(compositeKey);
 
         if (!File.Exists(filePath))
         {
@@ -640,7 +655,10 @@ public class LogWatcher : BackgroundService
             // machine hostname
 
             var machine = Environment.MachineName;
-            var deploymentSettings = GetDeploymentSettings($"{machine}-{logName}");
+            var podName = $"{machine}-{logName}";
+            // Use composite key (Deployment/Pod) - for event logs, deployment = machine
+            var compositeKey = $"{machine}/{podName}";
+            var deploymentSettings = GetDeploymentSettings(compositeKey);
 
             // Handle file rotation/changes
             if (deploymentSettings.FilePath != filePath)
@@ -670,7 +688,7 @@ public class LogWatcher : BackgroundService
                         if (currentRecordId <= lastRecordId)
                             continue;
 
-                        var logLine = ConvertEventRecordToLogLine(eventRecord, logName);
+                        var logLine = ConvertEventRecordToLogLine(eventRecord, podName, machine);
                         if (logLine != null)
                         {
                             // Apply log level filtering
@@ -728,18 +746,15 @@ public class LogWatcher : BackgroundService
         }
     }
 
-    private LogLine? ConvertEventRecordToLogLine(EventRecord eventRecord, string logName)
+    private LogLine? ConvertEventRecordToLogLine(EventRecord eventRecord, string podName, string machine)
     {
         try
         {
 
 
             var logLevel = MapEventLevelToLogLevel(eventRecord.Level);
-            var machine = Environment.MachineName;
             // Build the log message
             var message = BuildEventLogMessage(eventRecord);
-            var logname = eventRecord.LogName ?? logName;
-            var podName = $"{machine}-{logname}";
             var logLine = new LogLine
             {
                 DeploymentName = TruncateString(machine, 50),

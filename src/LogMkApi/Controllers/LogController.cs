@@ -480,6 +480,14 @@ public class LogController : ControllerBase
     }
 
     [AllowAnonymous]
+    [HttpGet("counts")]
+    public async Task<IEnumerable<DeploymentCount>> GetDeploymentCounts()
+    {
+        var entries = await _logRepo.GetDeploymentCounts();
+        return entries;
+    }
+
+    [AllowAnonymous]
     [HttpGet("settings")]
     public IActionResult GetValidationSettings()
     {
