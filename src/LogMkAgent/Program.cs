@@ -43,7 +43,8 @@ public class Program
                     client.BaseAddress = new Uri(apiSettings.BaseUrl);
 
                     // Configure additional settings like timeouts, headers, etc.
-                    client.Timeout = TimeSpan.FromSeconds(30);
+                    // Increased timeout for potentially slow queries (counts/times on large datasets)
+                    client.Timeout = TimeSpan.FromMinutes(2);
                 })
                 .AddLogger<HttpLogger>(wrapHandlersPipeline: true);
 

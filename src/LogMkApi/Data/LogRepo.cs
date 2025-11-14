@@ -161,9 +161,11 @@ public class LogRepo
     {
         using (var db = _dbFactory.CreateConnection())
         {
+            // Use FORCE INDEX to utilize the composite index (Deployment, Pod, TimeStamp)
+            // This significantly improves GROUP BY and MAX() performance on large tables
             var query = @"
     SELECT Deployment, Pod, MAX(TimeStamp) AS TimeStamp
-    FROM Log
+    FROM Log FORCE INDEX (Deployment_Pod_TimeStamp_idx)
     GROUP BY Deployment, Pod
 ";
             return await db.QueryAsync<LatestDeploymentEntry>(query);
@@ -174,9 +176,11 @@ public class LogRepo
     {
         using (var db = _dbFactory.CreateConnection())
         {
+            // Use FORCE INDEX to utilize the composite index (Deployment, Pod, TimeStamp)
+            // This significantly improves GROUP BY performance on large tables
             var query = @"
     SELECT Deployment, Pod, COUNT(*) AS Count
-    FROM Log
+    FROM Log FORCE INDEX (Deployment_Pod_TimeStamp_idx)
     GROUP BY Deployment, Pod
 ";
             return await db.QueryAsync<DeploymentCount>(query);
