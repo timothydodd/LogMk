@@ -228,10 +228,17 @@ public class LogController : ControllerBase
                 .ToDictionary(g => g.Key, g => g.Count());
 
             _logger.LogWarning("Batch {BatchId}: {ErrorCount} validation errors, {SkippedCount} logs skipped. " +
-                "Error breakdown: {ErrorSummary}", 
-                batchId, errors.Count, skippedCount, 
+                "Error breakdown: {ErrorSummary}",
+                batchId, errors.Count, skippedCount,
                 string.Join(", ", errorSummary.Select(kvp => $"{kvp.Key}: {kvp.Value}")));
-            
+
+            // Log individual rejected lines for debugging (limit to first 5)
+            foreach (var error in errors.Take(5))
+            {
+                _logger.LogDebug("Batch {BatchId}: Rejected log at index {Index}. Errors: [{Errors}]. Details: {LogLine}",
+                    batchId, error.Index, string.Join(", ", error.Errors), error.LogLine);
+            }
+
             _metrics.IncrementErrors("validation", skippedCount);
         }
 

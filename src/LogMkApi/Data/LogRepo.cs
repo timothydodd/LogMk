@@ -161,11 +161,11 @@ public class LogRepo
     {
         using (var db = _dbFactory.CreateConnection())
         {
-            // Use the composite index (Deployment, Pod, TimeStamp) for optimal performance
-            // The index is created by DatabaseInitializer.EnsureLogIndexes()
+            // This query will be slow on large tables without the composite index (Deployment, Pod, TimeStamp)
+            // See DatabaseInitializer.EnsureLogIndexes() for instructions on creating the index
             var query = @"
     SELECT Deployment, Pod, MAX(TimeStamp) AS TimeStamp
-    FROM Log USE INDEX (Deployment_Pod_TimeStamp_idx)
+    FROM Log
     GROUP BY Deployment, Pod
 ";
             return await db.QueryAsync<LatestDeploymentEntry>(query);
@@ -176,11 +176,11 @@ public class LogRepo
     {
         using (var db = _dbFactory.CreateConnection())
         {
-            // Use the composite index (Deployment, Pod, TimeStamp) for optimal performance
-            // The index is created by DatabaseInitializer.EnsureLogIndexes()
+            // This query will be slow on large tables without the composite index (Deployment, Pod, TimeStamp)
+            // See DatabaseInitializer.EnsureLogIndexes() for instructions on creating the index
             var query = @"
     SELECT Deployment, Pod, COUNT(*) AS Count
-    FROM Log USE INDEX (Deployment_Pod_TimeStamp_idx)
+    FROM Log
     GROUP BY Deployment, Pod
 ";
             return await db.QueryAsync<DeploymentCount>(query);

@@ -47,6 +47,7 @@ public static class LogParser
             @"(\d{4}-\d{2}-\d{2}\s+\d{2}:\d{2}:\d{2})" // 2024-01-15 12:34:56
         };
 
+        // First try standard patterns
         foreach (var pattern in patterns)
         {
             var match = Regex.Match(line, pattern);
@@ -56,6 +57,22 @@ public static class LogParser
                 {
                     return timestamp;
                 }
+            }
+        }
+
+        // Try to handle malformed time-only formats like "21: 28: 16]" (spaces around colons)
+        var malformedTimePattern = @"(\d{1,2}):\s*(\d{1,2}):\s*(\d{1,2})\]";
+        var malformedMatch = Regex.Match(line, malformedTimePattern);
+        if (malformedMatch.Success)
+        {
+            if (int.TryParse(malformedMatch.Groups[1].Value, out var hours) &&
+                int.TryParse(malformedMatch.Groups[2].Value, out var minutes) &&
+                int.TryParse(malformedMatch.Groups[3].Value, out var seconds) &&
+                hours >= 0 && hours <= 23 && minutes >= 0 && minutes <= 59 && seconds >= 0 && seconds <= 59)
+            {
+                // Use today's date with the parsed time
+                var today = DateTimeOffset.UtcNow.Date;
+                return new DateTimeOffset(today.Year, today.Month, today.Day, hours, minutes, seconds, TimeSpan.Zero);
             }
         }
 

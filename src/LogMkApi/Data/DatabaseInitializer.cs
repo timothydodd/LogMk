@@ -61,20 +61,23 @@ public class DatabaseInitializer
 
             if (!indexExists)
             {
-                _logger.LogInformation("Creating missing composite index Deployment_Pod_TimeStamp_idx on Log table");
+                _logger.LogWarning(
+                    "PERFORMANCE WARNING: Missing composite index 'Deployment_Pod_TimeStamp_idx' on Log table. " +
+                    "This will cause slow queries for /api/log/counts and /api/log/times endpoints. " +
+                    "To create the index manually, run: CREATE INDEX Deployment_Pod_TimeStamp_idx ON `Log` (Deployment, Pod, TimeStamp);");
 
-                // Create the index
-                var createIndexSql = @"
-                    CREATE INDEX Deployment_Pod_TimeStamp_idx
-                    ON `Log` (Deployment, Pod, TimeStamp)";
-
-                db.Execute(createIndexSql);
-                _logger.LogInformation("Successfully created composite index Deployment_Pod_TimeStamp_idx");
+                // Note: We don't create the index automatically because it can take a very long time
+                // on large tables and cause startup timeout. It should be created manually during
+                // a maintenance window with: CREATE INDEX Deployment_Pod_TimeStamp_idx ON `Log` (Deployment, Pod, TimeStamp);
+            }
+            else
+            {
+                _logger.LogInformation("Composite index Deployment_Pod_TimeStamp_idx exists on Log table");
             }
         }
         catch (Exception ex)
         {
-            _logger.LogWarning(ex, "Failed to create missing indexes, they may already exist or require manual creation");
+            _logger.LogWarning(ex, "Failed to check indexes");
         }
     }
 }
