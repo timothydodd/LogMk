@@ -1,4 +1,32 @@
 :root {
+    // rd-ui component variables (mapped to existing theme)
+    --rd-background: var(--background);
+    --rd-foreground: var(--foreground);
+    --rd-primary: var(--primary);
+    --rd-secondary: var(--secondary);
+    --rd-success: var(--success);
+    --rd-danger: var(--danger);
+    --rd-warning: var(--warning);
+    --rd-info: var(--info);
+    --rd-surface: var(--surface);
+    --rd-surface-variant: var(--surface-variant);
+    --rd-surface-container: var(--surface-container);
+    --rd-surface-container-high: var(--surface-container-high);
+    --rd-surface-container-highest: var(--surface-container-highest);
+    --rd-on-surface: var(--on-surface);
+    --rd-on-surface-variant: var(--on-surface-variant);
+    --rd-on-surface-muted: var(--on-surface-muted);
+    --rd-on-primary: var(--on-primary);
+    --rd-input-bg: var(--input-bg);
+    --rd-border-color: var(--border-color);
+    --rd-focus-ring: var(--focus-ring);
+    --rd-modal-bg: var(--modal-bg);
+    --rd-dropdown-bg: var(--dropdown-bg);
+    --rd-shadow-color: rgba(0, 0, 0, 0.3);
+    --rd-border-radius: 8px;
+    --rd-border-radius-sm: 4px;
+    --rd-border-radius-lg: 12px;
+
     // Core Dracula theme colors
     --background: #282a36;
     --current-line: #44475a;

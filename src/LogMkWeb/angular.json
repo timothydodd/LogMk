@@ -3,6 +3,29 @@
   "version": 1,
   "newProjectRoot": "projects",
   "projects": {
+    "rd-ui": {
+      "projectType": "library",
+      "root": "src/rd-ui/projects/rd-ui",
+      "sourceRoot": "src/rd-ui/projects/rd-ui/src",
+      "prefix": "rd",
+      "architect": {
+        "build": {
+          "builder": "@angular/build:ng-packagr",
+          "options": {
+            "project": "src/rd-ui/projects/rd-ui/ng-package.json"
+          },
+          "configurations": {
+            "production": {
+              "tsConfig": "src/rd-ui/projects/rd-ui/tsconfig.lib.prod.json"
+            },
+            "development": {
+              "tsConfig": "src/rd-ui/projects/rd-ui/tsconfig.lib.json"
+            }
+          },
+          "defaultConfiguration": "production"
+        }
+      }
+    },
     "LogMk": {
       "projectType": "application",
       "schematics": {

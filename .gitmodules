@@ -1,3 +1,6 @@
 [submodule "src/RoboDodd.OrmLite"]
 	path = src/RoboDodd.OrmLite
 	url = https://github.com/timothydodd/RoboDodd.OrmLite
+[submodule "src/LogMkWeb/src/rd-ui"]
+	path = src/LogMkWeb/src/rd-ui
+	url = https://github.com/timothydodd/rd-ui.git

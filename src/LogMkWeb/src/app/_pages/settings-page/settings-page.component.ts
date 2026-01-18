@@ -1,13 +1,13 @@
 import { Component, inject, OnInit, signal } from '@angular/core';
 import { FormControl, FormsModule, ReactiveFormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
+import { DropdownComponent } from '@rd-ui';
 import { ToastrService } from 'ngx-toastr';
 import { firstValueFrom } from 'rxjs';
-import { DropdownComponent } from '../../_components/dropdown/dropdown.component';
-import { ModalService } from '../../_services/modal.service';
-import { LogApiService } from '../../_services/log.api';
-import { WorkQueueService } from '../../_services/work-queue.service';
 import { WorkQueueComponent } from '../../_components/work-queue/work-queue.component';
+import { LogApiService } from '../../_services/log.api';
+import { ModalService } from '../../_services/modal.service';
+import { WorkQueueService } from '../../_services/work-queue.service';
 
 interface PodSummary {
   pod: string;
@@ -26,7 +26,7 @@ interface TimeRange {
   standalone: true,
   imports: [FormsModule, ReactiveFormsModule, DropdownComponent, WorkQueueComponent],
   templateUrl: './settings-page.component.html',
-  styleUrl: './settings-page.component.scss'
+  styleUrl: './settings-page.component.scss',
 })
 export class SettingsPageComponent implements OnInit {
   private logApiService = inject(LogApiService);
@@ -41,7 +41,7 @@ export class SettingsPageComponent implements OnInit {
   isLoading = signal(false);
   isPurging = signal(false);
   podHasPendingOperations = signal<{ [key: string]: boolean }>({});
-  
+
   podControl = new FormControl('');
   timeRangeControl = new FormControl('all');
 
@@ -50,22 +50,22 @@ export class SettingsPageComponent implements OnInit {
     { label: 'Last Hour', value: 'hour' },
     { label: 'Last Day', value: 'day' },
     { label: 'Last Week', value: 'week' },
-    { label: 'Last Month', value: 'month' }
+    { label: 'Last Month', value: 'month' },
   ];
 
   async ngOnInit() {
     await this.loadPodSummaries();
     await this.checkPendingOperations();
-    
+
     // Subscribe to form control changes
-    this.podControl.valueChanges.subscribe(value => {
+    this.podControl.valueChanges.subscribe((value) => {
       if (value) {
         this.selectedPod.set(value);
         this.checkPodPendingOperations(value);
       }
     });
-    
-    this.timeRangeControl.valueChanges.subscribe(value => {
+
+    this.timeRangeControl.valueChanges.subscribe((value) => {
       if (value) this.selectedTimeRange.set(value);
     });
   }
@@ -101,39 +101,39 @@ export class SettingsPageComponent implements OnInit {
   }
 
   get podOptions() {
-    return this.pods().map(p => ({
+    return this.pods().map((p) => ({
       label: `${p.pod} (${p.totalCount.toLocaleString()} logs)`,
-      value: p.pod
+      value: p.pod,
     }));
   }
 
   get timeRangeOptions() {
-    return this.timeRanges.map(t => ({
+    return this.timeRanges.map((t) => ({
       label: t.label,
-      value: t.value
+      value: t.value,
     }));
   }
 
   get selectedPodSummary() {
-    return this.pods().find(p => p.pod === this.selectedPod());
+    return this.pods().find((p) => p.pod === this.selectedPod());
   }
 
   async confirmPurge() {
     const pod = this.selectedPod();
     const timeRange = this.selectedTimeRange();
     const summary = this.selectedPodSummary;
-    
+
     if (!pod || !summary) {
       this.toastr.warning('Please select a pod');
       return;
     }
 
-    const timeRangeLabel = this.timeRanges.find(t => t.value === timeRange)?.label || 'All Time';
-    
+    const timeRangeLabel = this.timeRanges.find((t) => t.value === timeRange)?.label || 'All Time';
+
     const message = `Are you sure you want to purge logs for pod "${pod}" (${timeRangeLabel})? This will permanently delete ${summary.totalCount.toLocaleString()} log entries. This action cannot be undone.`;
-    
+
     const confirmed = await this.modalService.confirm('Confirm Purge', message);
-    
+
     if (confirmed) {
       await this.purgeLogs();
     }
@@ -144,22 +144,26 @@ export class SettingsPageComponent implements OnInit {
       this.isPurging.set(true);
       const pod = this.selectedPod();
       const timeRange = this.selectedTimeRange();
-      
+
       // Use work queue service instead of direct purge
-      const result = await firstValueFrom(this.workQueueService.queuePurge({
-        type: 'LOG_PURGE',
-        podName: pod,
-        timeRange: timeRange
-      }));
-      
-      this.toastr.success(`Purge operation queued successfully. Estimated ${result.estimatedRecords?.toLocaleString() || 0} records to delete.`);
-      
+      const result = await firstValueFrom(
+        this.workQueueService.queuePurge({
+          type: 'LOG_PURGE',
+          podName: pod,
+          timeRange: timeRange,
+        })
+      );
+
+      this.toastr.success(
+        `Purge operation queued successfully. Estimated ${result.estimatedRecords?.toLocaleString() || 0} records to delete.`
+      );
+
       // Update pending operations status
-      this.podHasPendingOperations.update(current => ({
+      this.podHasPendingOperations.update((current) => ({
         ...current,
-        [pod]: true
+        [pod]: true,
       }));
-      
+
       // Navigate to work queue view
       this.router.navigate(['/settings'], { fragment: 'queue' });
     } catch (error: any) {
@@ -188,9 +192,9 @@ export class SettingsPageComponent implements OnInit {
   async checkPodPendingOperations(podName: string) {
     try {
       const result = await firstValueFrom(this.workQueueService.getByPod(podName));
-      this.podHasPendingOperations.update(current => ({
+      this.podHasPendingOperations.update((current) => ({
         ...current,
-        [podName]: result.hasPendingOrActive
+        [podName]: result.hasPendingOrActive,
       }));
     } catch (error) {
       console.error(`Error checking pending operations for pod ${podName}:`, error);

@@ -1,5 +1,5 @@
 import { Injectable, signal, effect } from '@angular/core';
-import { TriStateValue } from '../../../_components/dropdown/dropdown.component';
+import { TriStateValue } from '@rd-ui';
 
 interface FilterState {
   selectedLogLevel: string[] | null;

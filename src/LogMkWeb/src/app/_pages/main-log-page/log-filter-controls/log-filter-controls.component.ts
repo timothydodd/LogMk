@@ -5,23 +5,24 @@ import { FormsModule } from '@angular/forms';
 import { startOfToday, subDays, subHours, subMonths } from 'date-fns'; // Import date-fns for date manipulations
 import { LucideAngularModule } from 'lucide-angular';
 import { ToastrService } from 'ngx-toastr';
+
 import { debounceTime } from 'rxjs';
-import { DropdownComponent } from '../../../_components/dropdown/dropdown.component';
+import { DropdownComponent } from '@rd-ui';
 import { FilterPresetsModalComponent } from '../../../_components/filter-presets-modal/filter-presets-modal.component';
-import { TimeFilterDropdownComponent, TimeFilter } from '../../../_components/time-filter-dropdown/time-filter-dropdown.component';
+import { TimeFilter, TimeFilterDropdownComponent } from '../../../_components/time-filter-dropdown/time-filter-dropdown.component';
+import { AudioService } from '../../../_services/audio.service';
+import { ChartTypeService } from '../../../_services/chart-type.service';
+import { ChartVisibilityService } from '../../../_services/chart-visibility.service';
 import { ExportService } from '../../../_services/export.service';
 import { FilterPresetsService } from '../../../_services/filter-presets.service';
+import { LineNumbersService } from '../../../_services/line-numbers.service';
 import { LiveUpdatesService } from '../../../_services/live-updates.service';
 import { LogGroupingService } from '../../../_services/log-grouping.service';
-import { LineNumbersService } from '../../../_services/line-numbers.service';
-import { LogApiService } from '../../../_services/log.api';
 import { LogProcessingService } from '../../../_services/log-processing.service';
+import { LogApiService } from '../../../_services/log.api';
+import { MemoryManagementService } from '../../../_services/memory-management.service';
 import { TimestampService } from '../../../_services/timestamp.service';
 import { ViewModeService } from '../../../_services/view-mode.service';
-import { AudioService } from '../../../_services/audio.service';
-import { ChartVisibilityService } from '../../../_services/chart-visibility.service';
-import { ChartTypeService } from '../../../_services/chart-type.service';
-import { MemoryManagementService } from '../../../_services/memory-management.service';
 import { LogFilterState } from '../_services/log-filter-state';
 
 @Component({
@@ -45,7 +46,7 @@ import { LogFilterState } from '../_services/log-filter-state';
 
       <!-- Log Levels Filter -->
       <div class="filter-item">
-        <app-dropdown
+        <rd-dropdown
           id="log-level-select"
           [items]="logLevels"
           [triState]="true"
@@ -56,12 +57,12 @@ import { LogFilterState } from '../_services/log-filter-state';
           size="compact"
           [ngModel]="logFilterState.triStateLogLevel()"
           (ngModelChange)="logFilterState.triStateLogLevel.set($event)"
-        ></app-dropdown>
+        ></rd-dropdown>
       </div>
 
       <!-- Pods Filter -->
       <div class="filter-item">
-        <app-dropdown
+        <rd-dropdown
           id="pod-select"
           [items]="pods()"
           [triState]="true"
@@ -72,7 +73,7 @@ import { LogFilterState } from '../_services/log-filter-state';
           size="compact"
           [ngModel]="logFilterState.triStatePod()"
           (ngModelChange)="logFilterState.triStatePod.set($event)"
-        ></app-dropdown>
+        ></rd-dropdown>
       </div>
 
       <!-- Time Range Filter -->

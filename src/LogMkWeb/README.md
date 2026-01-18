@@ -39,6 +39,20 @@ A modern Angular 20 web application for real-time log monitoring and analysis. B
 
 ## 📦 Dependencies
 
+### Shared Component Library (rd-ui)
+This project uses **rd-ui**, a shared Angular component library included as a git submodule at `src/rd-ui/`. The library provides reusable UI components with consistent theming.
+
+**Included Components:**
+- `rd-dropdown`: Multi-select dropdown with search, tri-state support
+- `rd-modal`: Service-based modal system with layout slots
+- `rd-toast`: Animated toast notifications
+- `rd-tabs`: Signal-based tab navigation
+- `rd-checkbox`: Custom styled checkbox
+- `rd-input-switch`: Toggle switch component
+- `rd-skeleton`: Loading skeleton placeholders
+- `rd-spinner`: Loading spinner overlay
+- `rd-progress-bar`: Progress indicator
+
 ### Core Dependencies
 - `@angular/core`: Angular framework
 - `@angular/common`: Common Angular modules
@@ -52,6 +66,7 @@ A modern Angular 20 web application for real-time log monitoring and analysis. B
 ### Development Dependencies
 - `@angular/cli`: Build system and development tools
 - `@angular-eslint/builder`: Linting and code quality
+- `ng-packagr`: Angular library packaging (for rd-ui)
 - `typescript`: TypeScript compiler
 - `sass`: CSS preprocessing
 
@@ -59,10 +74,14 @@ A modern Angular 20 web application for real-time log monitoring and analysis. B
 
 ### **Quick Start**
 ```bash
+# Ensure submodules are initialized (from repo root)
+git submodule update --init --recursive
+
 # Install dependencies
 npm install
 
 # Start development server (port 6200)
+# This automatically builds the rd-ui library first
 npm start
 
 # Navigate to http://localhost:6200
@@ -71,16 +90,24 @@ npm start
 ### **Available Scripts**
 ```bash
 # Development
-npm start              # Start dev server
-npm run dev           # Alias for start
+npm start              # Build rd-ui library + start dev server with watch
+npm run serve          # Start dev server only (library must be built)
+npm run serve:local    # Start with local environment config
 
-# Building
-npm run build         # Production build
-npm run prod          # Optimized production build
+# Library Build (rd-ui shared components)
+npm run lib:build      # One-time build of rd-ui library
+npm run lib:watch      # Build rd-ui in watch mode
 
-# Testing
-npm test              # Unit tests with Karma
-npm run lint          # ESLint code analysis
+# App Building
+npm run build          # Development build
+npm run prod           # Optimized production build
+
+# Testing & Quality
+npm test               # Unit tests with Karma
+npm run lint           # ESLint code analysis
+
+# Maintenance
+npm run clean          # Remove dist folders
 
 # Code Generation
 ng generate component _components/my-component
@@ -92,8 +119,7 @@ ng generate pipe _pipes/my-pipe
 ```
 src/
 ├── app/
-│   ├── _components/          # Reusable UI components
-│   │   ├── dropdown/         # Multi-select dropdown with search
+│   ├── _components/          # App-specific UI components
 │   │   ├── modal/            # Template-based modal system
 │   │   ├── context-menu/     # Right-click context menus
 │   │   └── ...
@@ -108,6 +134,10 @@ src/
 │   │   └── ...
 │   ├── _pipes/               # Data transformation
 │   └── styles/               # Global styling system
+├── rd-ui/                    # Git submodule - shared component library
+│   └── projects/rd-ui/       # Library source code
+├── environments/             # Environment configurations
+└── styles.scss               # Global styles with rd-ui CSS variable mappings
 ```
 
 ## 🎨 Styling Architecture

@@ -15,10 +15,16 @@ RUN dotnet restore "./LogMkApi/LogMkApi.csproj"
 # Install Node.js and Angular CLI
 RUN curl -fsSL https://deb.nodesource.com/setup_22.x | bash - \
     && apt-get install -y nodejs \
-    && npm install -g @angular/cli@20
+    && npm install -g @angular/cli@21
 
 
 COPY . .
+
+# Build rd-ui library before main app build
+WORKDIR "/src/LogMkWeb"
+RUN npm install
+RUN npm run lib:build
+WORKDIR "/src"
 RUN chmod +x ./LogMkApi/replace_vars.sh
 RUN ./LogMkApi/replace_vars.sh ./LogMkWeb/src/environments
 

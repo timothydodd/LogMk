@@ -85,8 +85,12 @@ LogMk consists of three main components:
 
 #### 1. **Clone and Build**
 ```bash
-git clone <repository-url>
+# Clone with submodules (includes rd-ui shared component library)
+git clone --recurse-submodules <repository-url>
 cd LogMk2/src
+
+# Or if already cloned, initialize submodules
+git submodule update --init --recursive
 
 # Build entire solution
 dotnet build LogMk.sln
@@ -123,9 +127,13 @@ cd src/LogMkWeb
 # Install dependencies
 npm install
 
-# Start development server
+# Start development server (automatically builds rd-ui library first)
 npm start
 # Web app available at: http://localhost:6200
+
+# Or build and run separately:
+npm run lib:build    # Build rd-ui shared component library
+npm run serve        # Start Angular dev server
 ```
 
 #### 5. **Deploy Agent (Kubernetes)**
