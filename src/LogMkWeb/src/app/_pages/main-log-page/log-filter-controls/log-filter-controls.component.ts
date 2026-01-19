@@ -1,13 +1,12 @@
 
-import { ChangeDetectionStrategy, Component, computed, ElementRef, HostListener, inject, signal, viewChild } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, ElementRef, HostListener, inject, signal } from '@angular/core';
 import { takeUntilDestroyed, toObservable } from '@angular/core/rxjs-interop';
 import { FormsModule } from '@angular/forms';
 import { startOfToday, subDays, subHours, subMonths } from 'date-fns'; // Import date-fns for date manipulations
 import { LucideAngularModule } from 'lucide-angular';
-import { ToastrService } from 'ngx-toastr';
 
 import { debounceTime } from 'rxjs';
-import { DropdownComponent } from '@rd-ui';
+import { DropdownComponent, ModalContainerService, ToastService } from '@rd-ui';
 import { FilterPresetsModalComponent } from '../../../_components/filter-presets-modal/filter-presets-modal.component';
 import { TimeFilter, TimeFilterDropdownComponent } from '../../../_components/time-filter-dropdown/time-filter-dropdown.component';
 import { AudioService } from '../../../_services/audio.service';
@@ -28,7 +27,7 @@ import { LogFilterState } from '../_services/log-filter-state';
 @Component({
   selector: 'app-log-filter-controls',
   standalone: true,
-  imports: [FormsModule, DropdownComponent, TimeFilterDropdownComponent, LucideAngularModule, FilterPresetsModalComponent],
+  imports: [FormsModule, DropdownComponent, TimeFilterDropdownComponent, LucideAngularModule],
   template: `
     <div class="compact-toolbar filter-container-base">
       <!-- Search Input -->
@@ -356,10 +355,6 @@ import { LogFilterState } from '../_services/log-filter-state';
         }
       </div>
     </div>
-
-
-    <!-- Filter Presets Modal -->
-    <app-filter-presets-modal #presetsModal></app-filter-presets-modal>
   `,
   styleUrl: './log-filter-controls.component.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -369,7 +364,7 @@ export class LogFilterControlsComponent {
   logFilterState = inject(LogFilterState);
   logProcessingService = inject(LogProcessingService);
   exportService = inject(ExportService);
-  toastr = inject(ToastrService);
+  toast = inject(ToastService);
   elementRef = inject(ElementRef);
   timestampService = inject(TimestampService);
   presetsService = inject(FilterPresetsService);
@@ -381,8 +376,7 @@ export class LogFilterControlsComponent {
   chartVisibilityService = inject(ChartVisibilityService);
   chartTypeService = inject(ChartTypeService);
   memoryManagementService = inject(MemoryManagementService);
-
-  presetsModal = viewChild<FilterPresetsModalComponent>('presetsModal');
+  modalContainerService = inject(ModalContainerService);
 
   logLevels = ['Debug', 'Information', 'Warning', 'Error'];
   pods = signal<string[]>([]);
@@ -527,17 +521,12 @@ export class LogFilterControlsComponent {
     this.liveUpdatesService.toggleLiveUpdates();
 
     if (wasEnabled) {
-      this.toastr.warning(
-        'Live updates paused. New logs will be queued.',
-        'Live Updates',
-        { timeOut: 3000 }
-      );
+      this.toast.warning('Live updates paused. New logs will be queued.', 'Live Updates');
     } else {
       const queuedCount = this.liveUpdatesService.queuedLogsCount();
-      this.toastr.success(
+      this.toast.success(
         queuedCount > 0 ? `Live updates resumed. ${queuedCount} queued logs processed.` : 'Live updates resumed',
-        'Live Updates',
-        { timeOut: 3000 }
+        'Live Updates'
       );
     }
   }
@@ -547,10 +536,9 @@ export class LogFilterControlsComponent {
     this.groupingService.toggleGrouping();
 
     const isEnabled = this.groupingService.isGroupingEnabled();
-    this.toastr.info(
+    this.toast.info(
       isEnabled ? 'Log grouping enabled. Consecutive identical logs will be grouped.' : 'Log grouping disabled. All logs shown individually.',
-      'Log Grouping',
-      { timeOut: 3000 }
+      'Log Grouping'
     );
   }
 
@@ -559,10 +547,10 @@ export class LogFilterControlsComponent {
     this.lineNumbersService.toggleLineNumbers();
 
     const isEnabled = this.lineNumbersService.isLineNumbersEnabled();
-    this.toastr.info(
+    this.toast.info(
       isEnabled ? 'Line numbers shown for easy reference.' : 'Line numbers hidden.',
       'Line Numbers',
-      { timeOut: 2000 }
+      2000
     );
   }
 
@@ -571,10 +559,10 @@ export class LogFilterControlsComponent {
     this.audioService.toggleEnabled();
 
     const isEnabled = this.audioService.soundSettings().enabled;
-    this.toastr.info(
+    this.toast.info(
       isEnabled ? 'Sound alerts enabled for errors and warnings.' : 'Sound alerts disabled.',
       'Sound Alerts',
-      { timeOut: 2000 }
+      2000
     );
 
     // Play test sound when enabling
@@ -590,10 +578,10 @@ export class LogFilterControlsComponent {
     this.chartVisibilityService.toggleVisibility();
 
     const isVisible = this.chartVisibilityService.isChartVisible();
-    this.toastr.info(
+    this.toast.info(
       isVisible ? 'Chart is now visible.' : 'Chart is now hidden to maximize log space.',
       'Chart Display',
-      { timeOut: 2000 }
+      2000
     );
   }
 
@@ -602,20 +590,16 @@ export class LogFilterControlsComponent {
     this.chartTypeService.setChartType(chartType);
 
     const typeOption = this.chartTypeService.getChartTypeOption(chartType);
-    this.toastr.info(
+    this.toast.info(
       `Chart type changed to ${typeOption?.label || chartType}.`,
       'Chart Type',
-      { timeOut: 2000 }
+      2000
     );
   }
 
   openPresetsModal(): void {
     this.showActionsMenu.set(false);
-
-    const modal = this.presetsModal();
-    if (modal) {
-      modal.open();
-    }
+    this.modalContainerService.openComponent(FilterPresetsModalComponent);
   }
 
   @HostListener('document:click', ['$event'])
@@ -650,16 +634,14 @@ export class LogFilterControlsComponent {
     try {
       this.exportService.exportFilteredLogs(mockLogs, filters, format);
 
-      this.toastr.success(
+      this.toast.success(
         `Logs exported successfully in ${format.toUpperCase()} format`,
-        'Export Complete',
-        { timeOut: 3000 }
+        'Export Complete'
       );
     } catch (error) {
-      this.toastr.error(
+      this.toast.error(
         'Failed to export logs. Please try again.',
-        'Export Error',
-        { timeOut: 5000 }
+        'Export Error'
       );
     }
   }
@@ -711,6 +693,6 @@ export class LogFilterControlsComponent {
 
   resetMemorySettings(): void {
     this.memoryManagementService.resetToDefaults();
-    this.toastr.info('Memory settings reset to defaults', 'Memory Management', { timeOut: 2000 });
+    this.toast.info('Memory settings reset to defaults', 'Memory Management', 2000);
   }
 }

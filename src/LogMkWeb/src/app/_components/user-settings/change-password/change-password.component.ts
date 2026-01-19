@@ -10,7 +10,7 @@ import {
   ValidatorFn,
   Validators,
 } from '@angular/forms';
-import { ToastrService } from 'ngx-toastr';
+import { ToastService } from '@rd-ui';
 import { AuthService } from '../../../_services/auth-service';
 
 @Component({
@@ -58,7 +58,7 @@ import { AuthService } from '../../../_services/auth-service';
 })
 export class ChangePasswordComponent {
   private authService = inject(AuthService);
-  private toastr = inject(ToastrService);
+  private toast = inject(ToastService);
   errorMessage = signal('');
   form = signal<FormGroup<ChangePasswordForm>>(
     new FormGroup(
@@ -87,11 +87,11 @@ export class ChangePasswordComponent {
       })
       .subscribe({
         next: () => {
-          this.toastr.success('Password changed');
+          this.toast.success('Password changed');
           this.saveEvent.emit();
         },
         error: (error) => {
-          this.toastr.error('Password changed Failed');
+          this.toast.error('Password change failed');
           const message = error.status == 401 ? 'Invalid UserName or Password' : 'An error occurred';
           this.errorMessage.update(() => message);
         },

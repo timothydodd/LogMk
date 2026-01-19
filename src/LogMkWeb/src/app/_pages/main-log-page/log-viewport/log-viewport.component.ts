@@ -2,8 +2,8 @@ import { CommonModule } from '@angular/common';
 import { afterNextRender, ChangeDetectionStrategy, Component, DestroyRef, effect, ElementRef, HostListener, inject, signal, viewChild } from '@angular/core';
 import { takeUntilDestroyed, toObservable } from '@angular/core/rxjs-interop';
 import { LucideAngularModule } from 'lucide-angular';
-import { ToastrService } from 'ngx-toastr';
 import { combineLatest, Subject, switchMap, tap } from 'rxjs';
+import { ModalContainerService, ToastService } from '@rd-ui';
 import { ContextMenuComponent } from '../../../_components/context-menu/context-menu.component';
 import { LogDetailsModalComponent } from '../../../_components/log-details-modal/log-details-modal.component';
 import { VirtualScrollerComponent } from '../../../_components/scroller/ngx-virtual-scroller.component';
@@ -22,7 +22,7 @@ import { LogFilterState } from '../_services/log-filter-state';
 @Component({
   selector: 'app-log-viewport',
   standalone: true,
-  imports: [CommonModule, VirtualScrollerComponent, HighlightLogPipe, LogLevelPipe, LucideAngularModule, TimestampFormatPipe, LogDetailsModalComponent, ContextMenuComponent],
+  imports: [CommonModule, VirtualScrollerComponent, HighlightLogPipe, LogLevelPipe, LucideAngularModule, TimestampFormatPipe, ContextMenuComponent],
   template: `
     @if(parentScrollElement(); as parentScrollElement) {
     <virtual-scroller
@@ -174,9 +174,6 @@ import { LogFilterState } from '../_services/log-filter-state';
     </virtual-scroller>
     }
 
-    <!-- Log Details Modal -->
-    <app-log-details-modal #logDetailsModal></app-log-details-modal>
-
     <!-- Context Menu -->
     <app-context-menu
       #contextMenu
@@ -206,9 +203,9 @@ export class LogViewportComponent {
   $loadMoreTrigger = new Subject<void>();
   viewPort = viewChild<VirtualScrollerComponent>('scrollViewport');
   contextMenu = viewChild<ContextMenuComponent>('contextMenu');
-  logDetailsModal = viewChild<LogDetailsModalComponent>('logDetailsModal');
+  modalContainerService = inject(ModalContainerService);
   private elementRef = inject(ElementRef);
-  private toastr = inject(ToastrService);
+  private toast = inject(ToastService);
   copiedLogId = signal<string | null>(null);
   selectedLogId = signal<string | null>(null);
 
@@ -479,20 +476,14 @@ export class LogViewportComponent {
     if (navigator.clipboard) {
       navigator.clipboard.writeText(logText).then(() => {
         this.copiedLogId.set(log.id.toString());
-        this.toastr.success('Log copied to clipboard', '', {
-          timeOut: 2000,
-          positionClass: 'toast-bottom-right'
-        });
+        this.toast.success('Log copied to clipboard', undefined, 2000);
 
         // Reset the copied state after animation
         setTimeout(() => {
           this.copiedLogId.set(null);
         }, 2000);
       }).catch(() => {
-        this.toastr.error('Failed to copy log', '', {
-          timeOut: 2000,
-          positionClass: 'toast-bottom-right'
-        });
+        this.toast.error('Failed to copy log', undefined, 2000);
       });
     } else {
       // Fallback for older browsers
@@ -503,18 +494,12 @@ export class LogViewportComponent {
       try {
         document.execCommand('copy');
         this.copiedLogId.set(log.id.toString());
-        this.toastr.success('Log copied to clipboard', '', {
-          timeOut: 2000,
-          positionClass: 'toast-bottom-right'
-        });
+        this.toast.success('Log copied to clipboard', undefined, 2000);
         setTimeout(() => {
           this.copiedLogId.set(null);
         }, 2000);
       } catch (err) {
-        this.toastr.error('Failed to copy log', '', {
-          timeOut: 2000,
-          positionClass: 'toast-bottom-right'
-        });
+        this.toast.error('Failed to copy log', undefined, 2000);
       }
       document.body.removeChild(textArea);
     }
@@ -544,13 +529,13 @@ export class LogViewportComponent {
       case 'filter-level':
         // Filter by this log level only
         this.logFilterState.selectedLogLevel.set([log.logLevel]);
-        this.toastr.info(`Filtered to show only "${log.logLevel}" logs`, 'Filter Applied');
+        this.toast.info(`Filtered to show only "${log.logLevel}" logs`, 'Filter Applied');
         break;
 
       case 'filter-pod':
         // Filter by this pod only
         this.logFilterState.selectedPod.set([log.pod]);
-        this.toastr.info(`Filtered to show only "${log.pod}" pod`, 'Filter Applied');
+        this.toast.info(`Filtered to show only "${log.pod}" pod`, 'Filter Applied');
         break;
 
       case 'hide-level':
@@ -558,7 +543,7 @@ export class LogViewportComponent {
         const currentLevels = this.logFilterState.selectedLogLevel() || ['Debug', 'Information', 'Warning', 'Error'];
         const filteredLevels = currentLevels.filter(level => level !== log.logLevel);
         this.logFilterState.selectedLogLevel.set(filteredLevels);
-        this.toastr.info(`Hidden "${log.logLevel}" logs`, 'Filter Applied');
+        this.toast.info(`Hidden "${log.logLevel}" logs`, 'Filter Applied');
         break;
 
       case 'hide-pod':
@@ -567,7 +552,7 @@ export class LogViewportComponent {
         if (currentPods && currentPods.length > 0) {
           const filteredPods = currentPods.filter(pod => pod !== log.pod);
           this.logFilterState.selectedPod.set(filteredPods.length > 0 ? filteredPods : null);
-          this.toastr.info(`Hidden "${log.pod}" pod`, 'Filter Applied');
+          this.toast.info(`Hidden "${log.pod}" pod`, 'Filter Applied');
         }
         break;
     }
@@ -665,10 +650,7 @@ export class LogViewportComponent {
 
 
   openLogModal(log: Log): void {
-    const modal = this.logDetailsModal();
-    if (modal) {
-      modal.open(log);
-    }
+    this.modalContainerService.openComponent(LogDetailsModalComponent, { data: { log } });
   }
 
   private findParentScrollContainer(): void {

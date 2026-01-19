@@ -1,87 +1,90 @@
-import { Component, computed, inject, signal, TemplateRef, viewChild } from '@angular/core';
+import { Component, computed, inject, OnInit, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { LucideAngularModule } from 'lucide-angular';
-import { ToastrService } from 'ngx-toastr';
 import { Log } from '../../_services/signalr.service';
-import { ModalService } from '../../_services/modal.service';
+import { ModalComponent, ModalContainerService, ModalLayoutComponent, ToastService } from '@rd-ui';
 import { TimestampFormatPipe } from '../../_pipes/timestamp-format.pipe';
 import { HighlightLogPipe } from '../../_pages/main-log-page/_services/highlight.directive';
 
 @Component({
   selector: 'app-log-details-modal',
   standalone: true,
-  imports: [CommonModule, LucideAngularModule, TimestampFormatPipe, HighlightLogPipe],
+  imports: [CommonModule, LucideAngularModule, TimestampFormatPipe, HighlightLogPipe, ModalLayoutComponent],
   template: `
-    <!-- Body Template -->
-    <ng-template #bodyTemplate>
-      <div class="log-details-content">
-            @if (log(); as logData) {
-              <div class="log-metadata">
-                <div class="metadata-row">
-                  <span class="label">Timestamp:</span>
-                  <span class="value">{{ logData.timeStamp | timestampFormat }}</span>
-                </div>
-                <div class="metadata-row">
-                  <span class="label">Pod:</span>
-                  <span class="value pod-name" [style.color]="logData.podColor">{{ logData.pod }}</span>
-                </div>
-                <div class="metadata-row">
-                  <span class="label">Level:</span>
-                  <span class="value log-level" [class]="logData.logLevel.toLowerCase()">{{ logData.logLevel }}</span>
-                </div>
-                <div class="metadata-row">
-                  <span class="label">Deployment:</span>
-                  <span class="value">{{ logData.deployment }}</span>
-                </div>
-              </div>
+    <rd-modal-layout [title]="'Log Details'">
+      <div slot="body" class="log-details-content">
+        @if (log(); as logData) {
+          <div class="log-metadata">
+            <div class="metadata-row">
+              <span class="label">Timestamp:</span>
+              <span class="value">{{ logData.timeStamp | timestampFormat }}</span>
+            </div>
+            <div class="metadata-row">
+              <span class="label">Pod:</span>
+              <span class="value pod-name" [style.color]="logData.podColor">{{ logData.pod }}</span>
+            </div>
+            <div class="metadata-row">
+              <span class="label">Level:</span>
+              <span class="value log-level" [class]="logData.logLevel.toLowerCase()">{{ logData.logLevel }}</span>
+            </div>
+            <div class="metadata-row">
+              <span class="label">Deployment:</span>
+              <span class="value">{{ logData.deployment }}</span>
+            </div>
+          </div>
 
-              <div class="log-content-section">
-                <div class="section-header">
-                  <h4>Full Log Message</h4>
-                  <button class="copy-btn" (click)="copyFullLog()" title="Copy full log">
-                    @if (copied()) {
-                      <lucide-icon name="check" size="16"></lucide-icon>
-                      Copied!
-                    } @else {
-                      <lucide-icon name="copy" size="16"></lucide-icon>
-                      Copy
-                    }
-                  </button>
-                </div>
+          <div class="log-content-section">
+            <div class="section-header">
+              <h4>Full Log Message</h4>
+              <button class="copy-btn" (click)="copyFullLog()" title="Copy full log">
+                @if (copied()) {
+                  <lucide-icon name="check" size="16"></lucide-icon>
+                  Copied!
+                } @else {
+                  <lucide-icon name="copy" size="16"></lucide-icon>
+                  Copy
+                }
+              </button>
+            </div>
 
-                <div class="log-content">
-                  @if (isJsonContent()) {
-                    <pre class="json-content" [innerHTML]="formattedJson() | highlightLog"></pre>
-                  } @else {
-                    <pre class="text-content" [innerHTML]="logData.line | highlightLog"></pre>
-                  }
-                </div>
-              </div>
-            }
+            <div class="log-content">
+              @if (isJsonContent()) {
+                <pre class="json-content" [innerHTML]="formattedJson() | highlightLog"></pre>
+              } @else {
+                <pre class="text-content" [innerHTML]="logData.line | highlightLog"></pre>
+              }
+            </div>
+          </div>
+        }
       </div>
-    </ng-template>
 
-    <!-- Footer Template -->
-    <ng-template #footerTemplate>
-      <button class="btn btn-secondary" (click)="close()">Close</button>
-      <button class="btn btn-primary" (click)="copyFullLog()">
-        <lucide-icon name="copy" size="16"></lucide-icon>
-        Copy Log
-      </button>
-    </ng-template>
+      <div slot="footer">
+        <button class="btn btn-secondary" (click)="close()">Close</button>
+        <button class="btn btn-primary" (click)="copyFullLog()">
+          <lucide-icon name="copy" size="16"></lucide-icon>
+          Copy Log
+        </button>
+      </div>
+    </rd-modal-layout>
   `,
   styleUrl: './log-details-modal.component.scss'
 })
-export class LogDetailsModalComponent {
-  private toastr = inject(ToastrService);
-  private modalService = inject(ModalService);
+export class LogDetailsModalComponent implements OnInit {
+  private toast = inject(ToastService);
+  private modalContainerService = inject(ModalContainerService);
+  private modalComponent = inject(ModalComponent);
 
-  bodyTemplate = viewChild<TemplateRef<any>>('bodyTemplate');
-  footerTemplate = viewChild<TemplateRef<any>>('footerTemplate');
-
-  // Internal state
+  // Log data from modal config
   log = signal<Log | null>(null);
   copied = signal<boolean>(false);
+
+  ngOnInit(): void {
+    // Get the log data from the modal config
+    const data = this.modalComponent.config?.data;
+    if (data?.log) {
+      this.log.set(data.log);
+    }
+  }
 
   // Computed properties
   isJsonContent = computed(() => {
@@ -105,17 +108,8 @@ export class LogDetailsModalComponent {
     }
   });
 
-  open(log: Log): void {
-    this.log.set(log);
-
-    const body = this.bodyTemplate();
-    const footer = this.footerTemplate();
-
-    this.modalService.open('Log Details', body, footer, undefined, 'large');
-  }
-
   close(): void {
-    this.modalService.close();
+    this.modalContainerService.closeAll();
   }
 
   copyFullLog(): void {
@@ -147,10 +141,7 @@ export class LogDetailsModalComponent {
       document.execCommand('copy');
       this.showCopySuccess();
     } catch (err) {
-      this.toastr.error('Failed to copy log', '', {
-        timeOut: 2000,
-        positionClass: 'toast-bottom-right'
-      });
+      this.toast.error('Failed to copy log', undefined, 2000);
     }
 
     document.body.removeChild(textArea);
@@ -158,10 +149,7 @@ export class LogDetailsModalComponent {
 
   private showCopySuccess(): void {
     this.copied.set(true);
-    this.toastr.success('Log copied to clipboard', '', {
-      timeOut: 2000,
-      positionClass: 'toast-bottom-right'
-    });
+    this.toast.success('Log copied to clipboard', undefined, 2000);
 
     setTimeout(() => {
       this.copied.set(false);

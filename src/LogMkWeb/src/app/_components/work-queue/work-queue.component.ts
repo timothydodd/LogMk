@@ -1,5 +1,6 @@
 import { Component, OnInit, OnDestroy, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { ConfirmDialogService } from '@rd-ui';
 import { WorkQueueService, WorkQueueItem } from '../../_services/work-queue.service';
 import { SignalRService } from '../../_services/signalr.service';
 import { Subject, takeUntil, interval } from 'rxjs';
@@ -14,6 +15,7 @@ import { Subject, takeUntil, interval } from 'rxjs';
 export class WorkQueueComponent implements OnInit, OnDestroy {
   private workQueueService = inject(WorkQueueService);
   private signalRService = inject(SignalRService);
+  private confirmDialog = inject(ConfirmDialogService);
   private destroy$ = new Subject<void>();
   
   workQueueItems = signal<WorkQueueItem[]>([]);
@@ -71,18 +73,23 @@ export class WorkQueueComponent implements OnInit, OnDestroy {
     this.loadWorkQueueItems();
   }
   
-  async cancelItem(item: WorkQueueItem): Promise<void> {
-    if (confirm(`Are you sure you want to cancel this ${item.type} operation?`)) {
-      this.workQueueService.cancel(item.id).subscribe({
-        next: () => {
-          this.loadWorkQueueItems();
-        },
-        error: (error) => {
-          console.error('Error cancelling work queue item:', error);
-          alert('Failed to cancel operation. It may already be in progress.');
-        }
-      });
-    }
+  cancelItem(item: WorkQueueItem): void {
+    this.confirmDialog.confirm({
+      title: 'Cancel Operation',
+      message: `Are you sure you want to cancel this ${item.type} operation?`,
+      confirmText: 'Cancel Operation',
+    }).subscribe((confirmed) => {
+      if (confirmed) {
+        this.workQueueService.cancel(item.id).subscribe({
+          next: () => {
+            this.loadWorkQueueItems();
+          },
+          error: (error) => {
+            console.error('Error cancelling work queue item:', error);
+          }
+        });
+      }
+    });
   }
   
   getStatusClass(status: string): string {

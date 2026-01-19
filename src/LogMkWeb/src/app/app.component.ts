@@ -2,9 +2,9 @@ import { CommonModule } from '@angular/common';
 import { Component, inject, signal, TemplateRef } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { Router, RouterOutlet } from '@angular/router';
+import { ToastComponent } from '@rd-ui';
 import { ErrorCountBadgeComponent } from './_components/error-count-badge/error-count-badge.component';
 import { MobileMenuComponent } from './_components/mobile-menu/mobile-menu.component';
-import { ModalComponent } from './_components/modal/modal.component';
 import { UserMenuComponent } from './_components/user-menu/user-menu.component';
 import { AuthService } from './_services/auth-service';
 import { SignalRService } from './_services/signalr.service';
@@ -12,7 +12,7 @@ import { ToolbarService } from './_services/toolbar.service';
 @Component({
   selector: 'app-root',
   standalone: true,
-  imports: [RouterOutlet, UserMenuComponent, CommonModule, ModalComponent, ErrorCountBadgeComponent, MobileMenuComponent],
+  imports: [RouterOutlet, UserMenuComponent, CommonModule, ErrorCountBadgeComponent, MobileMenuComponent, ToastComponent],
   templateUrl: './app.component.html',
   styleUrl: './app.component.scss',
 })

@@ -1,18 +1,16 @@
 
-import { ChangeDetectionStrategy, Component, inject, signal, TemplateRef, viewChild } from '@angular/core';
+import { ChangeDetectionStrategy, Component, inject, signal } from '@angular/core';
 
 import { Router } from '@angular/router';
 import { LucideAngularModule } from 'lucide-angular';
 import { take } from 'rxjs';
 import { AuthService, User } from '../../_services/auth-service';
 import { ClickOutsideDirective } from '../../_services/click-outside.directive';
-import { ModalService } from '../../_services/modal.service';
-import { UserSettingsComponent } from '../user-settings/user-settings.component';
 
 @Component({
   selector: 'app-user-menu',
   standalone: true,
-  imports: [LucideAngularModule, UserSettingsComponent, ClickOutsideDirective],
+  imports: [LucideAngularModule, ClickOutsideDirective],
   template: `
     @if (user()) {
       <div class="user-menu-container">
@@ -61,10 +59,7 @@ import { UserSettingsComponent } from '../user-settings/user-settings.component'
 })
 export class UserMenuComponent {
   authService = inject(AuthService);
-  modalService = inject(ModalService);
   router = inject(Router);
-  modalFooter = viewChild<TemplateRef<any>>('modalFooter');
-  modalBody = viewChild<TemplateRef<any>>('modalBody');
   user = signal<User | null>(null);
   isOpen = signal(false);
 

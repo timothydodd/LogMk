@@ -17,7 +17,6 @@
   },
   "private": true,
   "dependencies": {
-    "@angular/animations": "^21.1.0",
     "@angular/cdk": "^21.1.0",
     "@angular/common": "^21.1.0",
     "@angular/compiler": "^21.1.0",
@@ -35,7 +34,6 @@
     "date-fns": "^4.1.0",
     "lucide-angular": "^0.562.0",
     "ng2-charts": "^8.0.0",
-    "ngx-toastr": "^19.1.0",
     "rxjs": "~7.8.2",
     "tslib": "^2.8.1",
     "zone.js": "~0.16.0"
@@ -52,21 +50,21 @@
     "@angular/localize": "^21.1.0",
     "@types/jasmine": "~5.1.15",
     "@types/node": "^25.0.9",
-    "@typescript-eslint/eslint-plugin": "8.53.0",
-    "@typescript-eslint/parser": "8.53.0",
+    "@typescript-eslint/eslint-plugin": "8.53.1",
+    "@typescript-eslint/parser": "8.53.1",
     "angular-eslint": "^21.1.0",
     "eslint": "~9.39.2",
     "eslint-config-prettier": "^10.1.8",
     "eslint-plugin-prettier": "^5.5.5",
-    "jasmine-core": "~6.0.0",
+    "jasmine-core": "~6.0.1",
     "karma": "~6.4.4",
     "karma-chrome-launcher": "~3.2.0",
     "karma-coverage": "~2.2.1",
     "ng-packagr": "^21.1.0",
     "prettier": "^3.8.0",
     "prettier-eslint": "^16.4.2",
-    "rimraf": "^6.0.1",
+    "rimraf": "^6.1.2",
     "typescript": "~5.9.3",
-    "typescript-eslint": "^8.53.0"
+    "typescript-eslint": "^8.53.1"
   }
 }

@@ -1,12 +1,10 @@
 import { Component, inject, OnInit, signal } from '@angular/core';
 import { FormControl, FormsModule, ReactiveFormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
-import { DropdownComponent } from '@rd-ui';
-import { ToastrService } from 'ngx-toastr';
+import { ConfirmDialogService, DropdownComponent, ToastService } from '@rd-ui';
 import { firstValueFrom } from 'rxjs';
 import { WorkQueueComponent } from '../../_components/work-queue/work-queue.component';
 import { LogApiService } from '../../_services/log.api';
-import { ModalService } from '../../_services/modal.service';
 import { WorkQueueService } from '../../_services/work-queue.service';
 
 interface PodSummary {
@@ -30,10 +28,10 @@ interface TimeRange {
 })
 export class SettingsPageComponent implements OnInit {
   private logApiService = inject(LogApiService);
-  private modalService = inject(ModalService);
-  private toastr = inject(ToastrService);
+  private toast = inject(ToastService);
   private router = inject(Router);
   private workQueueService = inject(WorkQueueService);
+  private confirmDialog = inject(ConfirmDialogService);
 
   pods = signal<PodSummary[]>([]);
   selectedPod = signal<string>('');
@@ -80,7 +78,7 @@ export class SettingsPageComponent implements OnInit {
         this.podControl.setValue(summaries[0].pod);
       }
     } catch (error) {
-      this.toastr.error('Failed to load pod summaries');
+      this.toast.error('Failed to load pod summaries');
       console.error('Error loading pod summaries:', error);
     } finally {
       this.isLoading.set(false);
@@ -118,13 +116,13 @@ export class SettingsPageComponent implements OnInit {
     return this.pods().find((p) => p.pod === this.selectedPod());
   }
 
-  async confirmPurge() {
+  confirmPurge() {
     const pod = this.selectedPod();
     const timeRange = this.selectedTimeRange();
     const summary = this.selectedPodSummary;
 
     if (!pod || !summary) {
-      this.toastr.warning('Please select a pod');
+      this.toast.warning('Please select a pod');
       return;
     }
 
@@ -132,11 +130,18 @@ export class SettingsPageComponent implements OnInit {
 
     const message = `Are you sure you want to purge logs for pod "${pod}" (${timeRangeLabel})? This will permanently delete ${summary.totalCount.toLocaleString()} log entries. This action cannot be undone.`;
 
-    const confirmed = await this.modalService.confirm('Confirm Purge', message);
-
-    if (confirmed) {
-      await this.purgeLogs();
-    }
+    this.confirmDialog
+      .confirm({
+        title: 'Purge Logs',
+        message,
+        confirmText: 'Purge',
+        cancelText: 'Cancel',
+      })
+      .subscribe((confirmed) => {
+        if (confirmed) {
+          this.purgeLogs();
+        }
+      });
   }
 
   async purgeLogs() {
@@ -154,7 +159,7 @@ export class SettingsPageComponent implements OnInit {
         })
       );
 
-      this.toastr.success(
+      this.toast.success(
         `Purge operation queued successfully. Estimated ${result.estimatedRecords?.toLocaleString() || 0} records to delete.`
       );
 
@@ -168,9 +173,9 @@ export class SettingsPageComponent implements OnInit {
       this.router.navigate(['/settings'], { fragment: 'queue' });
     } catch (error: any) {
       if (error.status === 409) {
-        this.toastr.error('A purge operation is already pending or in progress for this pod');
+        this.toast.error('A purge operation is already pending or in progress for this pod');
       } else {
-        this.toastr.error('Failed to queue purge operation');
+        this.toast.error('Failed to queue purge operation');
       }
       console.error('Error queueing purge:', error);
     } finally {

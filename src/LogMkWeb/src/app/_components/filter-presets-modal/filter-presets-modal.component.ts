@@ -1,18 +1,17 @@
-import { Component, inject, signal, computed, TemplateRef, viewChild } from '@angular/core';
+import { Component, inject, signal, computed } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { FilterPresetsService, FilterPreset } from '../../_services/filter-presets.service';
 import { LogFilterState } from '../../_pages/main-log-page/_services/log-filter-state';
-import { ModalService } from '../../_services/modal.service';
+import { ConfirmDialogService, ModalContainerService, ModalLayoutComponent } from '@rd-ui';
 import { LucideAngularModule } from 'lucide-angular';
 
 @Component({
   selector: 'app-filter-presets-modal',
   standalone: true,
-  imports: [LucideAngularModule, FormsModule],
+  imports: [LucideAngularModule, FormsModule, ModalLayoutComponent],
   template: `
-    <!-- Body Template -->
-    <ng-template #bodyTemplate>
-      <div class="presets-content">
+    <rd-modal-layout [title]="'Filter Presets'">
+      <div slot="body" class="presets-content">
         <!-- Save Current Filters Section -->
         <div class="save-section">
           <h4>Save Current Filters</h4>
@@ -106,27 +105,24 @@ import { LucideAngularModule } from 'lucide-angular';
           }
         </div>
       </div>
-    </ng-template>
 
-    <!-- Footer Template -->
-    <ng-template #footerTemplate>
-      <button
-        type="button"
-        class="btn btn-secondary"
-        (click)="close()">
-        Close
-      </button>
-    </ng-template>
+      <div slot="footer">
+        <button
+          type="button"
+          class="btn btn-secondary"
+          (click)="close()">
+          Close
+        </button>
+      </div>
+    </rd-modal-layout>
   `,
   styleUrl: './filter-presets-modal.component.scss'
 })
 export class FilterPresetsModalComponent {
   presetsService = inject(FilterPresetsService);
   logFilterState = inject(LogFilterState);
-  modalService = inject(ModalService);
-
-  bodyTemplate = viewChild<TemplateRef<any>>('bodyTemplate');
-  footerTemplate = viewChild<TemplateRef<any>>('footerTemplate');
+  modalContainerService = inject(ModalContainerService);
+  confirmDialog = inject(ConfirmDialogService);
 
   newPresetName = signal('');
   newPresetDescription = signal('');
@@ -136,18 +132,8 @@ export class FilterPresetsModalComponent {
     return name.length > 0 && name.length <= 50;
   });
 
-  open() {
-    this.newPresetName.set('');
-    this.newPresetDescription.set('');
-
-    const body = this.bodyTemplate();
-    const footer = this.footerTemplate();
-
-    this.modalService.open('Filter Presets', body, footer, undefined, 'large');
-  }
-
   close() {
-    this.modalService.close();
+    this.modalContainerService.closeAll();
   }
 
   saveCurrentPreset() {
@@ -184,9 +170,11 @@ export class FilterPresetsModalComponent {
   }
 
   deletePreset(id: string) {
-    if (confirm('Are you sure you want to delete this preset? This action cannot be undone.')) {
-      this.presetsService.deletePreset(id);
-    }
+    this.confirmDialog.confirmDelete('this preset').subscribe((confirmed) => {
+      if (confirmed) {
+        this.presetsService.deletePreset(id);
+      }
+    });
   }
 
   formatDate(date: Date): string {
