@@ -6,7 +6,7 @@ import { startOfToday, subDays, subHours, subMonths } from 'date-fns'; // Import
 import { LucideAngularModule } from 'lucide-angular';
 
 import { debounceTime } from 'rxjs';
-import { DropdownComponent, ModalContainerService, ToastService } from '@rd-ui';
+import { SelectComponent, ModalContainerService, ToastService } from '@rd-ui';
 import { FilterPresetsModalComponent } from '../../../_components/filter-presets-modal/filter-presets-modal.component';
 import { TimeFilter, TimeFilterDropdownComponent } from '../../../_components/time-filter-dropdown/time-filter-dropdown.component';
 import { AudioService } from '../../../_services/audio.service';
@@ -27,7 +27,7 @@ import { LogFilterState } from '../_services/log-filter-state';
 @Component({
   selector: 'app-log-filter-controls',
   standalone: true,
-  imports: [FormsModule, DropdownComponent, TimeFilterDropdownComponent, LucideAngularModule],
+  imports: [FormsModule, SelectComponent, TimeFilterDropdownComponent, LucideAngularModule],
   template: `
     <div class="compact-toolbar filter-container-base">
       <!-- Search Input -->
@@ -45,7 +45,7 @@ import { LogFilterState } from '../_services/log-filter-state';
 
       <!-- Log Levels Filter -->
       <div class="filter-item">
-        <rd-dropdown
+        <rd-select
           id="log-level-select"
           [items]="logLevels"
           [triState]="true"
@@ -56,12 +56,12 @@ import { LogFilterState } from '../_services/log-filter-state';
           size="compact"
           [ngModel]="logFilterState.triStateLogLevel()"
           (ngModelChange)="logFilterState.triStateLogLevel.set($event)"
-        ></rd-dropdown>
+        ></rd-select>
       </div>
 
       <!-- Pods Filter -->
       <div class="filter-item">
-        <rd-dropdown
+        <rd-select
           id="pod-select"
           [items]="pods()"
           [triState]="true"
@@ -72,7 +72,7 @@ import { LogFilterState } from '../_services/log-filter-state';
           size="compact"
           [ngModel]="logFilterState.triStatePod()"
           (ngModelChange)="logFilterState.triStatePod.set($event)"
-        ></rd-dropdown>
+        ></rd-select>
       </div>
 
       <!-- Time Range Filter -->

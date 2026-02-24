@@ -1,7 +1,7 @@
 import { Component, inject, OnInit, signal } from '@angular/core';
 import { FormControl, FormsModule, ReactiveFormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
-import { ConfirmDialogService, DropdownComponent, ToastService } from '@rd-ui';
+import { ConfirmDialogService, SelectComponent, ToastService } from '@rd-ui';
 import { firstValueFrom } from 'rxjs';
 import { WorkQueueComponent } from '../../_components/work-queue/work-queue.component';
 import { LogApiService } from '../../_services/log.api';
@@ -22,7 +22,7 @@ interface TimeRange {
 @Component({
   selector: 'app-settings-page',
   standalone: true,
-  imports: [FormsModule, ReactiveFormsModule, DropdownComponent, WorkQueueComponent],
+  imports: [FormsModule, ReactiveFormsModule, SelectComponent, WorkQueueComponent],
   templateUrl: './settings-page.component.html',
   styleUrl: './settings-page.component.scss',
 })

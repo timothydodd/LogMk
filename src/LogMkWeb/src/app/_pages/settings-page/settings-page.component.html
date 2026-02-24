@@ -69,12 +69,12 @@
                 <div class="purge-action-row">
                   <div class="form-group time-range-group">
                     <label>Time Range</label>
-                    <rd-dropdown
+                    <rd-select
                       [options]="timeRangeOptions"
                       [placeholder]="'Select time range'"
                       [formControl]="timeRangeControl"
                       (selectionChange)="onTimeRangeSelect($event)"
-                    ></rd-dropdown>
+                    ></rd-select>
                   </div>
 
                   <button 
