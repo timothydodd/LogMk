@@ -1,7 +1,7 @@
-﻿using LogMkApi.Data.Models;
+﻿using Dapper;
+using LogMkApi.Data.Models;
 using LogMkApi.Services;
 using RoboDodd.OrmLite;
-using Dapper;
 
 namespace LogMkApi.Data;
 
@@ -22,12 +22,12 @@ public class DatabaseInitializer
     {
         using (var db = _dbFactory.CreateConnection())
         {
-            db.CreateTableIfNotExists<Log>();
-            db.CreateTableIfNotExists<LogSummary>();
-            db.CreateTableIfNotExists<LogSummaryHour>();
-            db.CreateTableIfNotExists<RefreshToken>();
-            db.CreateTableIfNotExists<WorkQueue>();
-            if (db.CreateTableIfNotExists<User>())
+            db.CreateTableIfNotExists<Log>(true);
+            db.CreateTableIfNotExists<LogSummary>(true);
+            db.CreateTableIfNotExists<LogSummaryHour>(true);
+
+            db.CreateTableIfNotExists<WorkQueue>(true);
+            if (db.CreateTableIfNotExists<User>(true))
             {
                 var user = new User
                 {
@@ -39,7 +39,7 @@ public class DatabaseInitializer
                 user.PasswordHash = _passwordService.HashPassword(user, "admin");
                 db.Insert(user);
             }
-
+            db.CreateTableIfNotExists<RefreshToken>(true);
             // Ensure critical indexes exist (migration for existing databases)
             EnsureLogIndexes(db);
         }
@@ -47,37 +47,67 @@ public class DatabaseInitializer
 
     private void EnsureLogIndexes(System.Data.IDbConnection db)
     {
+        var missingIndexes = new List<(string Name, string Sql)>();
+
         try
         {
-            // Check if the composite index exists
-            var checkIndexSql = @"
-                SELECT COUNT(*)
-                FROM information_schema.statistics
-                WHERE table_schema = DATABASE()
-                AND table_name = 'Log'
-                AND index_name = 'Deployment_Pod_TimeStamp_idx'";
-
-            var indexExists = db.ExecuteScalar<int>(checkIndexSql) > 0;
-
-            if (!indexExists)
+            var indexesToCheck = new[]
             {
-                _logger.LogWarning(
-                    "PERFORMANCE WARNING: Missing composite index 'Deployment_Pod_TimeStamp_idx' on Log table. " +
-                    "This will cause slow queries for /api/log/counts and /api/log/times endpoints. " +
-                    "To create the index manually, run: CREATE INDEX Deployment_Pod_TimeStamp_idx ON `Log` (Deployment, Pod, TimeStamp);");
+                ("Deployment_Pod_TimeStamp_idx", "CREATE INDEX Deployment_Pod_TimeStamp_idx ON `Log` (Deployment, Pod, TimeStamp)"),
+                ("LogDate_idx", "CREATE INDEX LogDate_idx ON `Log` (LogDate)")
+            };
 
-                // Note: We don't create the index automatically because it can take a very long time
-                // on large tables and cause startup timeout. It should be created manually during
-                // a maintenance window with: CREATE INDEX Deployment_Pod_TimeStamp_idx ON `Log` (Deployment, Pod, TimeStamp);
-            }
-            else
+            foreach (var (name, createSql) in indexesToCheck)
             {
-                _logger.LogInformation("Composite index Deployment_Pod_TimeStamp_idx exists on Log table");
+                var checkIndexSql = @"
+                    SELECT COUNT(*)
+                    FROM information_schema.statistics
+                    WHERE table_schema = DATABASE()
+                    AND table_name = 'Log'
+                    AND index_name = @indexName";
+
+                var indexExists = db.ExecuteScalar<int>(checkIndexSql, new { indexName = name }) > 0;
+
+                if (!indexExists)
+                {
+                    missingIndexes.Add((name, createSql));
+                }
+                else
+                {
+                    _logger.LogInformation("Index {IndexName} exists on Log table", name);
+                }
             }
         }
         catch (Exception ex)
         {
             _logger.LogWarning(ex, "Failed to check indexes");
+            return;
+        }
+
+        if (missingIndexes.Count > 0)
+        {
+            // Create missing indexes in a background task so startup isn't blocked
+            _ = Task.Run(() => CreateMissingIndexesAsync(missingIndexes));
+        }
+    }
+
+    private void CreateMissingIndexesAsync(List<(string Name, string Sql)> indexes)
+    {
+        foreach (var (name, createSql) in indexes)
+        {
+            try
+            {
+                _logger.LogInformation("Creating missing index {IndexName} in background...", name);
+
+                using var db = _dbFactory.CreateConnection();
+                db.ExecuteScalar<int>(createSql);
+
+                _logger.LogInformation("Successfully created index {IndexName}", name);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Failed to create index {IndexName}. You can create it manually: {Sql}", name, createSql);
+            }
         }
     }
 }

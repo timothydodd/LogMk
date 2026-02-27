@@ -35,6 +35,10 @@ public class LogWatcher : BackgroundService
     // Static readonly for better performance
     // Moved to LogParser class in LogMkCommon
 
+    // Periodic cleanup timer
+    private Timer? _cleanupTimer;
+    private static readonly TimeSpan StaleEntryMaxAge = TimeSpan.FromHours(24);
+
     // Retry configuration
     private const int MaxRetryAttempts = 3;
     private static readonly TimeSpan[] RetryDelays = { TimeSpan.FromMilliseconds(50), TimeSpan.FromMilliseconds(200), TimeSpan.FromMilliseconds(500) };
@@ -44,10 +48,13 @@ public class LogWatcher : BackgroundService
     };
     private readonly int _maxDaysOld = 30; // Maximum age of logs to process
 
-    public LogWatcher(BatchingService batchingService, IOptions<LogWatcherOptions> options, LogApiClient client, ILogger<LogWatcher> logger)
+    private readonly StateService _stateService;
+
+    public LogWatcher(BatchingService batchingService, IOptions<LogWatcherOptions> options, LogApiClient client, ILogger<LogWatcher> logger, StateService stateService)
     {
         _batchingService = batchingService ?? throw new ArgumentNullException(nameof(batchingService));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+        _stateService = stateService ?? throw new ArgumentNullException(nameof(stateService));
 
         var optionsValue = options?.Value ?? throw new ArgumentNullException(nameof(options));
         _logPaths = optionsValue.Paths ?? throw new ArgumentException("Paths cannot be null");
@@ -57,7 +64,46 @@ public class LogWatcher : BackgroundService
         }
         _maxDaysOld = optionsValue.MaxDaysOld > 0 ? optionsValue.MaxDaysOld : 30; // Default to 30 days if not set
         ValidateConfiguration(optionsValue);
+        LoadPersistedState();
         InitializeSettings(optionsValue, client);
+
+        // Subscribe to periodic save requests
+        _stateService.OnSaveRequested += PersistCurrentState;
+    }
+
+    private void LoadPersistedState()
+    {
+        var state = _stateService.Load();
+        foreach (var (key, pos) in state.DeploymentPositions)
+        {
+            var settings = GetDeploymentSettings(key);
+            settings.FilePath = pos.FilePath;
+            settings.LastReadPosition = pos.LastReadPosition;
+            settings.LastDeploymentTime = pos.LastDeploymentTime;
+        }
+
+        if (state.DeploymentPositions.Count > 0)
+        {
+            _logger.LogInformation("Restored {Count} file positions from persisted state", state.DeploymentPositions.Count);
+        }
+    }
+
+    private void PersistCurrentState()
+    {
+        var state = new AgentState
+        {
+            SavedAt = DateTime.UtcNow,
+            DeploymentPositions = _deploymentSettings.ToDictionary(
+                kvp => kvp.Key,
+                kvp => new DeploymentPosition
+                {
+                    FilePath = kvp.Value.FilePath,
+                    LastReadPosition = kvp.Value.LastReadPosition,
+                    LastDeploymentTime = kvp.Value.LastDeploymentTime,
+                    LastSeenAt = DateTime.UtcNow
+                })
+        };
+        _stateService.Save(state);
     }
 
     private void ValidateConfiguration(LogWatcherOptions options)
@@ -189,8 +235,12 @@ public class LogWatcher : BackgroundService
             SetupFileWatcher(path, stoppingToken);
         }
 
+        // Start periodic cleanup of stale entries (every hour)
+        _cleanupTimer = new Timer(_ => CleanupStaleEntries(), null, TimeSpan.FromHours(1), TimeSpan.FromHours(1));
+
         stoppingToken.Register(() =>
         {
+            _cleanupTimer?.Dispose();
             foreach (var watcher in _watchers)
             {
                 try
@@ -205,6 +255,48 @@ public class LogWatcher : BackgroundService
         });
 
         return Task.CompletedTask;
+    }
+
+    private void CleanupStaleEntries()
+    {
+        var totalRemoved = 0;
+
+        // Cleanup deployment settings not seen in 24 hours
+        foreach (var kvp in _deploymentSettings)
+        {
+            // Check if the file still exists - if not, the pod is gone
+            if (kvp.Value.FilePath != null && !File.Exists(kvp.Value.FilePath))
+            {
+                if (_deploymentSettings.TryRemove(kvp.Key, out _))
+                    totalRemoved++;
+            }
+        }
+
+        // Cleanup debounce tracking for files that no longer exist
+        foreach (var kvp in _lastProcessedTime)
+        {
+            if (!File.Exists(kvp.Key))
+            {
+                _lastProcessedTime.TryRemove(kvp.Key, out _);
+            }
+        }
+
+        // Cleanup log level cache (just clear if it's large)
+        if (_logLevelCache.Count > MaxCacheSize / 2)
+        {
+            _logLevelCache.Clear();
+        }
+
+        // Cleanup static sequence counters
+        var seqRemoved = LogLineExtensions.CleanupStaleEntries(StaleEntryMaxAge);
+
+        if (totalRemoved > 0 || seqRemoved > 0)
+        {
+            _logger.LogInformation(
+                "Stale entry cleanup: {DeploymentRemoved} deployment settings, {SeqRemoved} sequence counters removed. " +
+                "Active: {DeploymentCount} deployments, {SeqCount} sequences",
+                totalRemoved, seqRemoved, _deploymentSettings.Count, LogLineExtensions.TrackedPodCount);
+        }
     }
 
     private void SetupFileWatcher(string path, CancellationToken stoppingToken)
@@ -431,6 +523,7 @@ public class LogWatcher : BackgroundService
             }
 
             deploymentSettings.LastReadPosition = fs.Position;
+            _stateService.MarkDirty();
 
             if (foundRecent && deploymentSettings.LastDeploymentTime.HasValue)
             {
@@ -466,7 +559,24 @@ public class LogWatcher : BackgroundService
 
         var logLine = ParseLogLine(line, processedLine, info.PodName, info.DeploymentName, logLevel);
 
+        // Early validation - reject obviously invalid data before queuing
+        if (logLine.Line?.Length > 10000)
+        {
+            logLine.Line = logLine.Line[..10000];
+        }
+
+        if (logLine.TimeStamp > DateTimeOffset.UtcNow.AddMinutes(5))
+        {
+            return null; // Future timestamps are invalid
+        }
+
+        if (logLine.TimeStamp < DateTimeOffset.UtcNow.AddDays(-_maxDaysOld))
+        {
+            return null; // Too old
+        }
+
         logLine.AssignSequenceNumber();
+        logLine.AssignFingerprint();
         // Check if this log is recent enough
         if (deploymentSettings.LastDeploymentTime.HasValue)
         {
@@ -626,6 +736,17 @@ public class LogWatcher : BackgroundService
 
     public override void Dispose()
     {
+        // Persist state before shutting down
+        try
+        {
+            PersistCurrentState();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Failed to save state on shutdown");
+        }
+
+        _stateService.OnSaveRequested -= PersistCurrentState;
 
         foreach (var watcher in _watchers)
         {
@@ -695,11 +816,6 @@ public class LogWatcher : BackgroundService
                             var podSettings = GetPodSettings(logLine.PodName);
                             if (logLine.LogLevel >= podSettings.LogLevel)
                             {
-                                if (logLine.TimeStamp < DateTimeOffset.UtcNow.AddDays(-_maxDaysOld))
-                                {
-                                    //   _logger.LogDebug("Skipping old event log entry: {TimeStamp} for {PodName}", logLine.TimeStamp, logLine.PodName);
-                                    continue; // Skip old entries
-                                }
                                 logLines.Add(logLine);
                                 eventsProcessed++;
 
@@ -765,6 +881,7 @@ public class LogWatcher : BackgroundService
             };
 
             logLine.AssignSequenceNumber();
+            logLine.AssignFingerprint();
             return logLine;
         }
         catch (Exception ex)

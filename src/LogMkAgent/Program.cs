@@ -29,8 +29,10 @@ public class Program
                 // Configure strongly typed settings
                 services.Configure<LogWatcherOptions>(configuration.GetSection("LogWatcherOptions"));
                 services.Configure<ApiSettings>(configuration.GetSection("LoggingApi"));
+                services.Configure<BatchingOptions>(configuration.GetSection("BatchingOptions"));
 
                 // Register services
+                services.AddSingleton<StateService>();
                 services.AddSingleton<BatchingService>();
                 services.AddSingleton<HttpLogger>();
                 services.AddSingleton<SettingsService>();

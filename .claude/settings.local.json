@@ -6,7 +6,8 @@
       "Bash(timeout 30 dotnet test src/RoboDodd.OrmLite.Tests/RoboDodd.OrmLite.Tests.csproj --filter \"FullyQualifiedName=RoboDodd.OrmLite.Tests.ServiceStackMigrationIntegrationTests.ErrorHandling_WithInvalidOperations_HandlesGracefully\" --verbosity normal)",
       "Bash(timeout:*)",
       "Bash(npm run build:*)",
-      "Bash(npx ng build:*)"
+      "Bash(npx ng build:*)",
+      "Bash(xargs ls:*)"
     ],
     "deny": []
   }

@@ -6,6 +6,14 @@ public class PagedResults<T>
     public int TotalCount { get; set; }
 }
 
+public class CursorPagedResults<T>
+{
+    public IEnumerable<T>? Items { get; set; }
+    public bool HasMore { get; set; }
+    public DateTime? NextCursorTimestamp { get; set; }
+    public long? NextCursorId { get; set; }
+}
+
 
 
 public class LogStatistic

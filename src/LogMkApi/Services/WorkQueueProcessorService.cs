@@ -15,11 +15,17 @@ public class WorkQueueProcessorService : BackgroundService
     private readonly ILogger<WorkQueueProcessorService> _logger;
     private readonly TimeSpan _pollInterval = TimeSpan.FromSeconds(30);
     private readonly TimeSpan _dbTimeout = TimeSpan.FromHours(1);
+    private readonly int _purgeBatchSize;
 
-    public WorkQueueProcessorService(IServiceProvider serviceProvider, ILogger<WorkQueueProcessorService> logger)
+    public WorkQueueProcessorService(IServiceProvider serviceProvider, ILogger<WorkQueueProcessorService> logger, IConfiguration configuration)
     {
         _serviceProvider = serviceProvider;
         _logger = logger;
+        _purgeBatchSize = 10000;
+        if (int.TryParse(configuration["LogSettings:PurgeBatchSize"], out var batchSize))
+        {
+            _purgeBatchSize = batchSize;
+        }
     }
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
@@ -121,10 +127,10 @@ public class WorkQueueProcessorService : BackgroundService
                 break;
         }
 
-        // Perform batch deletion  
+        // Perform batch deletion
         using var db = dbFactory.CreateConnection();
 
-        const int batchSize = 10000;
+        var batchSize = _purgeBatchSize;
         var totalDeleted = 0;
         var lastProgress = 0;
 

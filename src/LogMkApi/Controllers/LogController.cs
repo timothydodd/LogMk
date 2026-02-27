@@ -25,10 +25,10 @@ public class LogController : ControllerBase
     private readonly LogApiMetrics _metrics;
     private readonly LogCacheService _cacheService;
 
-    // Configuration: Maximum age limits
-    private readonly int LogMaxDaysOld = 30; // For new pods (backfill scenario)
-    private readonly int LogMaxMinutesOldForExistingPods = 5; // For existing pods (real-time scenario)
+    // Configuration
+    private readonly int LogMaxDaysOld = 30;
     private readonly bool EnableDuplicateDetection = true;
+    private readonly int SignalRBroadcastLimit = 500;
 
     public LogController(ILogger<LogController> logger, LogRepo logRepo, LogHubService logHubService,
         LogSummaryRepo logSummaryRepo, WorkQueueRepo workQueueRepo, LogApiMetrics metrics,
@@ -49,14 +49,14 @@ public class LogController : ControllerBase
                 LogMaxDaysOld = maxDays;
             }
 
-            if (int.TryParse(configuration["LogSettings:MaxMinutesOldForExistingPods"], out var maxMinutes))
-            {
-                LogMaxMinutesOldForExistingPods = maxMinutes;
-            }
-
             if (bool.TryParse(configuration["LogSettings:EnableDuplicateDetection"], out var enableDuplicates))
             {
                 EnableDuplicateDetection = enableDuplicates;
+            }
+
+            if (int.TryParse(configuration["LogSettings:SignalRBroadcastLimit"], out var broadcastLimit))
+            {
+                SignalRBroadcastLimit = broadcastLimit;
             }
         }
     }
@@ -139,6 +139,7 @@ public class LogController : ControllerBase
                     LogDate = logLine.TimeStamp.UtcDateTime.Date,
                     LogHour = logLine.TimeStamp.UtcDateTime.Hour,
                     SequenceNumber = logLine.SequenceNumber,
+                    Fingerprint = logLine.Fingerprint,
                     BatchId = batchId,
                     ReceivedAt = receivedAt.UtcDateTime
                 };
@@ -175,20 +176,15 @@ public class LogController : ControllerBase
                 // Update cache for successfully inserted logs
                 if (insertedCount > 0)
                 {
-                    // Invalidate pod existence cache for new pods and start backfill tracking
+                    // Invalidate pod existence cache for new pods
                     foreach (var newPod in newPods)
                     {
                         _cacheService.InvalidatePodExistence(newPod);
-                        _cacheService.StartBackfillTracking(newPod);
-                        _logger.LogInformation("Started backfill tracking for new pod: {PodName}", newPod);
+                        _logger.LogInformation("New pod detected: {PodName}", newPod);
                     }
 
-                    // Update recent logs cache for all pods in this batch
-                    var podGroups = validLogs.GroupBy(log => log.Pod);
-                    foreach (var group in podGroups)
-                    {
-                        _cacheService.UpdateRecentLogsCache(group.Key, group);
-                    }
+                    // Fingerprint-based dedup is handled in-memory during validation,
+                    // no post-insert cache update needed
                 }
             }
             catch (Exception ex)
@@ -204,8 +200,8 @@ public class LogController : ControllerBase
         {
             try
             {
-                // Send all inserted logs for real-time delivery (limit to 500 for safety)
-                var logsToSend = validLogs.Take(500).ToList();
+                // Send all inserted logs for real-time delivery (configurable limit for safety)
+                var logsToSend = validLogs.Take(SignalRBroadcastLimit).ToList();
 
                 if (logsToSend.Any())
                 {
@@ -351,35 +347,16 @@ public class LogController : ControllerBase
                 if (logLine.TimeStamp > DateTimeOffset.UtcNow.AddMinutes(5))
                     errors.Add("TimeStamp is too far in the future");
 
-                // Conditional timestamp validation based on pod existence and backfill period
-                var podExists = await _cacheService.PodExistsAsync(logLine.PodName);
-                var isInBackfillPeriod = podExists && _cacheService.IsInBackfillPeriod(logLine.PodName);
-
-                if (!podExists || isInBackfillPeriod)
+                // Age check — fingerprint dedup handles duplicates, so a single MaxDaysOld check suffices
+                if (logLine.TimeStamp < DateTimeOffset.UtcNow.AddDays(-LogMaxDaysOld))
                 {
-                    // New pod OR in backfill grace period: allow backfill (30 days)
-                    if (logLine.TimeStamp < DateTimeOffset.UtcNow.AddDays(-LogMaxDaysOld))
-                    {
-                        errors.Add($"TimeStamp is too old (>{LogMaxDaysOld} days)");
-                    }
-                }
-                else
-                {
-                    // Existing pod outside backfill window: strict real-time validation (5 minutes)
-                    if (logLine.TimeStamp < DateTimeOffset.UtcNow.AddMinutes(-LogMaxMinutesOldForExistingPods))
-                    {
-                        errors.Add($"TimeStamp is too old (>{LogMaxMinutesOldForExistingPods} minutes) for existing pod");
-                    }
+                    errors.Add($"TimeStamp is too old (>{LogMaxDaysOld} days)");
                 }
 
-                // Duplicate detection (if enabled)
-                if (EnableDuplicateDetection && podExists)
+                // Fingerprint-based duplicate detection (if enabled)
+                if (EnableDuplicateDetection)
                 {
-                    var isDuplicate = await _cacheService.IsDuplicateLogAsync(
-                        logLine.PodName,
-                        logLine.TimeStamp,
-                        logLine.SequenceNumber,
-                        logLine.Line);
+                    var isDuplicate = _cacheService.IsDuplicateFingerprint(logLine.PodName, logLine.Fingerprint);
 
                     if (isDuplicate)
                     {
@@ -478,6 +455,25 @@ public class LogController : ControllerBase
                                                    excludeSearch, excludePodName, excludeDeployment, excludeLogLevel);
         return entries;
     }
+    [HttpGet("cursor")]
+    public async Task<CursorPagedResults<Log>> GetLogsCursor(
+        [FromQuery] int pageSize = 100,
+        [FromQuery] DateTime? cursorTimestamp = null,
+        [FromQuery] long? cursorId = null,
+        [FromQuery] string direction = "older",
+        [FromQuery] DateTime? dateStart = null,
+        [FromQuery] DateTime? dateEnd = null,
+        [FromQuery] string? search = null, [FromQuery] string[]? podName = null,
+        [FromQuery] string[]? deployment = null, [FromQuery] string[]? logLevel = null,
+        [FromQuery] string? excludeSearch = null, [FromQuery] string[]? excludePodName = null,
+        [FromQuery] string[]? excludeDeployment = null, [FromQuery] string[]? excludeLogLevel = null)
+    {
+        return await _logRepo.GetAllCursor(
+            pageSize, cursorTimestamp, cursorId, direction,
+            dateStart, dateEnd, search, podName, deployment, logLevel,
+            excludeSearch, excludePodName, excludeDeployment, excludeLogLevel);
+    }
+
     [AllowAnonymous]
     [HttpGet("times")]
     public async Task<IEnumerable<LatestDeploymentEntry>> GetLatestEntryTimes()
@@ -501,7 +497,6 @@ public class LogController : ControllerBase
         var settings = new LogMkCommon.ValidationSettings
         {
             MaxDaysOld = LogMaxDaysOld,
-            MaxMinutesOldForExistingPods = LogMaxMinutesOldForExistingPods,
             MaxFutureMinutes = 5,
             MaxLineLength = 10000,
             MaxDeploymentNameLength = 100,
@@ -523,6 +518,24 @@ public class LogController : ControllerBase
     {
         var entries = await _logRepo.GetPods();
         return entries;
+    }
+
+    [HttpGet("metrics")]
+    public IActionResult GetMetrics()
+    {
+        var apiMetrics = _metrics.GetMetrics();
+        var cacheStats = new
+        {
+            SignalRConnections = _logHubService.ConnectionCount,
+        };
+
+        return Ok(new
+        {
+            Api = apiMetrics,
+            Connections = cacheStats,
+            Uptime = (DateTime.UtcNow - System.Diagnostics.Process.GetCurrentProcess().StartTime.ToUniversalTime()).ToString(@"dd\.hh\:mm\:ss"),
+            Timestamp = DateTimeOffset.UtcNow
+        });
     }
 
     [HttpGet("deployment-summaries")]

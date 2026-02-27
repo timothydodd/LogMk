@@ -226,6 +226,125 @@ public class LogRepo
     }
 
     /// <summary>
+    /// Cursor-based pagination using (TimeStamp, Id) keyset for consistent performance.
+    /// Use this instead of offset-based GetAll for deep pagination.
+    /// </summary>
+    public async Task<CursorPagedResults<Log>> GetAllCursor(
+        int pageSize = 100,
+        DateTime? cursorTimestamp = null,
+        long? cursorId = null,
+        string direction = "older",
+        DateTime? dateStart = null,
+        DateTime? dateEnd = null,
+        string? search = null,
+        string[]? pod = null,
+        string[]? deployment = null,
+        string[]? logLevel = null,
+        string? excludeSearch = null,
+        string[]? excludePod = null,
+        string[]? excludeDeployment = null,
+        string[]? excludeLogLevel = null)
+    {
+        var result = new CursorPagedResults<Log>();
+        var whereBuilder = new WhereBuilder();
+        var dynamicParameters = new DynamicParameters();
+
+        // Include filters
+        AddMany(pod, dynamicParameters, whereBuilder, "plp", "l.Pod");
+        AddMany(deployment, dynamicParameters, whereBuilder, "dlp", "l.Deployment");
+        AddMany(logLevel, dynamicParameters, whereBuilder, "llp", "l.LogLevel");
+
+        // Exclude filters
+        AddManyExclude(excludePod, dynamicParameters, whereBuilder, "eplp", "l.Pod");
+        AddManyExclude(excludeDeployment, dynamicParameters, whereBuilder, "edlp", "l.Deployment");
+        AddManyExclude(excludeLogLevel, dynamicParameters, whereBuilder, "ellp", "l.LogLevel");
+
+        if (!string.IsNullOrWhiteSpace(search))
+            search = $"%{search}%";
+
+        if (!string.IsNullOrWhiteSpace(excludeSearch))
+            excludeSearch = $"%{excludeSearch}%";
+
+        dynamicParameters.AddIfNotNull("pageSize", pageSize + 1); // Fetch one extra to detect hasMore
+        dynamicParameters.AddIfNotNull("dateStart", dateStart?.Date);
+        dynamicParameters.AddIfNotNull("dateStartHour", dateStart?.Hour);
+        dynamicParameters.AddIfNotNull("dateEnd", dateEnd?.Date);
+        dynamicParameters.AddIfNotNull("dateEndHour", dateEnd?.Hour);
+        dynamicParameters.AddIfNotNull("search", search);
+        dynamicParameters.AddIfNotNull("excludeSearch", excludeSearch);
+
+        whereBuilder.AppendAnd(dateStart, "l.LogDate >= @dateStart AND (l.LogDate != @dateStart || (l.LogHour >= @dateStartHour))");
+        whereBuilder.AppendAnd(dateEnd, "l.LogDate <= @dateEnd AND (l.LogDate != @dateEnd || (l.LogHour < @dateEndHour))");
+
+        var likeClause = new AndOrBuilder();
+        likeClause.AppendOr(search, "l.Line LIKE @search");
+        if (likeClause.Length > 0)
+        {
+            whereBuilder.AppendAnd($"({likeClause})");
+        }
+
+        if (!string.IsNullOrWhiteSpace(excludeSearch))
+        {
+            whereBuilder.AppendAnd("l.Line NOT LIKE @excludeSearch");
+        }
+
+        // Cursor-based keyset condition
+        if (cursorTimestamp.HasValue && cursorId.HasValue)
+        {
+            dynamicParameters.Add("cursorTimestamp", cursorTimestamp.Value);
+            dynamicParameters.Add("cursorId", cursorId.Value);
+
+            if (direction == "newer")
+            {
+                whereBuilder.AppendAnd("(l.TimeStamp > @cursorTimestamp OR (l.TimeStamp = @cursorTimestamp AND l.Id > @cursorId))");
+            }
+            else
+            {
+                whereBuilder.AppendAnd("(l.TimeStamp < @cursorTimestamp OR (l.TimeStamp = @cursorTimestamp AND l.Id < @cursorId))");
+            }
+        }
+
+        var orderDirection = direction == "newer" ? "ASC" : "DESC";
+
+        using (var db = _dbFactory.CreateConnection())
+        {
+            var query = $@"
+                SELECT * FROM Log l
+                {whereBuilder}
+                ORDER BY l.TimeStamp {orderDirection}, l.Id {orderDirection}
+                LIMIT @pageSize";
+
+            var items = (await db.QueryAsync<Log>(query, dynamicParameters)).ToList();
+
+            // Check if there are more items
+            var hasMore = items.Count > pageSize;
+            if (hasMore)
+            {
+                items = items.Take(pageSize).ToList();
+            }
+
+            // If fetching newer, reverse to maintain descending order for display
+            if (direction == "newer")
+            {
+                items.Reverse();
+            }
+
+            result.Items = items;
+            result.HasMore = hasMore;
+
+            // Set cursor values from the last item for next page
+            if (items.Count > 0)
+            {
+                var lastItem = direction == "newer" ? items.First() : items.Last();
+                result.NextCursorTimestamp = lastItem.TimeStamp;
+                result.NextCursorId = lastItem.Id;
+            }
+
+            return result;
+        }
+    }
+
+    /// <summary>
     /// Checks if any logs exist for a specific pod
     /// </summary>
     public async Task<bool> PodExistsAsync(string podName)

@@ -62,14 +62,16 @@ namespace LogSummaryService
                 var hour = DateTime.UtcNow.Hour - 1;
 
                 _logger.LogInformation($"Updating log summary for hour {hour} on {date:yyyy-MM-dd}");
+                using var transaction = connection.BeginTransaction();
                 try
                 {
                     var rowsDeleted = await connection.ExecuteAsync(@"
-                        DELETE FROM LogSummaryHour WHERE LogDate = @date AND LogHour = @hour", new { date, hour });
+                        DELETE FROM LogSummaryHour WHERE LogDate = @date AND LogHour = @hour",
+                        new { date, hour }, transaction);
                     _logger.LogInformation($"Deleted {rowsDeleted} rows from summary.");
-                    var rowsInserted = await connection.ExecuteAsync(@"          
+                    var rowsInserted = await connection.ExecuteAsync(@"
                     INSERT INTO LogSummaryHour (Deployment, Pod, LogLevel, LogDate, LogHour, Count, LastUpdated)
-                    SELECT 
+                    SELECT
                         Deployment,
                         Pod,
                         LogLevel,
@@ -77,17 +79,20 @@ namespace LogSummaryService
                         LogHour,
                         COUNT(*) AS Count,
                         NOW() AS LastUpdated
-                    FROM 
+                    FROM
                         Log
-                    WHERE 
+                    WHERE
                         LogDate = @date AND LogHour = @hour
-                    GROUP BY 
-                        Deployment, Pod, LogLevel, LogHour, LogDate;", new { date, hour });
+                    GROUP BY
+                        Deployment, Pod, LogLevel, LogHour, LogDate;",
+                        new { date, hour }, transaction);
 
+                    transaction.Commit();
                     _logger.LogInformation($"Inserted {rowsInserted} rows into summary.");
                 }
                 catch (Exception e)
                 {
+                    transaction.Rollback();
                     _logger.LogError("UpdateCurrentHourSummaryAsync:" + e.Message);
                 }
             }

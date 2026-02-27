@@ -36,6 +36,8 @@ public class Log
     public required int LogHour { get; set; }
     [Index]
     public long SequenceNumber { get; set; } = 0;
+    [MaxLength(16)]
+    public string Fingerprint { get; set; } = string.Empty;
     [MaxLength(50)]
     public string BatchId { get; set; } = string.Empty;
     public DateTime ReceivedAt { get; set; }

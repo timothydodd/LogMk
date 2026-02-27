@@ -92,6 +92,8 @@ public class Program
         builder.Services.AddHostedService<LogSummaryDailyBackgroundService>();
         builder.Services.AddHostedService<LogSummaryHourlyBackgroundService>();
         builder.Services.AddHostedService<WorkQueueProcessorService>();
+        builder.Services.AddHostedService<FingerprintBackfillService>();
+        builder.Services.AddHostedService<LogRetentionService>();
         builder.Services.AddControllers();
         builder.Services.AddSignalR();
         builder.Services.AddMemoryCache();

@@ -24,7 +24,10 @@ public class LogLine
     
     [Range(0, long.MaxValue, ErrorMessage = "Sequence number must be non-negative")]
     public long SequenceNumber { get; set; }
-    
+
+    [StringLength(16, ErrorMessage = "Fingerprint cannot exceed 16 characters")]
+    public string Fingerprint { get; set; } = string.Empty;
+
     [Required(ErrorMessage = "Timestamp is required")]
     public required DateTimeOffset TimeStamp { get; set; }
 }

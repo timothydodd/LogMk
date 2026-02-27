@@ -5,8 +5,7 @@ namespace LogMkCommon;
 public class ValidationSettings
 {
     // Timestamp validation settings
-    public int MaxDaysOld { get; set; } = 30; // For new pods (backfill scenario)
-    public int MaxMinutesOldForExistingPods { get; set; } = 5; // For existing pods (real-time scenario)
+    public int MaxDaysOld { get; set; } = 30;
     public int MaxFutureMinutes { get; set; } = 5;
 
     // Content validation settings

@@ -28,11 +28,21 @@ public class BatchingService : IDisposable
         TimeSpan.FromSeconds(15)
     };
 
+    // Circuit breaker
+    private readonly CircuitBreaker _circuitBreaker;
+
+    // Rate limiting
+    private readonly int _maxBatchesPerMinute;
+    private readonly Queue<DateTime> _batchSendTimestamps = new();
+    private readonly object _rateLimitLock = new();
+
     // Metrics for monitoring
     private long _totalItemsProcessed;
     private long _totalBatchesSent;
     private long _totalFailures;
     private long _totalValidationFailures;
+    private long _totalRateLimitDelays;
+    private long _totalDropped;
     private DateTime _lastSuccessfulSend = DateTime.UtcNow;
 
     // Debounce configuration
@@ -53,6 +63,11 @@ public class BatchingService : IDisposable
         _options = batchingOptions?.Value ?? throw new ArgumentNullException(nameof(batchingOptions));
         _settingsService = settingsService ?? throw new ArgumentNullException(nameof(settingsService));
 
+        _maxBatchesPerMinute = _options.MaxBatchesPerMinute;
+        _circuitBreaker = new CircuitBreaker(logger,
+            failureThreshold: _options.CircuitBreakerFailureThreshold,
+            cooldownPeriod: _options.CircuitBreakerCooldown);
+
         ValidateOptions();
 
         // Configure debounce delay from options if available, otherwise use defaults
@@ -62,8 +77,8 @@ public class BatchingService : IDisposable
             _maxWaitTime = _options.BatchInterval;
         }
 
-        _logger.LogInformation("BatchingService initialized with debounce: {DebounceDelay}ms, max wait: {MaxWait}s, max size: {MaxSize}, timeout: {Timeout}",
-            _debounceDelay.TotalMilliseconds, _maxWaitTime.TotalSeconds, _options.MaxBatchSize, _options.SendTimeout);
+        _logger.LogInformation("BatchingService initialized with debounce: {DebounceDelay}ms, max wait: {MaxWait}s, max size: {MaxSize}, timeout: {Timeout}, rate limit: {RateLimit}/min, max queue: {MaxQueue}, max retry queue: {MaxRetryQueue}",
+            _debounceDelay.TotalMilliseconds, _maxWaitTime.TotalSeconds, _options.MaxBatchSize, _options.SendTimeout, _maxBatchesPerMinute, _options.MaxQueueSize, _options.MaxRetryQueueSize);
     }
 
     private void ValidateOptions()
@@ -90,6 +105,18 @@ public class BatchingService : IDisposable
         {
             _logger.LogWarning("Attempted to add null LogLine to batch");
             return;
+        }
+
+        // Enforce queue size limit - drop oldest items if at capacity
+        if (_options.MaxQueueSize > 0 && _batchData.Count >= _options.MaxQueueSize)
+        {
+            var dropped = 0;
+            while (_batchData.Count >= _options.MaxQueueSize && _batchData.TryDequeue(out _))
+            {
+                dropped++;
+            }
+            Interlocked.Add(ref _totalDropped, dropped);
+            _logger.LogWarning("Queue at capacity ({MaxSize}), dropped {Dropped} oldest items", _options.MaxQueueSize, dropped);
         }
 
         _batchData.Enqueue(data);
@@ -232,10 +259,47 @@ public class BatchingService : IDisposable
         }
     }
 
+    private bool IsRateLimited()
+    {
+        lock (_rateLimitLock)
+        {
+            var now = DateTime.UtcNow;
+            var windowStart = now.AddMinutes(-1);
+
+            // Remove timestamps outside the sliding window
+            while (_batchSendTimestamps.Count > 0 && _batchSendTimestamps.Peek() < windowStart)
+            {
+                _batchSendTimestamps.Dequeue();
+            }
+
+            if (_batchSendTimestamps.Count >= _maxBatchesPerMinute)
+            {
+                return true;
+            }
+
+            _batchSendTimestamps.Enqueue(now);
+            return false;
+        }
+    }
+
     private async Task ProcessNewBatchAsync()
     {
         if (_batchData.IsEmpty)
             return;
+
+        // Check rate limit before extracting the batch
+        if (IsRateLimited())
+        {
+            Interlocked.Increment(ref _totalRateLimitDelays);
+            _logger.LogWarning("Rate limit reached ({MaxBatchesPerMinute}/min), delaying batch send", _maxBatchesPerMinute);
+            // Re-trigger after a short delay instead of dropping
+            _ = Task.Run(async () =>
+            {
+                await Task.Delay(TimeSpan.FromSeconds(2), _cancellationTokenSource.Token).ConfigureAwait(false);
+                ResetDebounceTimer();
+            }, _cancellationTokenSource.Token);
+            return;
+        }
 
         var currentBatch = ExtractBatch();
         if (currentBatch.Count == 0)
@@ -259,9 +323,22 @@ public class BatchingService : IDisposable
 
         if (!success)
         {
-            // Add to retry queue
+            // Add to retry queue with size enforcement
             lock (_retryLock)
             {
+                if (_options.MaxRetryQueueSize > 0)
+                {
+                    var retryItemCount = _retryQueue.Sum(r => r.Data.Count);
+                    if (retryItemCount + currentBatch.Count > _options.MaxRetryQueueSize)
+                    {
+                        var dropped = currentBatch.Count;
+                        Interlocked.Add(ref _totalDropped, dropped);
+                        _logger.LogWarning("Retry queue at capacity ({MaxSize} items), dropping batch of {Count} logs",
+                            _options.MaxRetryQueueSize, dropped);
+                        return;
+                    }
+                }
+
                 var retryItem = new BatchItem
                 {
                     Data = currentBatch,
@@ -329,6 +406,13 @@ public class BatchingService : IDisposable
         if (batch.Count == 0)
             return true;
 
+        // Check circuit breaker before attempting to send
+        if (!_circuitBreaker.AllowRequest())
+        {
+            _logger.LogDebug("Circuit breaker is open, skipping batch send of {Count} items", batch.Count);
+            return false;
+        }
+
         try
         {
             _logger.LogDebug("Sending batch of {Count} log lines (attempt {Attempt})", batch.Count, attemptNumber);
@@ -341,6 +425,7 @@ public class BatchingService : IDisposable
 
             if (response.IsSuccessStatusCode)
             {
+                _circuitBreaker.RecordSuccess();
                 Interlocked.Add(ref _totalItemsProcessed, batch.Count);
                 Interlocked.Increment(ref _totalBatchesSent);
                 _lastSuccessfulSend = DateTime.UtcNow;
@@ -350,6 +435,7 @@ public class BatchingService : IDisposable
             }
             else
             {
+                _circuitBreaker.RecordFailure();
                 _logger.LogWarning("HTTP error sending batch: {StatusCode} {ReasonPhrase}",
                     response.StatusCode, response.ReasonPhrase);
                 return false;
@@ -357,6 +443,7 @@ public class BatchingService : IDisposable
         }
         catch (TaskCanceledException ex)
         {
+            _circuitBreaker.RecordFailure();
             _logger.LogWarning(ex, "Request cancelled sending batch (attempt {Attempt})", attemptNumber);
             return false;
         }
@@ -367,17 +454,19 @@ public class BatchingService : IDisposable
         }
         catch (OperationCanceledException)
         {
+            _circuitBreaker.RecordFailure();
             _logger.LogWarning("Batch send timed out after {Timeout}", _options.SendTimeout);
             return false;
         }
         catch (HttpRequestException ex)
         {
+            _circuitBreaker.RecordFailure();
             _logger.LogWarning(ex, "Network error sending batch (attempt {Attempt})", attemptNumber);
             return false;
         }
-
         catch (Exception ex)
         {
+            _circuitBreaker.RecordFailure();
             _logger.LogError(ex, "Unexpected error sending batch (attempt {Attempt})", attemptNumber);
             return false;
         }
@@ -432,8 +521,12 @@ public class BatchingService : IDisposable
                 TotalBatchesSent = _totalBatchesSent,
                 TotalFailures = _totalFailures,
                 TotalValidationFailures = _totalValidationFailures,
+                TotalRateLimitDelays = _totalRateLimitDelays,
+                TotalDropped = _totalDropped,
                 PendingRetries = _retryQueue.Count,
-                LastSuccessfulSend = _lastSuccessfulSend
+                LastSuccessfulSend = _lastSuccessfulSend,
+                CircuitBreakerState = _circuitBreaker.State.ToString(),
+                CircuitBreakerFailures = _circuitBreaker.ConsecutiveFailures
             };
         }
     }
@@ -484,6 +577,11 @@ public class BatchingOptions
     public TimeSpan BatchInterval { get; set; } = TimeSpan.FromSeconds(2); // Now acts as max wait time
     public int MaxBatchSize { get; set; } = 100;
     public TimeSpan SendTimeout { get; set; } = TimeSpan.FromSeconds(30);
+    public int MaxBatchesPerMinute { get; set; } = 60;
+    public int MaxQueueSize { get; set; } = 10000;
+    public int MaxRetryQueueSize { get; set; } = 5000;
+    public int CircuitBreakerFailureThreshold { get; set; } = 5;
+    public TimeSpan CircuitBreakerCooldown { get; set; } = TimeSpan.FromSeconds(30);
 }
 
 public class BatchingServiceStats
@@ -493,8 +591,12 @@ public class BatchingServiceStats
     public long TotalBatchesSent { get; set; }
     public long TotalFailures { get; set; }
     public long TotalValidationFailures { get; set; }
+    public long TotalRateLimitDelays { get; set; }
+    public long TotalDropped { get; set; }
     public int PendingRetries { get; set; }
     public DateTime LastSuccessfulSend { get; set; }
+    public string CircuitBreakerState { get; set; } = string.Empty;
+    public int CircuitBreakerFailures { get; set; }
 }
 
 public class ApiSettings
