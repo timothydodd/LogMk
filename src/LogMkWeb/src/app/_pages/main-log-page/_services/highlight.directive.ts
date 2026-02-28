@@ -41,8 +41,8 @@ export class HighlightLogPipe implements PipeTransform {
   // JSON string values (quoted strings not followed by colon)
   [/:\s*"([^"]*)"/g, ': "<span class="json-string">$1</span>"'],
 
-  // JSON numbers
-  [/:\s*(-?\d+(?:\.\d+)?(?:[eE][+-]?\d+)?)\b/g, ': <span class="json-number">$1</span>'],
+  // JSON numbers (negative lookbehind for digits to avoid matching times like 02:04:07)
+  [/(?<!\d):\s*(-?\d+(?:\.\d+)?(?:[eE][+-]?\d+)?)\b/g, ': <span class="json-number">$1</span>'],
 
   // JSON booleans
   [/:\s*(true|false)\b/g, ': <span class="json-boolean">$1</span>'],

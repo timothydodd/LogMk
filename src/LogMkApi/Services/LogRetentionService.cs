@@ -27,6 +27,20 @@ public class LogRetentionService : BackgroundService
     {
         _logger.LogInformation("LogRetentionService started");
 
+        // Run immediately on startup
+        try
+        {
+            await RunRetentionCleanupAsync(stoppingToken);
+        }
+        catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
+        {
+            return;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error during initial retention cleanup");
+        }
+
         while (!stoppingToken.IsCancellationRequested)
         {
             var now = DateTime.UtcNow;
@@ -81,16 +95,30 @@ public class LogRetentionService : BackgroundService
             retentionDays, cutoffDate);
 
         var totalDeleted = 0L;
-        const int batchSize = 10000;
+        const int batchSize = 5000;
 
         using var db = _dbFactory.CreateConnection();
 
         // Batch delete from Log table
+        const int maxRetries = 3;
         while (!cancellationToken.IsCancellationRequested)
         {
-            var deleted = await db.ExecuteAsync(
-                $"DELETE FROM {db.GetQuotedTableName<Log>()} WHERE LogDate < @cutoffDate LIMIT {batchSize}",
-                new { cutoffDate });
+            int deleted = 0;
+            for (var attempt = 1; attempt <= maxRetries; attempt++)
+            {
+                try
+                {
+                    deleted = await db.ExecuteAsync(
+                        $"DELETE FROM {db.GetQuotedTableName<Log>()} WHERE LogDate < @cutoffDate LIMIT {batchSize}",
+                        new { cutoffDate });
+                    break;
+                }
+                catch (MySql.Data.MySqlClient.MySqlException ex) when (ex.Number == 1213 && attempt < maxRetries)
+                {
+                    _logger.LogWarning("Deadlock on retention delete attempt {Attempt}, retrying after delay...", attempt);
+                    await Task.Delay(500 * attempt, cancellationToken);
+                }
+            }
 
             if (deleted == 0)
                 break;

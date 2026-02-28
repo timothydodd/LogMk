@@ -58,6 +58,7 @@ namespace LogSummaryService
         {
             using (var connection = _dbFactory.CreateConnection())
             {
+                connection.Open();
                 var date = DateTime.UtcNow.Date;
                 var hour = DateTime.UtcNow.Hour - 1;
 
