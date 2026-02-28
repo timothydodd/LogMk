@@ -94,6 +94,7 @@ public class LogController : ControllerBase
         var validLogs = new List<Log>();
         var errors = new List<LogValidationError>();
         var skippedCount = 0;
+        var duplicateCount = 0;
 
         _logger.LogDebug("Processing batch {BatchId} with {Count} log lines", batchId, logLines.Count);
         _metrics.IncrementLogsReceived(logLines.Count);
@@ -111,6 +112,14 @@ public class LogController : ControllerBase
 
                 if (!validationResult.IsValid)
                 {
+                    // If the ONLY error is duplicate detection, count it separately (not as an error)
+                    if (validationResult.Errors.Length == 1 && validationResult.Errors[0] == "Duplicate log entry detected")
+                    {
+                        duplicateCount++;
+                        skippedCount++;
+                        continue;
+                    }
+
                     errors.Add(new LogValidationError
                     {
                         Index = i,
@@ -214,7 +223,13 @@ public class LogController : ControllerBase
             }
         }
 
-        // Log validation errors for monitoring
+        // Log duplicate count at debug level (duplicates are normal, not errors)
+        if (duplicateCount > 0)
+        {
+            _logger.LogDebug("Batch {BatchId}: {DuplicateCount} duplicate logs skipped", batchId, duplicateCount);
+        }
+
+        // Log real validation errors for monitoring
         if (errors.Any())
         {
             // Group errors by type for better insights
@@ -225,7 +240,7 @@ public class LogController : ControllerBase
 
             _logger.LogWarning("Batch {BatchId}: {ErrorCount} validation errors, {SkippedCount} logs skipped. " +
                 "Error breakdown: {ErrorSummary}",
-                batchId, errors.Count, skippedCount,
+                batchId, errors.Count, skippedCount - duplicateCount,
                 string.Join(", ", errorSummary.Select(kvp => $"{kvp.Key}: {kvp.Value}")));
 
             // Log individual rejected lines for debugging (limit to first 5)
@@ -235,7 +250,7 @@ public class LogController : ControllerBase
                     batchId, error.Index, string.Join(", ", error.Errors), error.LogLine);
             }
 
-            _metrics.IncrementErrors("validation", skippedCount);
+            _metrics.IncrementErrors("validation", errors.Count);
         }
 
         // Log insert errors
@@ -255,7 +270,7 @@ public class LogController : ControllerBase
             ProcessedCount = insertedCount,
             SkippedCount = skippedCount,
             ReceivedAt = receivedAt,
-            Status = GetBatchStatus(logLines.Count, insertedCount, skippedCount, insertErrors.Any())
+            Status = GetBatchStatus(logLines.Count, insertedCount, skippedCount, insertErrors.Any(), duplicateCount)
         };
 
         // Include validation errors if any (but limit them)
@@ -270,19 +285,22 @@ public class LogController : ControllerBase
         }
 
         // Return appropriate status code
-        if (insertedCount == 0 && logLines.Count > 0)
+        // Duplicates are NOT errors — they're expected in normal operation (agent retries, etc.)
+        var realErrorCount = errors.Count; // Excludes duplicates (already filtered above)
+
+        if (insertedCount == 0 && realErrorCount > 0)
         {
-            // No logs were inserted
+            // No logs inserted AND there were real validation/insert errors
             return BadRequest(response);
         }
-        else if (skippedCount > 0 || insertErrors.Any())
+        else if (insertErrors.Any() || realErrorCount > 0)
         {
-            // Partial success
-            return StatusCode(206, response); // 206 Partial Content
+            // Partial success with real errors (not just duplicates)
+            return StatusCode(206, response);
         }
         else
         {
-            // Complete success
+            // Complete success, or all skipped were just duplicates
             return Ok(response);
         }
     }
@@ -405,14 +423,15 @@ public class LogController : ControllerBase
         }
     }
 
-    private string GetBatchStatus(int received, int processed, int skipped, bool hasInsertErrors)
+    private string GetBatchStatus(int received, int processed, int skipped, bool hasInsertErrors, int duplicates = 0)
     {
-        if (processed == 0 && received > 0)
+        var realErrors = skipped - duplicates;
+        if (processed == 0 && realErrors > 0)
             return "Failed";
-        else if (processed == received && !hasInsertErrors)
-            return "Success";
-        else
+        else if (hasInsertErrors || realErrors > 0)
             return "Partial";
+        else
+            return "Success";
     }
 
     [HttpGet("stats")]

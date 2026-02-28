@@ -50,6 +50,10 @@ public class BatchingService : IDisposable
     private readonly TimeSpan _maxWaitTime = TimeSpan.FromSeconds(2); // Force send after 2 seconds max
     private DateTime _firstLogAddedTime = DateTime.MinValue;
 
+    // Throttle drop warnings to avoid log spam
+    private DateTime _lastDropWarning = DateTime.MinValue;
+    private long _dropsSinceLastWarning;
+
     private volatile bool _disposed;
 
     public BatchingService(
@@ -107,16 +111,26 @@ public class BatchingService : IDisposable
             return;
         }
 
-        // Enforce queue size limit - drop oldest items if at capacity
+        // Enforce queue size limit - drop 10% of queue to make room and avoid per-item churn
         if (_options.MaxQueueSize > 0 && _batchData.Count >= _options.MaxQueueSize)
         {
+            var toDrop = Math.Max(1, _options.MaxQueueSize / 10);
             var dropped = 0;
-            while (_batchData.Count >= _options.MaxQueueSize && _batchData.TryDequeue(out _))
+            while (dropped < toDrop && _batchData.TryDequeue(out _))
             {
                 dropped++;
             }
             Interlocked.Add(ref _totalDropped, dropped);
-            _logger.LogWarning("Queue at capacity ({MaxSize}), dropped {Dropped} oldest items", _options.MaxQueueSize, dropped);
+            Interlocked.Add(ref _dropsSinceLastWarning, dropped);
+
+            // Throttle warning to at most once per 10 seconds
+            var now = DateTime.UtcNow;
+            if ((now - _lastDropWarning).TotalSeconds >= 10)
+            {
+                _logger.LogWarning("Queue at capacity ({MaxSize}), dropped {Dropped} oldest items (total since last warning: {TotalDrops})",
+                    _options.MaxQueueSize, dropped, Interlocked.Exchange(ref _dropsSinceLastWarning, 0));
+                _lastDropWarning = now;
+            }
         }
 
         _batchData.Enqueue(data);
@@ -423,20 +437,34 @@ public class BatchingService : IDisposable
 
             var response = await _httpClient.SendDataAsync("api/log", batch, linkedCts.Token).ConfigureAwait(false);
 
-            if (response.IsSuccessStatusCode)
+            var statusCode = (int)response.StatusCode;
+
+            if (response.IsSuccessStatusCode || statusCode == 206)
             {
+                // 2xx or 206 Partial — API received and processed the batch
                 _circuitBreaker.RecordSuccess();
                 Interlocked.Add(ref _totalItemsProcessed, batch.Count);
                 Interlocked.Increment(ref _totalBatchesSent);
                 _lastSuccessfulSend = DateTime.UtcNow;
 
-                _logger.LogDebug("Successfully sent batch of {Count} log lines", batch.Count);
+                _logger.LogDebug("Successfully sent batch of {Count} log lines (status {StatusCode})", batch.Count, statusCode);
                 return true;
+            }
+            else if (statusCode >= 400 && statusCode < 500)
+            {
+                // 4xx client error — API received the request but rejected it (validation, duplicates, etc.)
+                // Do NOT retry: the same data will get the same response
+                _circuitBreaker.RecordSuccess(); // API is reachable, not a connectivity issue
+                _logger.LogWarning("Batch rejected by API ({StatusCode} {ReasonPhrase}), not retrying — {Count} logs dropped",
+                    response.StatusCode, response.ReasonPhrase, batch.Count);
+                Interlocked.Add(ref _totalFailures, batch.Count);
+                return true; // Return true to prevent retry
             }
             else
             {
+                // 5xx server error — API is having issues, worth retrying
                 _circuitBreaker.RecordFailure();
-                _logger.LogWarning("HTTP error sending batch: {StatusCode} {ReasonPhrase}",
+                _logger.LogWarning("Server error sending batch: {StatusCode} {ReasonPhrase}",
                     response.StatusCode, response.ReasonPhrase);
                 return false;
             }
@@ -575,9 +603,9 @@ public class BatchingService : IDisposable
 public class BatchingOptions
 {
     public TimeSpan BatchInterval { get; set; } = TimeSpan.FromSeconds(2); // Now acts as max wait time
-    public int MaxBatchSize { get; set; } = 100;
+    public int MaxBatchSize { get; set; } = 500;
     public TimeSpan SendTimeout { get; set; } = TimeSpan.FromSeconds(30);
-    public int MaxBatchesPerMinute { get; set; } = 60;
+    public int MaxBatchesPerMinute { get; set; } = 120;
     public int MaxQueueSize { get; set; } = 10000;
     public int MaxRetryQueueSize { get; set; } = 5000;
     public int CircuitBreakerFailureThreshold { get; set; } = 5;
