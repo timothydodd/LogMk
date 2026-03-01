@@ -552,6 +552,18 @@ public class LogWatcher : BackgroundService
         var processedLine = ParseContainerLogFormat(line, cleanLine);
 
         var logLevel = GetLogLevelCached(processedLine);
+
+        // If no log level was detected, default based on the CRI stream type:
+        // stdout -> Info, stderr -> Error
+        if (logLevel == LogLevel.Any)
+        {
+            var streamType = LogParser.ParseCriStreamType(line);
+            if (streamType == "stdout")
+                logLevel = LogLevel.Information;
+            else if (streamType == "stderr")
+                logLevel = LogLevel.Error;
+        }
+
         if (logLevel < podSettings.LogLevel)
         {
             return null;
@@ -691,11 +703,16 @@ public class LogWatcher : BackgroundService
     {
         if (string.IsNullOrWhiteSpace(line))
             return false;
-            
+
+        // If the line has valid CRI format with F (Full) flag, it's a standalone log entry
+        // from the container runtime - never treat it as a continuation
+        if (HasCriFullFlag(line))
+            return false;
+
         // Parse container format to get the actual log content
         var cleanLine = LogParser.RemoveANSIEscapeSequences(line);
         var processedLine = ParseContainerLogFormat(line, cleanLine);
-        
+
         // Check if line has a timestamp at the beginning
         var timestamp = ParseTimestamp(line);
         if (timestamp.HasValue)
@@ -705,24 +722,24 @@ public class LogWatcher : BackgroundService
             if (timeDiff > 100)
                 return false;
         }
-        
+
         // Common patterns for continuation lines:
         // 1. Stack trace lines starting with "at "
         if (processedLine.TrimStart().StartsWith("at ", StringComparison.OrdinalIgnoreCase))
             return true;
-            
+
         // 2. Lines starting with whitespace (indented)
         if (processedLine.Length > 0 && char.IsWhiteSpace(processedLine[0]))
             return true;
-            
+
         // 3. Lines that look like stack trace file references
         if (processedLine.Contains("file:///") && processedLine.Contains(".mjs:"))
             return true;
-            
+
         // 4. Lines that are just closing braces or brackets
         if (processedLine.Trim() == "}" || processedLine.Trim() == "]" || processedLine.Trim() == ")")
             return true;
-            
+
         // 5. Lines without any log level indicators
         var logLevel = GetLogLevelCached(processedLine);
         if (logLevel == LogLevel.Any && !timestamp.HasValue)
@@ -730,8 +747,32 @@ public class LogWatcher : BackgroundService
             // No log level and no timestamp - likely a continuation
             return true;
         }
-        
+
         return false;
+    }
+
+    private static bool HasCriFullFlag(string line)
+    {
+        // CRI format: "timestamp stdout/stderr F message"
+        // Check for the presence of "stdout F " or "stderr F " which indicates a complete line
+        var firstSpace = line.IndexOf(' ');
+        if (firstSpace <= 0)
+            return false;
+
+        var secondSpace = line.IndexOf(' ', firstSpace + 1);
+        if (secondSpace <= 0)
+            return false;
+
+        var outType = line.AsSpan(firstSpace + 1, secondSpace - firstSpace - 1);
+        if (!outType.SequenceEqual("stdout") && !outType.SequenceEqual("stderr"))
+            return false;
+
+        var thirdSpace = line.IndexOf(' ', secondSpace + 1);
+        if (thirdSpace <= 0)
+            return false;
+
+        var flag = line.AsSpan(secondSpace + 1, thirdSpace - secondSpace - 1);
+        return flag.SequenceEqual("F");
     }
 
     public override void Dispose()

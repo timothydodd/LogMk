@@ -77,8 +77,8 @@ export class HighlightLogPipe implements PipeTransform {
   // UUIDs
   [/\b[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\b/gi, '<span class="uuid">$&</span>'],
 
-  // Timestamps (ISO format)
-  [/\d{4}-\d{2}-\d{2}[T ]\d{2}:\d{2}:\d{2}(?:\.\d{3})?(?:Z|[+-]\d{2}:?\d{2})?/g, '<span class="timestamp">$&</span>'],
+  // Timestamps (ISO format, supports 0-9 fractional digits for nano precision)
+  [/\d{4}-\d{2}-\d{2}[T ]\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:Z|[+-]\d{2}:?\d{2})?/g, '<span class="timestamp">$&</span>'],
 ];
 
     for (const [pattern, replacement] of replacements) {

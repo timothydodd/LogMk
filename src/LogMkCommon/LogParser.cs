@@ -201,6 +201,29 @@ public static class LogParser
         return cleanLine;
     }
 
+    /// <summary>
+    /// Extracts the CRI stream type (stdout/stderr) from a raw container log line.
+    /// Returns null if the line doesn't match CRI format.
+    /// </summary>
+    public static string? ParseCriStreamType(string line)
+    {
+        var firstSpace = line.IndexOf(' ');
+        if (firstSpace <= 0)
+            return null;
+
+        var secondSpace = line.IndexOf(' ', firstSpace + 1);
+        if (secondSpace <= 0)
+            return null;
+
+        var outType = line.AsSpan(firstSpace + 1, secondSpace - firstSpace - 1);
+        if (outType.SequenceEqual("stdout"))
+            return "stdout";
+        if (outType.SequenceEqual("stderr"))
+            return "stderr";
+
+        return null;
+    }
+
     private static DateTimeOffset? ParseContainerTimestamp(string timestampStr)
     {
         try
