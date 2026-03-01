@@ -22,6 +22,9 @@ export interface ExtractedFilters {
 })
 export class LogProcessingService {
 
+  // Counter for generating unique client-side IDs for logs that arrive without one (e.g. SignalR real-time logs)
+  private nextClientId = -1;
+
   /**
    * Core log transformation: assign pod colors and clean log lines
    * This is the main entry point for transforming raw logs into display-ready logs
@@ -29,6 +32,7 @@ export class LogProcessingService {
   transformLogs(logs: Log[]): Log[] {
     return logs.map(log => ({
       ...log,
+      id: log.id || this.nextClientId--,
       podColor: this.getPodColor(log.pod),
       view: this.cleanLogLine(log.line),
     }));

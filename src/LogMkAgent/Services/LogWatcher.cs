@@ -551,6 +551,10 @@ public class LogWatcher : BackgroundService
         // Parse container format (timestamp stdout/stderr message)
         var processedLine = ParseContainerLogFormat(line, cleanLine);
 
+        // Skip empty lines after CRI prefix stripping
+        if (string.IsNullOrWhiteSpace(processedLine))
+            return null;
+
         var logLevel = GetLogLevelCached(processedLine);
 
         // If no log level was detected, default based on the CRI stream type:

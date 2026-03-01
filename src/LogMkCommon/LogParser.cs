@@ -163,25 +163,35 @@ public static class LogParser
             // Check for the F/P flag after stdout/stderr
             var thirdSpace = originalLine.IndexOf(' ', secondSpace + 1);
             if (thirdSpace <= 0)
+            {
+                // No space after stdout/stderr - check if remainder is just a flag (F/P)
+                var remainder = originalLine.Substring(secondSpace + 1);
+                if (remainder == "F" || remainder == "P")
+                    return string.Empty; // CRI line with empty message
                 return cleanLine;
+            }
             
             var flag = originalLine.Substring(secondSpace + 1, thirdSpace - secondSpace - 1);
             if (flag == "F" || flag == "P")
             {
-                // Find the actual log message after the flag
-                var fourthSpace = originalLine.IndexOf(' ', thirdSpace + 1);
-                if (fourthSpace > 0)
+                // The actual message starts right after the flag space
+                // CRI format: "timestamp stdout F message" - message is everything after "F "
+                if (thirdSpace + 1 >= originalLine.Length)
                 {
-                    // We need to find this position in the clean line
-                    // Count how many characters we need to skip in the clean line
-                    var prefixToSkip = originalLine.Substring(0, fourthSpace + 1);
-                    var cleanPrefixToSkip = RemoveANSIEscapeRegex.Replace(prefixToSkip, string.Empty);
-                    
-                    if (cleanPrefixToSkip.Length < cleanLine.Length)
-                    {
-                        return cleanLine.Substring(cleanPrefixToSkip.Length);
-                    }
+                    // Nothing after the flag - empty message
+                    return string.Empty;
                 }
+
+                var prefixToSkip = originalLine.Substring(0, thirdSpace + 1);
+                var cleanPrefixToSkip = RemoveANSIEscapeRegex.Replace(prefixToSkip, string.Empty);
+
+                if (cleanPrefixToSkip.Length < cleanLine.Length)
+                {
+                    return cleanLine.Substring(cleanPrefixToSkip.Length);
+                }
+
+                // Clean line is shorter than prefix (edge case with ANSI sequences)
+                return string.Empty;
             }
             else
             {
