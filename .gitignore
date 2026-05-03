@@ -167,3 +167,4 @@ __blobstorage*
 
 # Nx
 **/.nx/cache/
+/src/.github/copilot-instructions.md

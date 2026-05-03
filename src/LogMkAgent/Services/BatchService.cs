@@ -31,8 +31,8 @@ public class BatchingService : IDisposable
     // Circuit breaker
     private readonly CircuitBreaker _circuitBreaker;
 
-    // Rate limiting
-    private readonly int _maxBatchesPerMinute;
+    // Rate limiting (mutable so it can be tuned from server-side config)
+    private int _maxBatchesPerMinute;
     private readonly Queue<DateTime> _batchSendTimestamps = new();
     private readonly object _rateLimitLock = new();
 
@@ -95,6 +95,24 @@ public class BatchingService : IDisposable
 
         if (_options.SendTimeout <= TimeSpan.Zero)
             throw new ArgumentException("SendTimeout must be positive");
+    }
+
+    public void ApplyConfig(AgentConfig config)
+    {
+        if (config == null) return;
+
+        if (config.MaxBatchSize > 0)
+            _options.MaxBatchSize = config.MaxBatchSize;
+
+        if (config.MaxBatchesPerMinute > 0)
+            _maxBatchesPerMinute = config.MaxBatchesPerMinute;
+
+        if (config.MaxQueueSize > 0)
+            _options.MaxQueueSize = config.MaxQueueSize;
+
+        _logger.LogInformation(
+            "Applied batching config: MaxBatchSize={MaxBatchSize}, MaxBatchesPerMinute={MaxBatchesPerMinute}, MaxQueueSize={MaxQueueSize}",
+            _options.MaxBatchSize, _maxBatchesPerMinute, _options.MaxQueueSize);
     }
 
     public void AddData(LogLine data)

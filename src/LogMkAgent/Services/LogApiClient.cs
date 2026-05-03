@@ -50,6 +50,13 @@ public class LogApiClient
         return await _httpClient.PostAsync(url, requestContent, cancellationToken);
     }
 
+    public async Task<HttpResponseMessage> PostJsonAsync<T>(string url, T data, CancellationToken cancellationToken)
+    {
+        var json = JsonSerializer.Serialize(data, jsonOptions);
+        using var content = new StringContent(json, Encoding.UTF8, "application/json");
+        return await _httpClient.PostAsync(url, content, cancellationToken);
+    }
+
 
     private byte[] CompressData<T>(T data)
     {

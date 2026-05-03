@@ -30,7 +30,8 @@ export class TimestampService {
    * Format a timestamp based on current preference
    */
   formatTimestamp(date: Date | string): string {
-    const dateObj = typeof date === 'string' ? new Date(date) : date;
+    const dateObj = this.parseServerDate(date);
+    if (!dateObj) return '';
     const format = this.timestampFormat();
 
     if (format === 'relative') {
@@ -38,6 +39,41 @@ export class TimestampService {
     } else {
       return this.formatAbsolute(dateObj);
     }
+  }
+
+  /**
+   * Always-relative format (e.g. "5m ago"). Caller controls the format.
+   */
+  formatRelativeOnly(date: Date | string | null | undefined): string {
+    const dateObj = this.parseServerDate(date);
+    if (!dateObj) return 'never';
+    return this.formatRelative(dateObj);
+  }
+
+  /**
+   * Absolute timestamp in the user's local timezone (e.g. for a tooltip).
+   */
+  formatAbsoluteOnly(date: Date | string | null | undefined): string {
+    const dateObj = this.parseServerDate(date);
+    if (!dateObj) return '';
+    return this.formatAbsolute(dateObj);
+  }
+
+  /**
+   * Parse a server timestamp safely. The API stores everything in UTC but
+   * occasionally serializes DateTime values without a 'Z' suffix when the
+   * Kind tag was lost on a DB round-trip — JavaScript would otherwise treat
+   * those as local time. We default missing-tz strings to UTC so the user's
+   * browser then displays them in their own timezone correctly.
+   */
+  parseServerDate(value: Date | string | null | undefined): Date | null {
+    if (!value) return null;
+    if (value instanceof Date) return Number.isNaN(value.getTime()) ? null : value;
+
+    const hasTz = /Z$|[+-]\d{2}:?\d{2}$/.test(value);
+    const normalized = hasTz ? value : `${value}Z`;
+    const parsed = new Date(normalized);
+    return Number.isNaN(parsed.getTime()) ? null : parsed;
   }
 
   /**

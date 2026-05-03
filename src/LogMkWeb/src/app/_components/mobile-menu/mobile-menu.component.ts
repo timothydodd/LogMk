@@ -55,6 +55,12 @@ import { ClickOutsideDirective } from '../../_services/click-outside.directive';
                 <lucide-icon name="chevron-down" size="14" class="chevron"></lucide-icon>
               </button>
 
+              <button class="menu-option" (click)="navigateToAgents()">
+                <lucide-icon name="server" size="18"></lucide-icon>
+                <span>Agents</span>
+                <lucide-icon name="chevron-down" size="14" class="chevron"></lucide-icon>
+              </button>
+
               <button class="menu-option logout" (click)="logOut()">
                 <lucide-icon name="log-out" size="18"></lucide-icon>
                 <span>Sign Out</span>
@@ -112,6 +118,12 @@ export class MobileMenuComponent {
   navigateToSettings() {
     this.isOpen.set(false);
     this.router.navigate(['/settings']);
+    this.menuToggle.emit(false);
+  }
+
+  navigateToAgents() {
+    this.isOpen.set(false);
+    this.router.navigate(['/agents']);
     this.menuToggle.emit(false);
   }
 

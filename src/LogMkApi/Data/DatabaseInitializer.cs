@@ -27,6 +27,8 @@ public class DatabaseInitializer
             db.CreateTableIfNotExists<LogSummaryHour>(true);
 
             db.CreateTableIfNotExists<WorkQueue>(true);
+            db.CreateTableIfNotExists<AgentRecord>(true);
+            db.CreateTableIfNotExists<AgentConfigRecord>(true);
             if (db.CreateTableIfNotExists<User>(true))
             {
                 var user = new User

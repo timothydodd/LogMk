@@ -63,8 +63,12 @@ public class Program
                     });
                 });
 
-                // Register hosted service
-                services.AddHostedService<LogWatcher>();
+                // Register hosted services. LogWatcher is registered as a singleton
+                // so other services (AgentRegistrationService) can inject it for runtime
+                // config updates, then exposed as a hosted service via factory.
+                services.AddSingleton<LogWatcher>();
+                services.AddHostedService(sp => sp.GetRequiredService<LogWatcher>());
+                services.AddHostedService<AgentRegistrationService>();
             }).Build();
 
         await host.RunAsync();

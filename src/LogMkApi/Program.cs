@@ -112,6 +112,7 @@ public class Program
         builder.Services.AddSingleton<LogRepo>();
         builder.Services.AddSingleton<LogSummaryRepo>();
         builder.Services.AddSingleton<WorkQueueRepo>();
+        builder.Services.AddSingleton<AgentRepo>();
         builder.Services.AddSingleton<LogHubService>();
         builder.Services.AddSingleton<DatabaseInitializer>();
         builder.Services.AddSingleton<LogApiMetrics>();

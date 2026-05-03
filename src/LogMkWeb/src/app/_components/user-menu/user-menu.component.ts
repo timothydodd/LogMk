@@ -43,6 +43,10 @@ import { ClickOutsideDirective } from '../../_services/click-outside.directive';
                 <lucide-icon name="settings" size="16"></lucide-icon>
                 <span>Settings</span>
               </button>
+              <button class="dropdown-item" (click)="navigateToAgents()">
+                <lucide-icon name="server" size="16"></lucide-icon>
+                <span>Agents</span>
+              </button>
               <button class="dropdown-item logout" (click)="logOut()">
                 <lucide-icon name="log-out" size="16"></lucide-icon>
                 <span>Sign Out</span>
@@ -76,7 +80,12 @@ export class UserMenuComponent {
     this.isOpen.set(false);
     this.router.navigate(['/settings']);
   }
-  
+
+  navigateToAgents() {
+    this.isOpen.set(false);
+    this.router.navigate(['/agents']);
+  }
+
   logOut() {
     this.authService.logout();
   }

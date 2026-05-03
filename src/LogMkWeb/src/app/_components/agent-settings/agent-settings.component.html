@@ -1,0 +1,245 @@
+<div class="agent-settings">
+  <div class="agent-settings-header">
+    <h2>Agents</h2>
+    <button class="btn btn-secondary btn-sm" (click)="refresh()" [disabled]="isLoadingAgents()">
+      Refresh
+    </button>
+  </div>
+
+  @if (isLoadingAgents()) {
+    <div class="loading">Loading agents...</div>
+  } @else if (agents().length === 0) {
+    <div class="empty-state">
+      <p>No agents have reported in yet.</p>
+      <p class="hint">
+        Agents register via heartbeat on startup. Make sure your LogMkAgent pods can reach the API.
+      </p>
+    </div>
+  } @else {
+    <div class="agent-layout">
+      <aside class="agent-list">
+        @for (agent of agents(); track agent.agentId) {
+          <button
+            class="agent-item"
+            [class.active]="selectedAgentId() === agent.agentId"
+            (click)="selectAgent(agent.agentId)">
+            <div class="agent-row">
+              <span class="status-dot" [class.online]="agent.isOnline"></span>
+              <span class="agent-name">{{ agent.hostname || agent.agentId }}</span>
+            </div>
+            <div class="agent-meta">
+              <span [title]="formatAbsolute(agent.lastSeenAt)">
+                last seen {{ formatRelative(agent.lastSeenAt) }}
+              </span>
+              @if (agent.version) {
+                <span>·  v{{ agent.version }}</span>
+              }
+            </div>
+          </button>
+        }
+      </aside>
+
+      <section class="agent-detail">
+        @if (isLoadingConfig()) {
+          <div class="loading">Loading config...</div>
+        } @else if (config(); as cfg) {
+          @if (selectedAgent(); as agent) {
+            <div class="agent-stats">
+              <div class="stat">
+                <span class="label">Status</span>
+                <span class="value" [class.online]="agent.isOnline" [class.offline]="!agent.isOnline">
+                  {{ agent.isOnline ? 'Online' : 'Offline' }}
+                </span>
+              </div>
+              <div class="stat">
+                <span class="label">Queued</span>
+                <span class="value">{{ agent.queuedItems.toLocaleString() }}</span>
+              </div>
+              <div class="stat">
+                <span class="label">Processed</span>
+                <span class="value">{{ agent.totalItemsProcessed.toLocaleString() }}</span>
+              </div>
+              <div class="stat">
+                <span class="label">Failures</span>
+                <span class="value">{{ agent.totalFailures.toLocaleString() }}</span>
+              </div>
+              <div class="stat">
+                <span class="label">Dropped</span>
+                <span class="value">{{ agent.totalDropped.toLocaleString() }}</span>
+              </div>
+              <div class="stat">
+                <span class="label">Circuit</span>
+                <span class="value">{{ agent.circuitBreakerState || '—' }}</span>
+              </div>
+              @if (agent.ipAddress) {
+                <div class="stat">
+                  <span class="label">IP</span>
+                  <span class="value">{{ agent.ipAddress }}</span>
+                </div>
+              }
+            </div>
+          }
+
+          <div class="config-section">
+            <h3>Log filtering</h3>
+
+            <div class="form-row">
+              <label for="defaultLogLevel">Default log level</label>
+              <select id="defaultLogLevel" class="form-control" [(ngModel)]="cfg.defaultLogLevel">
+                @for (level of logLevels; track level) {
+                  <option [value]="level">{{ level }}</option>
+                }
+              </select>
+              <p class="hint">
+                Lines below this severity are dropped before they're sent to the API.
+              </p>
+            </div>
+
+            <div class="form-row">
+              <label>Per-pod log level overrides</label>
+              <div class="overrides-list">
+                @for (entry of podLevelEntries(); track entry.pod) {
+                  <div class="override-row">
+                    <code class="pod-name">{{ entry.pod }}</code>
+                    <select
+                      class="form-control form-control-sm"
+                      [ngModel]="entry.level"
+                      (ngModelChange)="updatePodLevel(entry.pod, $event)">
+                      @for (level of logLevels; track level) {
+                        <option [value]="level">{{ level }}</option>
+                      }
+                    </select>
+                    <button class="btn btn-sm btn-secondary" (click)="removePodOverride(entry.pod)">
+                      Remove
+                    </button>
+                  </div>
+                }
+                @if (podLevelEntries().length === 0) {
+                  <p class="hint subtle">No per-pod overrides. Pods use the default log level above.</p>
+                }
+              </div>
+
+              <div class="add-override">
+                <input
+                  class="form-control"
+                  placeholder="pod or container name"
+                  [ngModel]="newPod()"
+                  (ngModelChange)="newPod.set($event)" />
+                <select
+                  class="form-control"
+                  [ngModel]="newPodLevel()"
+                  (ngModelChange)="newPodLevel.set($event)">
+                  @for (level of logLevels; track level) {
+                    <option [value]="level">{{ level }}</option>
+                  }
+                </select>
+                <button class="btn btn-secondary" (click)="addPodOverride()" [disabled]="!newPod().trim()">
+                  Add override
+                </button>
+              </div>
+            </div>
+
+            <div class="form-row">
+              <label for="ignoredPods">Ignored pods</label>
+              <textarea
+                id="ignoredPods"
+                class="form-control"
+                rows="4"
+                placeholder="One pod or container name per line"
+                [ngModel]="ignoredPodsText()"
+                (ngModelChange)="ignoredPodsText.set($event)"></textarea>
+              <p class="hint">Logs from these pods are skipped entirely. One name per line.</p>
+            </div>
+          </div>
+
+          <div class="config-section">
+            <h3>Retention &amp; size limits</h3>
+
+            <div class="form-row inline">
+              <label for="maxDaysOld">Max age (days)</label>
+              <input
+                id="maxDaysOld"
+                type="number"
+                class="form-control"
+                min="1"
+                max="365"
+                [(ngModel)]="cfg.maxDaysOld" />
+            </div>
+
+            <div class="form-row inline">
+              <label for="maxLineLength">Max line length</label>
+              <input
+                id="maxLineLength"
+                type="number"
+                class="form-control"
+                min="500"
+                max="100000"
+                [(ngModel)]="cfg.maxLineLength" />
+            </div>
+          </div>
+
+          <div class="config-section">
+            <h3>Batching</h3>
+
+            <div class="form-row inline">
+              <label for="maxBatchSize">Max batch size</label>
+              <input
+                id="maxBatchSize"
+                type="number"
+                class="form-control"
+                min="1"
+                max="5000"
+                [(ngModel)]="cfg.maxBatchSize" />
+            </div>
+
+            <div class="form-row inline">
+              <label for="maxBatchesPerMinute">Max batches per minute</label>
+              <input
+                id="maxBatchesPerMinute"
+                type="number"
+                class="form-control"
+                min="1"
+                max="1000"
+                [(ngModel)]="cfg.maxBatchesPerMinute" />
+            </div>
+
+            <div class="form-row inline">
+              <label for="maxQueueSize">Max queue size</label>
+              <input
+                id="maxQueueSize"
+                type="number"
+                class="form-control"
+                min="100"
+                max="1000000"
+                [(ngModel)]="cfg.maxQueueSize" />
+            </div>
+            <p class="hint">
+              Queue size and rate limits are applied at the next config poll (~60s). Existing in-flight
+              batches are not affected.
+            </p>
+          </div>
+
+          <div class="actions">
+            @if (cfg.updatedAt) {
+              <span class="updated-info" [title]="formatAbsolute(cfg.updatedAt)">
+                Last updated {{ formatRelative(cfg.updatedAt) }}
+                @if (cfg.updatedBy) {
+                  by {{ cfg.updatedBy }}
+                }
+              </span>
+            }
+            <button class="btn btn-primary" (click)="save()" [disabled]="isSaving()">
+              @if (isSaving()) {
+                Saving...
+              } @else {
+                Save changes
+              }
+            </button>
+          </div>
+        } @else {
+          <div class="empty-state">Select an agent to edit its config.</div>
+        }
+      </section>
+    </div>
+  }
+</div>

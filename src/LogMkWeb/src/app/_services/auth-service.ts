@@ -148,12 +148,20 @@ export class AuthService {
     localStorage.removeItem(this.refreshTokenKey);
   }
 
-  // Method to clear auth state without API call (for error scenarios)
+  // Method to clear auth state without API call (for error scenarios).
+  // Also redirects to /login so the user isn't stranded on a protected page
+  // after a token becomes invalid mid-session.
   clearAuthState() {
     this.clearTokens();
     this.isLoggedIn.next(false);
     this.isRefreshing = false;
     this.refreshTokenSubject.next(null);
+
+    const currentUrl = this.router.url;
+    if (!currentUrl.startsWith('/login')) {
+      const returnUrl = currentUrl && currentUrl !== '/' ? currentUrl : '/log';
+      this.router.navigate(['/login'], { queryParams: { returnUrl } });
+    }
   }
 
   async refreshToken(): Promise<string | null> {
@@ -161,8 +169,7 @@ export class AuthService {
     const accessToken = this.getToken();
 
     if (!refreshToken || !accessToken) {
-      this.clearTokens();
-      this.isLoggedIn.next(false);
+      this.clearAuthState();
       return null;
     }
 
@@ -199,10 +206,8 @@ export class AuthService {
       }
     } catch (error) {
       console.error('Token refresh failed:', error);
-      this.clearTokens();
-      this.isLoggedIn.next(false);
       this.refreshTokenSubject.next('');
-      // Don't navigate here to avoid conflicts with interceptor
+      this.clearAuthState();
     } finally {
       this.isRefreshing = false;
     }

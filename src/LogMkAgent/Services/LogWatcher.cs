@@ -32,6 +32,11 @@ public class LogWatcher : BackgroundService
     private LogLevel _defaultLogLevel = LogLevel.Information;
     private readonly SemaphoreSlim _fileSemaphore = new(Environment.ProcessorCount);
 
+    // Tracks names that came from the local config file vs runtime overrides
+    // (so re-applying a remote config can clear stale runtime entries without
+    // wiping out file-based defaults)
+    private readonly HashSet<string> _runtimePodOverrides = new(StringComparer.OrdinalIgnoreCase);
+
     // Static readonly for better performance
     // Moved to LogParser class in LogMkCommon
 
@@ -46,7 +51,7 @@ public class LogWatcher : BackgroundService
     {
         ".log", ".txt", ".csv", ".evtx"  // Add .evtx
     };
-    private readonly int _maxDaysOld = 30; // Maximum age of logs to process
+    private int _maxDaysOld = 30; // Maximum age of logs to process
 
     private readonly StateService _stateService;
 
@@ -208,6 +213,44 @@ public class LogWatcher : BackgroundService
         {
             _logger.LogWarning(ex, "Failed to retrieve deployment times, continuing without them");
         }
+    }
+
+    public void ApplyConfig(AgentConfig config)
+    {
+        if (config == null) return;
+
+        _defaultLogLevel = AgentConfig.ParseLogLevel(config.DefaultLogLevel, LogLevel.Information);
+        _maxDaysOld = config.MaxDaysOld > 0 ? config.MaxDaysOld : 30;
+
+        // Reset previous runtime overrides so removed entries don't linger.
+        // We keep file-based overrides untouched (those weren't in _runtimePodOverrides).
+        foreach (var pod in _runtimePodOverrides.ToList())
+        {
+            if (_podSettings.TryGetValue(pod, out var existing))
+            {
+                existing.LogLevel = _defaultLogLevel;
+                existing.Ignore = false;
+            }
+        }
+        _runtimePodOverrides.Clear();
+
+        foreach (var kvp in config.PodLogLevels)
+        {
+            var settings = GetPodSettings(kvp.Key);
+            settings.LogLevel = AgentConfig.ParseLogLevel(kvp.Value, _defaultLogLevel);
+            _runtimePodOverrides.Add(kvp.Key);
+        }
+
+        foreach (var pod in config.IgnoredPods)
+        {
+            var settings = GetPodSettings(pod);
+            settings.Ignore = true;
+            _runtimePodOverrides.Add(pod);
+        }
+
+        _logger.LogInformation(
+            "Applied agent config: DefaultLogLevel={DefaultLevel}, PodOverrides={PodCount}, IgnoredPods={IgnoredCount}, MaxDaysOld={MaxDaysOld}",
+            _defaultLogLevel, config.PodLogLevels.Count, config.IgnoredPods.Count, _maxDaysOld);
     }
 
     private PodSettings GetPodSettings(string podName)
