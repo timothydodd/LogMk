@@ -115,6 +115,48 @@
     background: var(--success);
     box-shadow: 0 0 0 2px rgba(80, 250, 123, 0.2);
   }
+
+  &.global {
+    background: var(--primary);
+    box-shadow: 0 0 0 2px rgba(189, 147, 249, 0.25);
+  }
+}
+
+.global-item {
+  border-bottom: 1px solid var(--border-color);
+  margin-bottom: 0.25rem;
+  padding-bottom: 0.625rem;
+}
+
+.global-banner {
+  background: rgba(189, 147, 249, 0.08);
+  border: 1px solid rgba(189, 147, 249, 0.35);
+  border-radius: 0.375rem;
+  padding: 0.75rem 1rem;
+  font-size: 0.85rem;
+  color: var(--on-surface-variant);
+  line-height: 1.4;
+
+  strong {
+    color: var(--primary);
+    margin-right: 0.25rem;
+  }
+
+  em {
+    color: var(--on-surface);
+    font-style: normal;
+    font-weight: 500;
+  }
+}
+
+.empty-state-inline {
+  padding: 0.75rem 0.5rem;
+  font-size: 0.8rem;
+  color: var(--on-surface-muted);
+
+  p {
+    margin: 0;
+  }
 }
 
 .agent-detail {

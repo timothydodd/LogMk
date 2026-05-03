@@ -41,6 +41,9 @@ public class Log
     [MaxLength(50)]
     public string BatchId { get; set; } = string.Empty;
     public DateTime ReceivedAt { get; set; }
+    [Index]
+    [MaxLength(100)]
+    public string? AgentId { get; set; }
     // Computed property for pod key (useful for queries)
     [Ignore] // Don't store in database
     public string PodKey => $"{Deployment}:{Pod}";

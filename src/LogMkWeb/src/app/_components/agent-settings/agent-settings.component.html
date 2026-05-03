@@ -8,16 +8,28 @@
 
   @if (isLoadingAgents()) {
     <div class="loading">Loading agents...</div>
-  } @else if (agents().length === 0) {
-    <div class="empty-state">
-      <p>No agents have reported in yet.</p>
-      <p class="hint">
-        Agents register via heartbeat on startup. Make sure your LogMkAgent pods can reach the API.
-      </p>
-    </div>
   } @else {
     <div class="agent-layout">
       <aside class="agent-list">
+        <button
+          class="agent-item global-item"
+          [class.active]="selectedAgentId() === globalId"
+          (click)="selectAgent(globalId)">
+          <div class="agent-row">
+            <span class="status-dot global"></span>
+            <span class="agent-name">Global (all agents)</span>
+          </div>
+          <div class="agent-meta">
+            <span>shared pod ignores &amp; overrides</span>
+          </div>
+        </button>
+
+        @if (agents().length === 0) {
+          <div class="empty-state-inline">
+            <p>No individual agents have reported in yet.</p>
+          </div>
+        }
+
         @for (agent of agents(); track agent.agentId) {
           <button
             class="agent-item"
@@ -43,7 +55,16 @@
         @if (isLoadingConfig()) {
           <div class="loading">Loading config...</div>
         } @else if (config(); as cfg) {
-          @if (selectedAgent(); as agent) {
+          @if (isGlobalSelected()) {
+            <div class="global-banner">
+              <strong>Global settings.</strong>
+              Pod log levels and ignored pods set here apply to <em>every</em> agent.
+              Per-agent settings union with these (per-agent wins on a key conflict).
+              Scalars like batch size are read from each agent's own config.
+            </div>
+          }
+
+          @if (!isGlobalSelected() && selectedAgent(); as agent) {
             <div class="agent-stats">
               <div class="stat">
                 <span class="label">Status</span>
@@ -83,17 +104,19 @@
           <div class="config-section">
             <h3>Log filtering</h3>
 
-            <div class="form-row">
-              <label for="defaultLogLevel">Default log level</label>
-              <select id="defaultLogLevel" class="form-control" [(ngModel)]="cfg.defaultLogLevel">
-                @for (level of logLevels; track level) {
-                  <option [value]="level">{{ level }}</option>
-                }
-              </select>
-              <p class="hint">
-                Lines below this severity are dropped before they're sent to the API.
-              </p>
-            </div>
+            @if (!isGlobalSelected()) {
+              <div class="form-row">
+                <label for="defaultLogLevel">Default log level</label>
+                <select id="defaultLogLevel" class="form-control" [(ngModel)]="cfg.defaultLogLevel">
+                  @for (level of logLevels; track level) {
+                    <option [value]="level">{{ level }}</option>
+                  }
+                </select>
+                <p class="hint">
+                  Lines below this severity are dropped before they're sent to the API.
+                </p>
+              </div>
+            }
 
             <div class="form-row">
               <label>Per-pod log level overrides</label>
@@ -152,6 +175,7 @@
             </div>
           </div>
 
+          @if (!isGlobalSelected()) {
           <div class="config-section">
             <h3>Retention &amp; size limits</h3>
 
@@ -214,10 +238,11 @@
                 [(ngModel)]="cfg.maxQueueSize" />
             </div>
             <p class="hint">
-              Queue size and rate limits are applied at the next config poll (~60s). Existing in-flight
+              Queue size and rate limits apply at the agent's next heartbeat (~60s). Existing in-flight
               batches are not affected.
             </p>
           </div>
+          }
 
           <div class="actions">
             @if (cfg.updatedAt) {

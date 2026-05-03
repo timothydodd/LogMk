@@ -7,6 +7,8 @@ namespace LogMkApi.Data;
 
 public class AgentRepo
 {
+    public const string GlobalConfigId = "__global__";
+
     private readonly DbConnectionFactory _dbFactory;
     private readonly ILogger<AgentRepo> _logger;
 
@@ -69,9 +71,61 @@ public class AgentRepo
     public async Task<List<AgentInfo>> GetAllAsync()
     {
         using var db = _dbFactory.CreateConnection();
-        var query = db.From<AgentRecord>().OrderByDescending(x => x.LastSeenAt);
+        var query = db.From<AgentRecord>()
+            .Where(x => x.AgentId != GlobalConfigId)
+            .OrderByDescending(x => x.LastSeenAt);
         var records = await db.SelectAsync(query);
         return records.Select(MapToInfo).ToList();
+    }
+
+    public Task<AgentConfig> GetGlobalConfigAsync() => GetConfigAsync(GlobalConfigId);
+
+    public Task SaveGlobalConfigAsync(AgentConfig config, string? updatedBy) =>
+        SaveConfigAsync(GlobalConfigId, config, updatedBy);
+
+    /// <summary>
+    /// Returns the per-agent config merged with the global config.
+    /// Scalar fields (MaxBatchSize, MaxDaysOld, DefaultLogLevel, ...) come from
+    /// the per-agent config. Collection fields (PodLogLevels, IgnoredPods) are
+    /// unioned across global + per-agent, with the per-agent value winning for
+    /// any key conflict.
+    /// </summary>
+    public async Task<AgentConfig> GetMergedConfigAsync(string agentId)
+    {
+        if (string.Equals(agentId, GlobalConfigId, StringComparison.Ordinal))
+        {
+            return await GetGlobalConfigAsync();
+        }
+
+        var globalConfig = await GetGlobalConfigAsync();
+        var agentConfig = await GetConfigAsync(agentId);
+
+        var mergedPodLevels = new Dictionary<string, string>(globalConfig.PodLogLevels, StringComparer.OrdinalIgnoreCase);
+        foreach (var kvp in agentConfig.PodLogLevels)
+        {
+            mergedPodLevels[kvp.Key] = kvp.Value;
+        }
+
+        var mergedIgnored = new HashSet<string>(globalConfig.IgnoredPods, StringComparer.OrdinalIgnoreCase);
+        foreach (var pod in agentConfig.IgnoredPods)
+        {
+            mergedIgnored.Add(pod);
+        }
+
+        return new AgentConfig
+        {
+            AgentId = agentId,
+            DefaultLogLevel = agentConfig.DefaultLogLevel,
+            PodLogLevels = mergedPodLevels,
+            IgnoredPods = mergedIgnored.ToList(),
+            MaxDaysOld = agentConfig.MaxDaysOld,
+            MaxLineLength = agentConfig.MaxLineLength,
+            MaxBatchSize = agentConfig.MaxBatchSize,
+            MaxBatchesPerMinute = agentConfig.MaxBatchesPerMinute,
+            MaxQueueSize = agentConfig.MaxQueueSize,
+            UpdatedAt = agentConfig.UpdatedAt > globalConfig.UpdatedAt ? agentConfig.UpdatedAt : globalConfig.UpdatedAt,
+            UpdatedBy = agentConfig.UpdatedBy ?? globalConfig.UpdatedBy
+        };
     }
 
     public async Task<AgentInfo?> GetByIdAsync(string agentId)

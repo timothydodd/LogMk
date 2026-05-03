@@ -53,4 +53,12 @@ export class AgentApiService {
   saveConfig(agentId: string, config: AgentConfig): Observable<AgentConfig> {
     return this.http.put<AgentConfig>(`${this.baseUrl}/${encodeURIComponent(agentId)}/config`, config);
   }
+
+  getGlobalConfig(): Observable<AgentConfig> {
+    return this.http.get<AgentConfig>(`${this.baseUrl}/global/config`);
+  }
+
+  saveGlobalConfig(config: AgentConfig): Observable<AgentConfig> {
+    return this.http.put<AgentConfig>(`${this.baseUrl}/global/config`, config);
+  }
 }

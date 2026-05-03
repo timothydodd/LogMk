@@ -133,4 +133,8 @@ export interface Log {
   timeStamp: Date;
   podColor: string;
   sequenceNumber: number;
+  agentId?: string;
+  batchId?: string;
+  receivedAt?: Date | string;
+  fingerprint?: string;
 }

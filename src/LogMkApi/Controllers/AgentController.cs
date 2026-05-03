@@ -20,10 +20,12 @@ public class AgentController : ControllerBase
         _logger = logger;
     }
 
-    // Called by agents — anonymous like other agent endpoints
+    // Called by agents — anonymous like other agent endpoints. Returns the
+    // latest config so changes saved in the web UI are applied on the next
+    // heartbeat (no separate poll needed).
     [AllowAnonymous]
     [HttpPost("heartbeat")]
-    public async Task<IActionResult> Heartbeat([FromBody] AgentHeartbeat heartbeat)
+    public async Task<ActionResult<HeartbeatResponse>> Heartbeat([FromBody] AgentHeartbeat heartbeat)
     {
         if (heartbeat == null || string.IsNullOrWhiteSpace(heartbeat.AgentId))
         {
@@ -33,7 +35,12 @@ public class AgentController : ControllerBase
         try
         {
             await _agentRepo.UpsertHeartbeatAsync(heartbeat);
-            return Ok(new { Status = "ok", ReceivedAt = DateTime.UtcNow });
+            var config = await _agentRepo.GetMergedConfigAsync(heartbeat.AgentId);
+            return Ok(new HeartbeatResponse
+            {
+                ReceivedAt = DateTime.UtcNow,
+                Config = config
+            });
         }
         catch (Exception ex)
         {
@@ -42,14 +49,43 @@ public class AgentController : ControllerBase
         }
     }
 
-    // Called by agents — anonymous so the agent can fetch its own config
-    [AllowAnonymous]
+    [Authorize]
+    [HttpGet("global/config")]
+    public async Task<ActionResult<AgentConfig>> GetGlobalConfig()
+    {
+        var config = await _agentRepo.GetGlobalConfigAsync();
+        return Ok(config);
+    }
+
+    [Authorize]
+    [HttpPut("global/config")]
+    public async Task<ActionResult<AgentConfig>> UpdateGlobalConfig([FromBody] AgentConfig config)
+    {
+        if (config == null)
+        {
+            return BadRequest(new { Error = "Config is required" });
+        }
+
+        await _agentRepo.SaveGlobalConfigAsync(config, User.Identity?.Name);
+        var saved = await _agentRepo.GetGlobalConfigAsync();
+        _logger.LogInformation("Global agent config updated by {User}", User.Identity?.Name);
+        return Ok(saved);
+    }
+
+    // Called by the web UI to load raw per-agent config for editing.
+    // Agents themselves get config via the heartbeat response (merged).
+    [Authorize]
     [HttpGet("{agentId}/config")]
     public async Task<ActionResult<AgentConfig>> GetConfig(string agentId)
     {
         if (string.IsNullOrWhiteSpace(agentId))
         {
             return BadRequest(new { Error = "AgentId is required" });
+        }
+
+        if (string.Equals(agentId, AgentRepo.GlobalConfigId, StringComparison.Ordinal))
+        {
+            return BadRequest(new { Error = "Use /api/agents/global/config for global settings" });
         }
 
         var config = await _agentRepo.GetConfigAsync(agentId);
@@ -80,6 +116,11 @@ public class AgentController : ControllerBase
         if (config == null)
         {
             return BadRequest(new { Error = "Config is required" });
+        }
+
+        if (string.Equals(agentId, AgentRepo.GlobalConfigId, StringComparison.Ordinal))
+        {
+            return BadRequest(new { Error = "Use /api/agents/global/config for global settings" });
         }
 
         if (config.MaxBatchSize <= 0 || config.MaxBatchSize > 5000)

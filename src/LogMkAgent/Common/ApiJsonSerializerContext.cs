@@ -11,6 +11,7 @@ namespace LogMkAgent;
 [JsonSerializable(typeof(ValidationSettings))]
 [JsonSerializable(typeof(AgentHeartbeat))]
 [JsonSerializable(typeof(AgentConfig))]
+[JsonSerializable(typeof(HeartbeatResponse))]
 public partial class ApiJsonSerializerContext : JsonSerializerContext
 {
 }

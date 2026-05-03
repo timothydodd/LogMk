@@ -11,6 +11,7 @@ interface PodLevelEntry {
 }
 
 const LOG_LEVELS: AgentLogLevel[] = ['Any', 'Trace', 'Debug', 'Information', 'Warning', 'Error'];
+const GLOBAL_ID = '__global__';
 
 @Component({
   selector: 'app-agent-settings',
@@ -25,9 +26,11 @@ export class AgentSettingsComponent implements OnInit {
   private timestamps = inject(TimestampService);
 
   readonly logLevels = LOG_LEVELS;
+  readonly globalId = GLOBAL_ID;
 
   agents = signal<AgentInfo[]>([]);
   selectedAgentId = signal<string>('');
+  isGlobalSelected = computed(() => this.selectedAgentId() === GLOBAL_ID);
   config = signal<AgentConfig | null>(null);
   podLevelEntries = signal<PodLevelEntry[]>([]);
   ignoredPodsText = signal<string>('');
@@ -43,9 +46,9 @@ export class AgentSettingsComponent implements OnInit {
 
   async ngOnInit() {
     await this.loadAgents();
-    if (this.agents().length > 0) {
-      await this.selectAgent(this.agents()[0].agentId);
-    }
+    // Default to the Global tab — most users will want to set shared rules
+    // first, then drop into a specific agent only when needed.
+    await this.selectAgent(GLOBAL_ID);
   }
 
   async refresh() {
@@ -76,7 +79,9 @@ export class AgentSettingsComponent implements OnInit {
   async loadConfig(agentId: string) {
     try {
       this.isLoadingConfig.set(true);
-      const cfg = await firstValueFrom(this.agentApi.getConfig(agentId));
+      const cfg = agentId === GLOBAL_ID
+        ? await firstValueFrom(this.agentApi.getGlobalConfig())
+        : await firstValueFrom(this.agentApi.getConfig(agentId));
       this.applyConfigToForm(cfg);
     } catch (err) {
       console.error('Failed to load agent config', err);
@@ -139,9 +144,15 @@ export class AgentSettingsComponent implements OnInit {
 
     try {
       this.isSaving.set(true);
-      const saved = await firstValueFrom(this.agentApi.saveConfig(agentId, payload));
+      const saved = agentId === GLOBAL_ID
+        ? await firstValueFrom(this.agentApi.saveGlobalConfig(payload))
+        : await firstValueFrom(this.agentApi.saveConfig(agentId, payload));
       this.applyConfigToForm(saved);
-      this.toast.success('Agent config saved. Changes apply on the next config poll (~60s).');
+      this.toast.success(
+        agentId === GLOBAL_ID
+          ? 'Global config saved. Each agent applies it on its next heartbeat (~60s).'
+          : 'Agent config saved. Changes apply on the next heartbeat (~60s).'
+      );
     } catch (err: any) {
       console.error('Failed to save agent config', err);
       const msg = err?.error?.error ?? 'Failed to save agent config';

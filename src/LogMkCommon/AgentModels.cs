@@ -36,6 +36,12 @@ public class AgentInfo
     public bool IsOnline => (DateTime.UtcNow - LastSeenAt) < TimeSpan.FromMinutes(2);
 }
 
+public class HeartbeatResponse
+{
+    public DateTime ReceivedAt { get; set; }
+    public AgentConfig? Config { get; set; }
+}
+
 public class AgentConfig
 {
     public string AgentId { get; set; } = string.Empty;

@@ -30,6 +30,12 @@ public class LogLine
 
     [Required(ErrorMessage = "Timestamp is required")]
     public required DateTimeOffset TimeStamp { get; set; }
+
+    // Identifies which agent (node/host) produced this log line. Filled in
+    // by the agent before sending; the API stores it so the UI can show
+    // which node a log row came from.
+    [StringLength(100)]
+    public string? AgentId { get; set; }
 }
 public enum LogLevel
 {

@@ -31,6 +31,36 @@ import { HighlightLogPipe } from '../../_pages/main-log-page/_services/highlight
               <span class="label">Deployment:</span>
               <span class="value">{{ logData.deployment }}</span>
             </div>
+            @if (logData.agentId) {
+              <div class="metadata-row">
+                <span class="label">Agent / Node:</span>
+                <span class="value">{{ logData.agentId }}</span>
+              </div>
+            }
+            @if (logData.receivedAt) {
+              <div class="metadata-row">
+                <span class="label">Received:</span>
+                <span class="value">{{ logData.receivedAt | timestampFormat }}</span>
+              </div>
+            }
+            @if (logData.batchId) {
+              <div class="metadata-row">
+                <span class="label">Batch:</span>
+                <span class="value mono">{{ logData.batchId }}</span>
+              </div>
+            }
+            @if (logData.sequenceNumber) {
+              <div class="metadata-row">
+                <span class="label">Sequence:</span>
+                <span class="value mono">{{ logData.sequenceNumber }}</span>
+              </div>
+            }
+            @if (logData.fingerprint) {
+              <div class="metadata-row">
+                <span class="label">Fingerprint:</span>
+                <span class="value mono">{{ logData.fingerprint }}</span>
+              </div>
+            }
           </div>
 
           <div class="log-content-section">

@@ -150,7 +150,8 @@ public class LogController : ControllerBase
                     SequenceNumber = logLine.SequenceNumber,
                     Fingerprint = logLine.Fingerprint,
                     BatchId = batchId,
-                    ReceivedAt = receivedAt.UtcDateTime
+                    ReceivedAt = receivedAt.UtcDateTime,
+                    AgentId = logLine.AgentId
                 };
 
                 validLogs.Add(logEntity);

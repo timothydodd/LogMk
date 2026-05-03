@@ -1,6 +1,8 @@
+using System.Net.Http.Json;
 using System.Net.NetworkInformation;
 using System.Net.Sockets;
 using System.Reflection;
+using System.Text.Json;
 using LogMkCommon;
 
 namespace LogMkAgent.Services;
@@ -17,8 +19,13 @@ public class AgentRegistrationService : BackgroundService
     private readonly LogWatcher _logWatcher;
     private readonly ILogger<AgentRegistrationService> _logger;
 
-    private readonly TimeSpan _heartbeatInterval = TimeSpan.FromSeconds(30);
-    private readonly TimeSpan _configPollInterval = TimeSpan.FromSeconds(60);
+    private readonly TimeSpan _heartbeatInterval = TimeSpan.FromSeconds(60);
+
+    private static readonly JsonSerializerOptions _jsonOptions = new()
+    {
+        TypeInfoResolver = new ApiJsonSerializerContext(),
+        PropertyNameCaseInsensitive = true
+    };
 
     private readonly DateTime _startedAt = DateTime.UtcNow;
     private readonly string _agentId;
@@ -42,41 +49,29 @@ public class AgentRegistrationService : BackgroundService
         _version = Assembly.GetExecutingAssembly().GetName().Version?.ToString();
         _ipAddress = TryGetLocalIp();
 
+        // Stamp every outgoing log line with this agent's id so the API/UI
+        // can show which node a log came from.
+        _batchingService.AgentId = _agentId;
+
         _logger.LogInformation("AgentRegistrationService starting: AgentId={AgentId}, Hostname={Hostname}, Version={Version}",
             _agentId, _hostname, _version);
     }
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
-        // Pull config once on startup before the regular polling loop
-        await PullConfigAsync(stoppingToken).ConfigureAwait(false);
-
-        var lastConfigPull = DateTime.UtcNow;
+        // Send an initial heartbeat right away so the agent's config is applied
+        // before the first batch is processed.
+        try
+        {
+            await SendHeartbeatAsync(stoppingToken).ConfigureAwait(false);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Initial heartbeat failed");
+        }
 
         while (!stoppingToken.IsCancellationRequested)
         {
-            try
-            {
-                await SendHeartbeatAsync(stoppingToken).ConfigureAwait(false);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogWarning(ex, "Heartbeat failed");
-            }
-
-            if (DateTime.UtcNow - lastConfigPull >= _configPollInterval)
-            {
-                try
-                {
-                    await PullConfigAsync(stoppingToken).ConfigureAwait(false);
-                    lastConfigPull = DateTime.UtcNow;
-                }
-                catch (Exception ex)
-                {
-                    _logger.LogWarning(ex, "Config pull failed");
-                }
-            }
-
             try
             {
                 await Task.Delay(_heartbeatInterval, stoppingToken).ConfigureAwait(false);
@@ -84,6 +79,15 @@ public class AgentRegistrationService : BackgroundService
             catch (OperationCanceledException)
             {
                 break;
+            }
+
+            try
+            {
+                await SendHeartbeatAsync(stoppingToken).ConfigureAwait(false);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Heartbeat failed");
             }
         }
     }
@@ -113,28 +117,24 @@ public class AgentRegistrationService : BackgroundService
         if (!response.IsSuccessStatusCode)
         {
             _logger.LogDebug("Heartbeat returned non-success status {StatusCode}", response.StatusCode);
+            return;
         }
-    }
 
-    private async Task PullConfigAsync(CancellationToken cancellationToken)
-    {
         try
         {
-            var config = await _apiClient.GetDataAsync<AgentConfig>($"api/agents/{Uri.EscapeDataString(_agentId)}/config")
-                                         .ConfigureAwait(false);
+            var payload = await response.Content
+                .ReadFromJsonAsync<HeartbeatResponse>(_jsonOptions, cancellationToken)
+                .ConfigureAwait(false);
 
-            if (config == null)
+            if (payload?.Config != null)
             {
-                _logger.LogDebug("No agent config returned for {AgentId}", _agentId);
-                return;
+                _logWatcher.ApplyConfig(payload.Config);
+                _batchingService.ApplyConfig(payload.Config);
             }
-
-            _logWatcher.ApplyConfig(config);
-            _batchingService.ApplyConfig(config);
         }
-        catch (HttpRequestException ex)
+        catch (Exception ex)
         {
-            _logger.LogDebug(ex, "Could not reach API to pull config");
+            _logger.LogDebug(ex, "Failed to parse heartbeat response");
         }
     }
 

@@ -115,6 +115,8 @@ public class BatchingService : IDisposable
             _options.MaxBatchSize, _maxBatchesPerMinute, _options.MaxQueueSize);
     }
 
+    public string? AgentId { get; set; }
+
     public void AddData(LogLine data)
     {
         if (_disposed)
@@ -127,6 +129,11 @@ public class BatchingService : IDisposable
         {
             _logger.LogWarning("Attempted to add null LogLine to batch");
             return;
+        }
+
+        if (string.IsNullOrEmpty(data.AgentId))
+        {
+            data.AgentId = AgentId;
         }
 
         // Enforce queue size limit - drop 10% of queue to make room and avoid per-item churn

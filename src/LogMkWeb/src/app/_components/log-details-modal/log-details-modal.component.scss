@@ -21,6 +21,11 @@
         color: var(--on-surface);
         font-size: 0.875rem;
 
+        &.mono {
+          font-family: "JetBrains Mono", "Fira Code", "Consolas", monospace;
+          word-break: break-all;
+        }
+
         &.pod-name {
           font-weight: 600;
           text-shadow: 0 0 3px currentColor;

@@ -43,7 +43,32 @@ public class DatabaseInitializer
             }
             db.CreateTableIfNotExists<RefreshToken>(true);
             // Ensure critical indexes exist (migration for existing databases)
+            EnsureLogColumns(db);
             EnsureLogIndexes(db);
+        }
+    }
+
+    private void EnsureLogColumns(System.Data.IDbConnection db)
+    {
+        try
+        {
+            var checkSql = @"
+                SELECT COUNT(*)
+                FROM information_schema.columns
+                WHERE table_schema = DATABASE()
+                AND table_name = 'Log'
+                AND column_name = 'AgentId'";
+
+            var exists = db.ExecuteScalar<int>(checkSql) > 0;
+            if (!exists)
+            {
+                _logger.LogInformation("Adding AgentId column to Log table");
+                db.Execute("ALTER TABLE `Log` ADD COLUMN `AgentId` VARCHAR(100) NULL");
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Failed to ensure Log.AgentId column. Add it manually: ALTER TABLE `Log` ADD COLUMN `AgentId` VARCHAR(100) NULL");
         }
     }
 
@@ -56,7 +81,8 @@ public class DatabaseInitializer
             var indexesToCheck = new[]
             {
                 ("Deployment_Pod_TimeStamp_idx", "CREATE INDEX Deployment_Pod_TimeStamp_idx ON `Log` (Deployment, Pod, TimeStamp)"),
-                ("LogDate_idx", "CREATE INDEX LogDate_idx ON `Log` (LogDate)")
+                ("LogDate_idx", "CREATE INDEX LogDate_idx ON `Log` (LogDate)"),
+                ("AgentId_idx", "CREATE INDEX AgentId_idx ON `Log` (AgentId)")
             };
 
             foreach (var (name, createSql) in indexesToCheck)
